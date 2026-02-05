@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Studio — Dashboard</title>
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container nav">
+      <a class="brand" href="../index.html">Toji Studios <small>studio</small></a>
+
+      <nav class="navlinks" aria-label="Primary">
+        <a href="../index.html">Public</a>
+        <a class="active" href="index.html">Studio</a>
+        <a href="upload.html">Upload</a>
+      </nav>
+
+      <div class="theme-controls">
+        <div class="segmented" role="group" aria-label="Theme mode">
+          <button type="button" data-theme-mode="system">System</button>
+          <button type="button" data-theme-mode="light">Light</button>
+          <button type="button" data-theme-mode="dark">Dark</button>
+        </div>
+        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
+      </div>
+
+      <a class="btn" href="upload.html">New upload</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" style="padding-bottom:10px">
+      <h1>Studio Dashboard</h1>
+      <p>Manage drafts, published work, and hidden pieces. (Front-end mock with localStorage persistence.)</p>
+    </section>
+
+    <div class="admin-layout">
+      <aside class="sidebar" aria-label="Studio navigation">
+        <a class="active" href="index.html">Dashboard</a>
+        <a href="upload.html">Upload</a>
+        <a href="../gallery.html">View public gallery</a>
+        <hr class="sep" />
+        <div class="sub">Quick filters</div>
+        <div class="pillrow" style="margin-top:10px">
+          <span class="pill" id="countAll">All</span>
+          <span class="pill" id="countPub">Published</span>
+          <span class="pill" id="countDraft">Draft</span>
+          <span class="pill" id="countHidden">Hidden</span>
+        </div>
+      </aside>
+
+      <section>
+        <div class="kpi">
+          <div class="card"><div class="meta"><div class="sub">Published</div><b id="kPub">—</b></div></div>
+          <div class="card"><div class="meta"><div class="sub">Drafts</div><b id="kDraft">—</b></div></div>
+          <div class="card"><div class="meta"><div class="sub">Hidden</div><b id="kHidden">—</b></div></div>
+        </div>
+
+        <div class="filters" style="margin-top:18px">
+          <div class="chip active" data-tab="all">All</div>
+          <div class="chip" data-tab="published">Published</div>
+          <div class="chip" data-tab="draft">Draft</div>
+          <div class="chip" data-tab="hidden">Hidden</div>
+
+          <div class="search">
+            <span>Search</span>
+            <input id="q" placeholder="title, tag, series…" />
+          </div>
+        </div>
+
+        <table class="table" aria-label="Artwork table">
+          <thead>
+            <tr>
+              <th>Artwork</th>
+              <th>Status</th>
+              <th>Tags</th>
+              <th>Series</th>
+              <th>Year</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+
+        <footer class="footer">
+          <div class="row">
+            <div>© <span id="y"></span> Toji Studios</div>
+            <div>Studio mock</div>
+          </div>
+        </footer>
+      </section>
+    </div>
+  </main>
+
+  <script type="module">
+    import {
+      loadState, saveState, el, statusChip, formatStatus,
+      setYearFooter, ensureBaseStyles
+    } from "./admin.js";
+
+    ensureBaseStyles();
+    setYearFooter();
+
+    const state = await loadState();
+
+    let tab = "all";
+    let q = "";
+
+    const chips = Array.from(document.querySelectorAll("[data-tab]"));
+    const qInput = document.getElementById("q");
+    const rows = document.getElementById("rows");
+
+    const counts = () => {
+      const all = state.artworks.length;
+      const pub = state.artworks.filter(a => a.status === "published").length;
+      const draft = state.artworks.filter(a => a.status === "draft").length;
+      const hidden = state.artworks.filter(a => a.status === "hidden").length;
+      document.getElementById("kPub").textContent = pub;
+      document.getElementById("kDraft").textContent = draft;
+      document.getElementById("kHidden").textContent = hidden;
+      document.getElementById("countAll").textContent = `All ${all}`;
+      document.getElementById("countPub").textContent = `Published ${pub}`;
+      document.getElementById("countDraft").textContent = `Draft ${draft}`;
+      document.getElementById("countHidden").textContent = `Hidden ${hidden}`;
+    };
+
+    function matches(a){
+      const tabOk = tab === "all" || a.status === tab;
+      const text = `${a.title} ${(a.tags||[]).join(" ")} ${a.series||""}`.toLowerCase();
+      const qOk = !q || text.includes(q);
+      return tabOk && qOk;
+    }
+
+    function setStatus(id, next){
+      const a = state.artworks.find(x => x.id === id);
+      if (!a) return;
+      a.status = next;
+      if (next === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
+      saveState(state);
+      render();
+    }
+
+    function render(){
+      counts();
+      rows.innerHTML = "";
+
+      const items = state.artworks
+        .filter(matches)
+        .sort((a,b) => (b.updatedAt||b.createdAt||"").localeCompare(a.updatedAt||a.createdAt||""));
+
+      for (const a of items){
+        const tags = (a.tags||[]).slice(0,3).join(" · ") || "—";
+
+        rows.appendChild(
+          el("tr", {},
+            el("td", {},
+              el("div", { style:"display:flex; gap:10px; align-items:center" },
+                el("div", { class:"thumbSm" }, el("img", { src: a.thumb || a.image, alt: a.title, loading:"lazy" })),
+                el("div", {},
+                  el("div", { style:"font-weight:650" }, a.title),
+                  el("div", { class:"sub" }, a.featured ? "Featured" : "—")
+                )
+              )
+            ),
+            el("td", {}, statusChip(a.status)),
+            el("td", {}, el("span", { class:"sub" }, tags)),
+            el("td", {}, el("span", { class:"sub" }, a.series || "—")),
+            el("td", {}, el("span", { class:"sub" }, a.year || "—")),
+            el("td", {},
+              el("div", { class:"row-actions" },
+                el("a", { class:"btn mini", href:`edit.html?id=${encodeURIComponent(a.id)}` }, "Edit"),
+                el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"published"), type:"button" }, "Publish"),
+                el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"draft"), type:"button" }, "Draft"),
+                el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"hidden"), type:"button" }, "Hide")
+              )
+            )
+          )
+        );
+      }
+
+      if (!items.length){
+        rows.appendChild(
+          el("tr", {},
+            el("td", { colspan:"6" },
+              el("div", { class:"sub", style:"padding:14px" }, "No items match your filter.")
+            )
+          )
+        );
+      }
+    }
+
+    chips.forEach(c => c.addEventListener("click", () => {
+      chips.forEach(x => x.classList.remove("active"));
+      c.classList.add("active");
+      tab = c.getAttribute("data-tab");
+      render();
+    }));
+
+    qInput.addEventListener("input", (e) => {
+      q = e.target.value.trim().toLowerCase();
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Studio — Edit</title>
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container nav">
+      <a class="brand" href="../index.html">Toji Studios <small>studio</small></a>
+
+      <nav class="navlinks" aria-label="Primary">
+        <a href="../index.html">Public</a>
+        <a href="index.html">Studio</a>
+        <a href="upload.html">Upload</a>
+      </nav>
+
+      <div class="theme-controls">
+        <div class="segmented" role="group" aria-label="Theme mode">
+          <button type="button" data-theme-mode="system">System</button>
+          <button type="button" data-theme-mode="light">Light</button>
+          <button type="button" data-theme-mode="dark">Dark</button>
+        </div>
+        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
+      </div>
+
+      <a class="btn" href="index.html">Back</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" style="padding-bottom:10px">
+      <h1 id="h1">Edit artwork</h1>
+      <p class="sub" id="sub">—</p>
+    </section>
+
+    <section class="grid" id="root"></section>
+
+    <footer class="footer">
+      <div class="row">
+        <div>© <span id="y"></span> Toji Studios</div>
+        <div>Edit view</div>
+      </div>
+    </footer>
+  </main>
+
+  <script type="module">
+    import {
+      loadState, saveState, qs, el, setYearFooter, ensureBaseStyles, upsertTag
+    } from "./admin.js";
+
+    ensureBaseStyles();
+    setYearFooter();
+
+    const state = await loadState();
+    const id = qs("id");
+    const a = state.artworks.find(x => x.id === id) || state.artworks[0];
+
+    const root = document.getElementById("root");
+    const h1 = document.getElementById("h1");
+    const sub = document.getElementById("sub");
+
+    if (!a) {
+      root.appendChild(el("div", { class:"sub" }, "No artwork found."));
+      throw new Error("No artwork");
+    }
+
+    h1.textContent = a.title || "Untitled";
+    sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
+
+    function save(){
+      a.updatedAt = new Date().toISOString();
+      saveState(state);
+      h1.textContent = a.title || "Untitled";
+      sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
+      status.textContent = "Saved.";
+      setTimeout(()=> status.textContent = "", 900);
+    }
+
+    function setStatus(next){
+      a.status = next;
+      if (next === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
+      save();
+    }
+
+    const status = el("span", { class:"sub", id:"status", "aria-live":"polite" }, "");
+
+    // Left: preview
+    const left = el("div", { class:"card", style:"grid-column: span 7" },
+      el("div", { class:"thumb", style:"aspect-ratio:16/10" },
+        el("img", { src: a.image || a.thumb, alt: a.alt || a.title, style:"object-fit:contain;background:var(--bg)" })
+      ),
+      el("div", { class:"meta" },
+        el("div", { class:"pillrow" },
+          el("button", { class:"btn mini", type:"button", onclick:()=>setStatus("published") }, "Publish"),
+          el("button", { class:"btn mini", type:"button", onclick:()=>setStatus("draft") }, "Draft"),
+          el("button", { class:"btn mini", type:"button", onclick:()=>setStatus("hidden") }, "Hide"),
+          el("span", { style:"margin-left:auto" }, status)
+        ),
+        el("hr", { class:"sep" }),
+        el("div", { class:"sub" }, "Tip: Replace image is backend-wired later. For now, preview uses stored URL.")
+      )
+    );
+
+    // Right: fields
+    const right = el("div", { class:"card", style:"grid-column: span 5" },
+      el("div", { class:"meta" },
+        el("p", { class:"title" }, "Details"),
+
+        field("Title", "title", a.title, (v)=>{ a.title=v; save(); }),
+        field("Year", "year", a.year || "", (v)=>{ a.year=v; save(); }),
+        selectField("Series", "series", state.series, a.series || "", (v)=>{ a.series=v; if(v && !state.series.includes(v)) state.series.push(v); save(); }),
+        field("Alt text", "alt", a.alt || "", (v)=>{ a.alt=v; save(); }),
+        textareaField("Description", "description", a.description || "", (v)=>{ a.description=v; save(); }),
+
+        el("hr", { class:"sep" }),
+
+        el("p", { class:"title" }, "Tags"),
+        tagsEditor(),
+
+        el("hr", { class:"sep" }),
+
+        el("div", { class:"pillrow" },
+          el("label", { class:"pill", style:"cursor:pointer" },
+            el("input", {
+              type:"checkbox",
+              style:"margin-right:8px",
+              checked: a.featured ? "" : null,
+              onchange:(e)=>{ a.featured = e.target.checked; save(); }
+            }),
+            "Featured"
+          ),
+          el("a", { class:"btn mini", href:"index.html", style:"margin-left:auto" }, "Done")
+        )
+      )
+    );
+
+    root.appendChild(left);
+    root.appendChild(right);
+
+    function field(label, id, value, onChange){
+      const input = el("input", { id, value: value ?? "" });
+      input.addEventListener("input", (e)=> onChange(e.target.value));
+      return el("div", { class:"field", style:"margin-top:12px" },
+        el("div", { class:"sub" }, label),
+        input
+      );
+    }
+
+    function textareaField(label, id, value, onChange){
+      const t = el("textarea", { id }, value ?? "");
+      t.addEventListener("input", (e)=> onChange(e.target.value));
+      return el("div", { class:"field", style:"margin-top:12px" },
+        el("div", { class:"sub" }, label),
+        t
+      );
+    }
+
+    function selectField(label, id, options, current, onChange){
+      const s = el("select", { id },
+        el("option", { value:"" }, "—"),
+        ...options.map(o => el("option", { value:o, selected: o===current ? "" : null }, o))
+      );
+      s.addEventListener("change", (e)=> onChange(e.target.value));
+      return el("div", { class:"field", style:"margin-top:12px" },
+        el("div", { class:"sub" }, label),
+        s
+      );
+    }
+
+    function tagsEditor(){
+      const wrap = el("div", { style:"display:grid; gap:10px; margin-top:10px" });
+      const list = el("div", { class:"pillrow" });
+
+      const input = el("input", { placeholder:"type tag + Enter" });
+      input.addEventListener("keydown", (e)=>{
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        const t = input.value.trim().toLowerCase();
+        if (!t) return;
+        input.value = "";
+        a.tags = Array.from(new Set([...(a.tags||[]), t]));
+        upsertTag(state, t);
+        save();
+        renderTags();
+      });
+
+      wrap.appendChild(input);
+      wrap.appendChild(list);
+
+      function renderTags(){
+        list.innerHTML = "";
+        const tags = (a.tags||[]).slice().sort();
+        if (!tags.length) list.appendChild(el("span", { class:"sub" }, "No tags yet."));
+        for (const t of tags){
+          list.appendChild(
+            el("span", { class:"pill" },
+              t,
+              el("button", {
+                class:"btn mini",
+                type:"button",
+                style:"margin-left:8px",
+                onclick:()=>{
+                  a.tags = (a.tags||[]).filter(x => x !== t);
+                  save();
+                  renderTags();
+                }
+              }, "×")
+            )
+          );
+        }
+      }
+
+      renderTags();
+      return wrap;
+    }
+  </script>
+</body>
+</html>

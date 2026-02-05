@@ -1,0 +1,227 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Studio — Upload</title>
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container nav">
+      <a class="brand" href="../index.html">Toji Studios <small>studio</small></a>
+
+      <nav class="navlinks" aria-label="Primary">
+        <a href="../index.html">Public</a>
+        <a href="index.html">Studio</a>
+        <a class="active" href="upload.html">Upload</a>
+      </nav>
+
+      <div class="theme-controls">
+        <div class="segmented" role="group" aria-label="Theme mode">
+          <button type="button" data-theme-mode="system">System</button>
+          <button type="button" data-theme-mode="light">Light</button>
+          <button type="button" data-theme-mode="dark">Dark</button>
+        </div>
+        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
+      </div>
+
+      <a class="btn" href="index.html">Dashboard</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" style="padding-bottom:10px">
+      <h1>Upload (Mock)</h1>
+      <p>
+        This simulates uploads by creating draft records. Later, the backend will generate thumbnails + variants.
+      </p>
+    </section>
+
+    <section class="grid">
+      <div class="card" style="grid-column: span 7">
+        <div class="meta">
+          <p class="title">Create drafts</p>
+          <p class="sub">Pick images locally (nothing is uploaded yet). We’ll use the filename as the title.</p>
+
+          <div class="field" style="margin-top:14px">
+            <div class="sub">Select files</div>
+            <input id="files" type="file" multiple accept="image/*" />
+          </div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center">
+            <button class="btn primary" id="createDrafts" type="button">Create draft records</button>
+            <span class="sub" id="status" aria-live="polite"></span>
+          </div>
+
+          <hr class="sep" />
+
+          <p class="title">Batch metadata</p>
+          <p class="sub">Apply to the newly created drafts:</p>
+
+          <div style="display:grid; gap:12px; margin-top:12px">
+            <div class="field">
+              <div class="sub">Tags (comma-separated)</div>
+              <input id="tags" placeholder="abstract, cosmic, geometry" />
+            </div>
+
+            <div class="field">
+              <div class="sub">Series</div>
+              <input id="series" placeholder="e.g., Dark Fields" />
+            </div>
+
+            <div class="field">
+              <div class="sub">Year</div>
+              <input id="year" placeholder="2026" />
+            </div>
+
+            <div class="field">
+              <div class="sub">Status</div>
+              <select id="statusSelect">
+                <option value="draft" selected>Draft</option>
+                <option value="published">Published</option>
+                <option value="hidden">Hidden</option>
+              </select>
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+              <button class="btn" id="applyBatch" type="button">Apply to new drafts</button>
+              <a class="btn" id="goDash" href="index.html">Back to dashboard</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="grid-column: span 5">
+        <div class="meta">
+          <p class="title">New drafts</p>
+          <p class="sub">Created in this session:</p>
+          <div id="list" style="display:grid; gap:10px; margin-top:12px"></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="row">
+        <div>© <span id="y"></span> Toji Studios</div>
+        <div>Upload mock</div>
+      </div>
+    </footer>
+  </main>
+
+  <script type="module">
+    import {
+      loadState, saveState, el, setYearFooter, ensureBaseStyles, upsertTag, uniqueId
+    } from "./admin.js";
+
+    ensureBaseStyles();
+    setYearFooter();
+
+    const state = await loadState();
+
+    const files = document.getElementById("files");
+    const statusEl = document.getElementById("status");
+    const list = document.getElementById("list");
+
+    const newIds = [];
+
+    function setStatus(msg){ statusEl.textContent = msg || ""; }
+
+    function filenameToTitle(name){
+      return name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim();
+    }
+
+    function renderNew(){
+      list.innerHTML = "";
+      if (!newIds.length){
+        list.appendChild(el("div", { class:"sub" }, "No drafts yet."));
+        return;
+      }
+      for (const id of newIds){
+        const a = state.artworks.find(x => x.id === id);
+        if (!a) continue;
+        list.appendChild(
+          el("a", { class:"card", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"box-shadow:none" },
+            el("div", { class:"thumb" }, el("img", { src:a.thumb, alt:a.title, loading:"lazy" })),
+            el("div", { class:"meta" },
+              el("p", { class:"title" }, a.title),
+              el("p", { class:"sub" }, "Open to edit →")
+            )
+          )
+        );
+      }
+    }
+
+    document.getElementById("createDrafts").addEventListener("click", () => {
+      const arr = Array.from(files.files || []);
+      if (!arr.length) return setStatus("Pick at least one image.");
+
+      const now = new Date().toISOString();
+
+      for (const f of arr){
+        const id = uniqueId("a");
+        newIds.push(id);
+
+        // Mock: use placeholders; later the backend will save a real URL
+        const placeholder = state.artworks[0]?.thumb || "../assets/img/placeholders/p1.jpg";
+
+        state.artworks.unshift({
+          id,
+          title: filenameToTitle(f.name) || "Untitled",
+          year: "",
+          status: "draft",
+          featured: false,
+          series: "",
+          tags: [],
+          alt: "",
+          description: "",
+          thumb: placeholder,
+          image: placeholder,
+          sortOrder: 0,
+          createdAt: now,
+          updatedAt: now,
+          publishedAt: null
+        });
+      }
+
+      saveState(state);
+      setStatus(`Created ${arr.length} draft record(s).`);
+      renderNew();
+    });
+
+    document.getElementById("applyBatch").addEventListener("click", () => {
+      if (!newIds.length) return setStatus("Create drafts first.");
+
+      const tags = document.getElementById("tags").value
+        .split(",").map(t => t.trim().toLowerCase()).filter(Boolean);
+
+      const series = document.getElementById("series").value.trim();
+      const year = document.getElementById("year").value.trim();
+      const status = document.getElementById("statusSelect").value;
+
+      const now = new Date().toISOString();
+
+      for (const id of newIds){
+        const a = state.artworks.find(x => x.id === id);
+        if (!a) continue;
+
+        a.tags = Array.from(new Set([...(a.tags||[]), ...tags]));
+        a.series = series || a.series;
+        a.year = year || a.year;
+        a.status = status;
+        a.updatedAt = now;
+
+        if (status === "published" && !a.publishedAt) a.publishedAt = now;
+      }
+
+      for (const t of tags) upsertTag(state, t);
+      if (series && !state.series.includes(series)) state.series.push(series);
+
+      saveState(state);
+      setStatus("Batch applied.");
+    });
+
+    renderNew();
+  </script>
+</body>
+</html>

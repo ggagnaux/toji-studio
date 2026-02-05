@@ -1,0 +1,42 @@
+{
+  "settings": {
+    "brand": "Toji Studios",
+    "contactEmail": "you@example.com"
+  },
+  "tags": ["abstract", "cosmic", "geometry", "minimal", "ink"],
+  "series": ["Dark Fields", "Event Horizon", "Studies"],
+  "artworks": [
+    {
+      "id": "a001",
+      "title": "Dark Fields",
+      "year": "2026",
+      "status": "published",
+      "featured": true,
+      "series": "Dark Fields",
+      "tags": ["abstract", "cosmic", "geometry"],
+      "alt": "Abstract geometric composition with dark tones",
+      "description": "A study in contrast and quiet turbulence.",
+      "thumb": "../assets/img/placeholders/p1.jpg",
+      "image": "../assets/img/placeholders/p1.jpg",
+      "sortOrder": 10,
+      "createdAt": "2026-02-01T10:00:00Z",
+      "publishedAt": "2026-02-01T10:00:00Z"
+    },
+    {
+      "id": "a002",
+      "title": "Event Horizon Bloom",
+      "year": "2026",
+      "status": "draft",
+      "featured": false,
+      "series": "Event Horizon",
+      "tags": ["cosmic", "minimal", "ink"],
+      "alt": "Minimal cosmic form with soft edges",
+      "description": "Soft edges around a hard center.",
+      "thumb": "../assets/img/placeholders/p2.jpg",
+      "image": "../assets/img/placeholders/p2.jpg",
+      "sortOrder": 0,
+      "createdAt": "2026-02-02T10:00:00Z",
+      "publishedAt": null
+    }
+  ]
+}

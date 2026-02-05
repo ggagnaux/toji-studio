@@ -26,6 +26,13 @@
   --shadow: 0 10px 24px rgba(16,19,26,.10);
 }
 
+/* Smooth theme transitions (respects reduced motion) */
+@media (prefers-reduced-motion: no-preference){
+  html.theme-animate, html.theme-animate *{
+    transition: background-color .22s ease, color .22s ease, border-color .22s ease, box-shadow .22s ease, opacity .22s ease;
+  }
+}
+
 
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -45,15 +52,24 @@ img{max-width:100%;display:block}
 
 .container{max-width:var(--max);margin:0 auto;padding:24px}
 
-/* .header{
+.header{
   position:sticky; top:0; z-index:50;
   background:rgba(11,12,16,.75);
   backdrop-filter: blur(10px);
   border-bottom:1px solid var(--line);
-} */
+}
 
-.header{ background: color-mix(in srgb, var(--bg) 78%, transparent); border-bottom:1px solid var(--line); }
-
+/* If color-mix is supported, make it adapt perfectly */
+@supports (background: color-mix(in srgb, black, white)){
+  .header{ background: color-mix(in srgb, var(--bg) 78%, transparent); }
+  .card{
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--panel) 92%, transparent),
+      color-mix(in srgb, var(--panel) 70%, transparent)
+    );
+  }
+}
 
 
 
@@ -200,4 +216,62 @@ img{max-width:100%;display:block}
 input, textarea, select{
   color: var(--text);
   background: transparent;
+}
+
+
+
+
+
+
+/* Theme controls */
+.theme-controls{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.icon-btn{
+  width:40px; height:40px;
+  display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:transparent;
+  color:var(--text);
+  cursor:pointer;
+}
+.icon-btn:hover{ border-color: rgba(255,255,255,.18); }
+[data-theme="light"] .icon-btn:hover{ border-color: rgba(16,19,26,.18); }
+
+.icon{
+  width:18px; height:18px;
+  display:block;
+  fill: currentColor;
+}
+
+/* 3-mode segmented selector */
+.segmented{
+  display:inline-flex;
+  border:1px solid var(--line);
+  border-radius:999px;
+  overflow:hidden;
+}
+.segmented button{
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  padding:8px 10px;
+  cursor:pointer;
+  font-size:13px;
+}
+.segmented button:hover{ color:var(--text); }
+.segmented button.active{
+  color:var(--text);
+  background: rgba(138,167,255,.12);
+}
+[data-theme="light"] .segmented button.active{
+  background: rgba(47,91,255,.10);
+}
+
+@media (max-width: 760px){
+  .segmented{ display:none; } /* keep the icon button on mobile */
 }

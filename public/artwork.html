@@ -16,17 +16,25 @@
         <a href="about.html">About</a>
         <a href="contact.html">Contact</a>
       </nav>
-      <button class="btn" type="button" data-theme-toggle>Light</button>
       <a class="btn" href="gallery.html">Back</a>
+        <div class="theme-controls">
+        <div class="segmented" role="group" aria-label="Theme mode">
+            <button type="button" data-theme-mode="system">System</button>
+            <button type="button" data-theme-mode="light">Light</button>
+            <button type="button" data-theme-mode="dark">Dark</button>
+        </div>
+
+        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
+        </div>
     </div>
   </header>
 
   <main class="container" id="root"></main>
 
   <script type="module">
-    import { loadGallery, el, qs, initThemeToggle } from "./assets/js/site.js";
+    import { loadGallery, el, qs, initThemeSystem } from "./assets/js/site.js";
 
-    initThemeToggle();
+    initThemeSystem();
 
     const id = qs("id");
     const items = await loadGallery();

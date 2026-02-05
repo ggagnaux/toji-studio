@@ -27,33 +27,104 @@ export function uniqTags(items){
   return ["all", ...Array.from(set).sort()];
 }
 
-export function initThemeToggle(){
+export function initThemeSystem(){
   const root = document.documentElement;
-  const key = "toji_theme";
 
-  // 1) load saved theme or follow system preference
-  const saved = localStorage.getItem(key);
-  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
-  const initial = saved || (prefersDark ? "dark" : "light");
+  // mode: "system" | "light" | "dark"
+  const MODE_KEY = "toji_theme_mode";
 
-  root.dataset.theme = initial;
+  const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+  const getSystemTheme = () => (media?.matches ? "dark" : "light");
 
-  // 2) wire up any button with data-theme-toggle
-  const btn = document.querySelector("[data-theme-toggle]");
-  if (!btn) return;
+  const applyTheme = (mode, animate = true) => {
+    const theme = (mode === "system") ? getSystemTheme() : mode;
 
-  const syncLabel = () => {
-    const t = root.dataset.theme;
-    btn.setAttribute("aria-label", t === "dark" ? "Switch to light theme" : "Switch to dark theme");
-    btn.textContent = t === "dark" ? "Light" : "Dark";
+    if (animate) {
+      root.classList.add("theme-animate");
+      // remove after transition window
+      setTimeout(() => root.classList.remove("theme-animate"), 260);
+    }
+
+    root.dataset.theme = theme;
+    root.dataset.themeMode = mode;
+    syncUI(mode, theme);
   };
 
-  syncLabel();
+  const syncUI = (mode, theme) => {
+    // Icon button
+    const iconBtn = document.querySelector("[data-theme-icon]");
+    if (iconBtn) {
+      iconBtn.setAttribute(
+        "aria-label",
+        theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
+      );
+      iconBtn.setAttribute("title", mode === "system" ? `Theme: System (${theme})` : `Theme: ${mode}`);
+      iconBtn.innerHTML = theme === "dark" ? moonSVG() : sunSVG();
+    }
 
-  btn.addEventListener("click", () => {
-    const next = root.dataset.theme === "dark" ? "light" : "dark";
-    root.dataset.theme = next;
-    localStorage.setItem(key, next);
-    syncLabel();
+    // Segmented mode buttons
+    document.querySelectorAll("[data-theme-mode]").forEach(btn => {
+      const v = btn.getAttribute("data-theme-mode");
+      btn.classList.toggle("active", v === mode);
+      btn.setAttribute("aria-pressed", v === mode ? "true" : "false");
+    });
+
+    // Optional: display label
+    const label = document.querySelector("[data-theme-label]");
+    if (label) {
+      label.textContent = (mode === "system") ? `System (${theme})` : mode[0].toUpperCase() + mode.slice(1);
+    }
+  };
+
+  const savedMode = localStorage.getItem(MODE_KEY) || "system";
+  applyTheme(savedMode, false);
+
+  // Mode picker (System/Light/Dark)
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-theme-mode]");
+    if (!btn) return;
+    const mode = btn.getAttribute("data-theme-mode");
+    localStorage.setItem(MODE_KEY, mode);
+    applyTheme(mode, true);
   });
+
+  // Icon cycles Light <-> Dark quickly (does not set system; it toggles explicit mode)
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest?.("[data-theme-icon]");
+    if (!btn) return;
+
+    const currentMode = root.dataset.themeMode || "system";
+    const currentTheme = root.dataset.theme || getSystemTheme();
+
+    // If in system mode, first click flips to the opposite explicit theme
+    const nextMode =
+      currentMode === "system"
+        ? (currentTheme === "dark" ? "light" : "dark")
+        : (currentMode === "dark" ? "light" : "dark");
+
+    localStorage.setItem(MODE_KEY, nextMode);
+    applyTheme(nextMode, true);
+  });
+
+  // If user is in system mode and OS theme changes, update automatically
+  media?.addEventListener?.("change", () => {
+    const mode = root.dataset.themeMode || "system";
+    if (mode === "system") applyTheme("system", true);
+  });
+
+  function sunSVG(){
+    return `
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12Zm0-16h0Zm0 20h0ZM4.22 5.64l1.42 1.42L4.22 5.64Zm14.14 14.14 1.42 1.42-1.42-1.42ZM2 12h2H2Zm18 0h2-2ZM4.22 18.36l1.42-1.42-1.42 1.42Zm14.14-14.14 1.42-1.42-1.42 1.42ZM12 2v2-2Zm0 18v2-2Z"/>
+      </svg>
+    `;
+  }
+
+  function moonSVG(){
+    return `
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 14.7A8.1 8.1 0 0 1 9.3 3a7 7 0 1 0 11.7 11.7Z"/>
+      </svg>
+    `;
+  }
 }

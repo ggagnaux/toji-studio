@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Artwork — Toji Studios</title>
+  <link rel="stylesheet" href="assets/css/site.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container nav">
+      <a class="brand" href="index.html">Toji Studios <small>piece</small></a>
+      <nav class="navlinks">
+        <a href="index.html">Home</a>
+        <a href="gallery.html">Gallery</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+      <button class="btn" type="button" data-theme-toggle>Light</button>
+      <a class="btn" href="gallery.html">Back</a>
+    </div>
+  </header>
+
+  <main class="container" id="root"></main>
+
+  <script type="module">
+    import { loadGallery, el, qs, initThemeToggle } from "./assets/js/site.js";
+
+    initThemeToggle();
+
+    const id = qs("id");
+    const items = await loadGallery();
+    const item = items.find(x => x.id === id) || items[0];
+
+    const root = document.getElementById("root");
+
+    root.appendChild(
+      el("div", {},
+        el("section", { class:"hero" },
+          el("h1", {}, item.title),
+          el("p", {}, `${item.year} • ${(item.tags||[]).join(" · ")}`)
+        ),
+        el("div", { class:"card" },
+          el("div", { class:"thumb", style:"aspect-ratio: 16/10" },
+            el("img", { src:item.image, alt:item.title, loading:"eager", style:"object-fit:contain;background:#0b0c10" })
+          ),
+          el("div", { class:"meta" },
+            el("p", { class:"sub", style:"font-size:15px" }, item.description || "")
+          )
+        )
+      )
+    );
+  </script>
+</body>
+</html>

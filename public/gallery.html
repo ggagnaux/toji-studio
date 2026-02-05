@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gallery — Toji Studios</title>
+  <link rel="stylesheet" href="assets/css/site.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container nav">
+      <a class="brand" href="index.html">Toji Studios <small>gallery</small></a>
+      <nav class="navlinks">
+        <a href="index.html">Home</a>
+        <a class="active" href="gallery.html">Gallery</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+      </nav>
+      <button class="btn" type="button" data-theme-toggle>Light</button>
+      <a class="btn" href="contact.html">Inquire</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" style="padding-bottom:0">
+      <h1>Gallery</h1>
+      <p>Filter by tag and explore the full collection.</p>
+    </section>
+
+    <div id="filters" class="filters"></div>
+    <section id="grid" class="grid"></section>
+
+    <footer class="footer">
+      <div class="row">
+        <div>© <span id="y"></span> Toji Studios</div>
+        <div>Built with plain HTML + JS</div>
+      </div>
+    </footer>
+  </main>
+
+  <script type="module">
+    import { loadGallery, el, uniqTags, initThemeToggle} from "./assets/js/site.js";
+
+    initThemeToggle();
+    
+    document.getElementById("y").textContent = new Date().getFullYear();
+    const items = await loadGallery();
+    let activeTag = "all";
+    let q = "";
+
+    const filtersHost = document.getElementById("filters");
+    const grid = document.getElementById("grid");
+
+    const search = el("div", { class:"search" },
+      el("span", {}, "Search"),
+      el("input", { placeholder:"title or tag…", oninput:(e)=>{ q=e.target.value.toLowerCase(); render(); } })
+    );
+
+    function renderFilters(){
+      filtersHost.innerHTML = "";
+      uniqTags(items).forEach(tag => {
+        filtersHost.appendChild(
+          el("div", {
+            class: "chip" + (tag===activeTag ? " active" : ""),
+            onclick: ()=>{ activeTag = tag; renderFilters(); render(); }
+          }, tag)
+        );
+      });
+      filtersHost.appendChild(search);
+    }
+
+    function matches(item){
+      const tagOk = activeTag === "all" || (item.tags||[]).includes(activeTag);
+      const text = (item.title + " " + (item.tags||[]).join(" ")).toLowerCase();
+      const qOk = !q || text.includes(q);
+      return tagOk && qOk;
+    }
+
+    function render(){
+      grid.innerHTML = "";
+      items.filter(matches).forEach((item, i) => {
+        // simple responsive spans (varied a bit for rhythm)
+        const span = (i % 7 === 0) ? 6 : 4;
+        grid.appendChild(
+          el("a", { class:"card", href:`artwork.html?id=${item.id}`, style:`grid-column: span ${span}` },
+            el("div", { class:"thumb" }, el("img", { src:item.thumb, alt:item.title, loading:"lazy" })),
+            el("div", { class:"meta" },
+              el("p", { class:"title" }, item.title),
+              el("p", { class:"sub" }, `${item.year} • ${(item.tags||[]).join(" · ")}`)
+            )
+          )
+        );
+      });
+    }
+
+    renderFilters();
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "a001",
+    "title": "Dark Fields",
+    "year": "2026",
+    "tags": ["abstract", "cosmic", "geometry"],
+    "thumb": "assets/img/placeholders/p1.jpg",
+    "image": "assets/img/placeholders/p1.jpg",
+    "description": "A study in contrast and quiet turbulence."
+  },
+  {
+    "id": "a002",
+    "title": "Event Horizon Bloom",
+    "year": "2026",
+    "tags": ["cosmic", "minimal", "ink"],
+    "thumb": "assets/img/placeholders/p2.jpg",
+    "image": "assets/img/placeholders/p2.jpg",
+    "description": "Soft edges around a hard center."
+  }
+]

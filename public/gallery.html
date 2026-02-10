@@ -12,10 +12,33 @@
   <main class="container">
     <section class="hero" style="padding-bottom:10px">
       <h1>Gallery</h1>
-      <p>Browse the work. Filter by tag. Open any piece to view it larger.</p>
+      <p>Browse published work from Studio. Filter by tag, search, and open any piece to view larger.</p>
     </section>
 
-    <!-- Your gallery UI here -->
+    <!-- Featured section -->
+    <section id="featuredWrap" style="display:none">
+      <div class="section-title">
+        <h2>Featured</h2>
+        <span id="featuredCount">—</span>
+      </div>
+
+      <section class="grid" id="featuredGrid" aria-label="Featured artworks"></section>
+    </section>
+
+    <div class="section-title" style="margin-top:28px">
+      <h2>All works</h2>
+      <span id="allCount">—</span>
+    </div>
+
+    <section class="filters" aria-label="Gallery filters">
+      <div id="tagChips" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center"></div>
+
+      <div class="search" style="margin-left:auto">
+        <span>Search</span>
+        <input id="q" placeholder="title, tag, series…" />
+      </div>
+    </section>
+
     <section class="grid" id="galleryGrid" aria-label="Gallery grid"></section>
   </main>
 
@@ -30,7 +53,358 @@
       rightHtml: `<a href="index.html">Home</a> • <a href="about.html">About</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
     });
 
-    // your existing gallery JS goes here (render cards, filters, lightbox, etc.)
+    // ---- Gallery data source: Admin localStorage first, fallback to sample JSON ----
+    const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
+    const FALLBACK_URL = "assets/data/admin.sample.json";
+
+    async function loadPublishedArtworks(){
+      const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          return (state.artworks || []).filter(a => a.status === "published");
+        } catch {
+          // fall through to fetch
+        }
+      }
+      const res = await fetch(FALLBACK_URL, { cache: "no-store" });
+      const json = await res.json();
+      return (json.artworks || []).filter(a => a.status === "published");
+    }
+
+    // ---- Helpers ----
+    function el(tag, attrs = {}, ...children){
+      const n = document.createElement(tag);
+      for (const [k,v] of Object.entries(attrs)) {
+        if (k === "class") n.className = v;
+        else if (k === "style") n.setAttribute("style", v);
+        else if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
+        else if (v !== undefined && v !== null) n.setAttribute(k, v);
+      }
+      for (const c of children.flat()) {
+        if (c == null) continue;
+        n.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+      }
+      return n;
+    }
+
+    function uniqTags(items){
+      const set = new Set();
+      items.forEach(a => (a.tags || []).forEach(t => set.add(String(t).toLowerCase())));
+      return ["all", ...Array.from(set).sort()];
+    }
+
+    function sortGallery(items){
+      // Featured first, then by sortOrder desc, then publishedAt desc, then createdAt desc
+      return items.slice().sort((a,b) => {
+        const fa = !!a.featured, fb = !!b.featured;
+        if (fa !== fb) return fb - fa;
+        const soA = Number(a.sortOrder || 0), soB = Number(b.sortOrder || 0);
+        if (soA !== soB) return soB - soA;
+        const da = (a.publishedAt || a.createdAt || ""), db = (b.publishedAt || b.createdAt || "");
+        return String(db).localeCompare(String(da));
+      });
+    }
+
+    // ---- State ----
+    const featuredWrap = document.getElementById("featuredWrap");
+    const featuredGrid = document.getElementById("featuredGrid");
+    const featuredCount = document.getElementById("featuredCount");
+
+    const grid = document.getElementById("galleryGrid");
+    const chipHost = document.getElementById("tagChips");
+    const qInput = document.getElementById("q");
+
+    const allCount = document.getElementById("allCount");
+
+    let allItems = sortGallery(await loadPublishedArtworks());
+    let activeTag = "all";
+    let q = "";
+
+    // ---- Render chips ----
+    const tags = uniqTags(allItems);
+
+    function renderChips(){
+      chipHost.innerHTML = "";
+      tags.forEach(t => {
+        const chip = el("div", { class: "chip" + (t === activeTag ? " active" : ""), role:"button", tabindex:"0" }, t);
+        chip.addEventListener("click", () => {
+          activeTag = t;
+          renderChips();
+          renderAll();
+          renderFeatured(); // featured reacts to filters too
+        });
+        chip.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            activeTag = t;
+            renderChips();
+            renderAll();
+            renderFeatured();
+          }
+        });
+        chipHost.appendChild(chip);
+      });
+    }
+
+    // ---- Filtering ----
+    function matches(a){
+      const tagOk = activeTag === "all" || (a.tags || []).map(x => String(x).toLowerCase()).includes(activeTag);
+      const text = `${a.title||""} ${(a.tags||[]).join(" ")} ${a.series||""} ${a.year||""}`.toLowerCase();
+      const qOk = !q || text.includes(q);
+      return tagOk && qOk;
+    }
+
+    // ---- Lightbox ----
+    const lightbox = createLightbox();
+    document.body.appendChild(lightbox.host);
+
+    let currentList = [];
+    let currentIndex = -1;
+
+    function openLightbox(list, idx){
+      currentList = list;
+      currentIndex = idx;
+      lightbox.open(currentList[currentIndex]);
+    }
+
+    function next(){
+      if (!currentList.length) return;
+      currentIndex = (currentIndex + 1) % currentList.length;
+      lightbox.open(currentList[currentIndex]);
+    }
+
+    function prev(){
+      if (!currentList.length) return;
+      currentIndex = (currentIndex - 1 + currentList.length) % currentList.length;
+      lightbox.open(currentList[currentIndex]);
+    }
+
+    // ---- Card renderer ----
+    function renderCards(host, items){
+      host.innerHTML = "";
+
+      if (!items.length){
+        host.appendChild(
+          el("div", { class:"card", style:"grid-column: span 12; box-shadow:none" },
+            el("div", { class:"meta" },
+              el("p", { class:"title" }, "No matches"),
+              el("p", { class:"sub" }, "Try a different tag or search term.")
+            )
+          )
+        );
+        return;
+      }
+
+      items.forEach((a, idx) => {
+        const card = el("a", {
+          class:"card",
+          href:"#",
+          style:"grid-column: span 4",
+          onclick:(e)=>{ e.preventDefault(); openLightbox(items, idx); }
+        },
+          el("div", { class:"thumb" }, el("img", { src: a.thumb || a.image, alt: a.alt || a.title || "Artwork", loading:"lazy" })),
+          el("div", { class:"meta" },
+            el("p", { class:"title" }, a.title || "Untitled"),
+            el("p", { class:"sub" }, [
+              a.series ? a.series : null,
+              a.year ? a.year : null,
+              a.featured ? "Featured" : null
+            ].filter(Boolean).join(" • ") || " ")
+          )
+        );
+
+        host.appendChild(card);
+      });
+
+      // Responsive spans
+      const mq1 = window.matchMedia("(max-width: 920px)");
+      const mq2 = window.matchMedia("(max-width: 620px)");
+      const applySpans = () => {
+        const span = mq2.matches ? 12 : (mq1.matches ? 6 : 4);
+        host.querySelectorAll(".card").forEach(c => c.style.gridColumn = `span ${span}`);
+      };
+      applySpans();
+      mq1.onchange = applySpans;
+      mq2.onchange = applySpans;
+    }
+
+    // ---- Featured section ----
+    function renderFeatured(){
+      // Featured should follow the same filters/search so it feels consistent.
+      const featured = sortGallery(allItems.filter(a => a.featured && matches(a)));
+
+      if (!featured.length){
+        featuredWrap.style.display = "none";
+        return;
+      }
+
+      featuredWrap.style.display = "";
+      featuredCount.textContent = `${featured.length} piece${featured.length === 1 ? "" : "s"}`;
+      renderCards(featuredGrid, featured);
+    }
+
+    // ---- All works section ----
+    function renderAll(){
+      const items = sortGallery(allItems.filter(matches));
+      allCount.textContent = `${items.length} piece${items.length === 1 ? "" : "s"}`;
+
+      grid.innerHTML = "";
+      if (!items.length){
+        grid.appendChild(
+          el("div", { class:"card", style:"grid-column: span 12; box-shadow:none" },
+            el("div", { class:"meta" },
+              el("p", { class:"title" }, "No matches"),
+              el("p", { class:"sub" }, "Try a different tag or search term.")
+            )
+          )
+        );
+        return;
+      }
+
+      renderCards(grid, items);
+    }
+
+    qInput.addEventListener("input", (e) => {
+      q = e.target.value.trim().toLowerCase();
+      renderFeatured();
+      renderAll();
+    });
+
+    // ---- Build lightbox element ----
+    function createLightbox(){
+      const style = document.createElement("style");
+      style.textContent = `
+        .lb-backdrop{
+          position:fixed; inset:0; z-index:1000;
+          background: rgba(0,0,0,.72);
+          display:none; align-items:center; justify-content:center;
+          padding: 24px;
+        }
+        [data-theme="light"] .lb-backdrop{ background: rgba(0,0,0,.55); }
+
+        .lb{
+          width:min(1100px, 96vw);
+          border:1px solid var(--line);
+          border-radius: var(--radius);
+          background: var(--panel);
+          box-shadow: var(--shadow);
+          overflow:hidden;
+        }
+        .lb-top{
+          display:flex; align-items:center; justify-content:space-between;
+          gap:10px;
+          padding:12px 12px;
+          border-bottom:1px solid var(--line);
+        }
+        .lb-title{ font-weight:650; }
+        .lb-body{
+          display:grid;
+          grid-template-columns: 1fr 320px;
+          gap: 0;
+        }
+        .lb-media{
+          background: rgba(255,255,255,.03);
+          display:flex; align-items:center; justify-content:center;
+          min-height: 56vh;
+        }
+        .lb-media img{
+          width:100%;
+          height:100%;
+          max-height: 76vh;
+          object-fit: contain;
+          background: var(--bg);
+        }
+        .lb-meta{
+          padding:14px;
+          border-left:1px solid var(--line);
+        }
+        .lb-meta .sub{ margin-top:8px; }
+        .lb-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+        .lb-actions .btn{ padding:8px 10px; font-size:13px; }
+        @media (max-width: 920px){
+          .lb-body{ grid-template-columns: 1fr; }
+          .lb-meta{ border-left:0; border-top:1px solid var(--line); }
+        }
+      `;
+      document.head.appendChild(style);
+
+      const backdrop = el("div", { class:"lb-backdrop", role:"dialog", "aria-modal":"true" });
+
+      const title = el("div", { class:"lb-title" }, "");
+      const closeBtn = el("button", { class:"btn", type:"button" }, "Close");
+      const prevBtn = el("button", { class:"btn", type:"button" }, "Prev");
+      const nextBtn = el("button", { class:"btn", type:"button" }, "Next");
+
+      const top = el("div", { class:"lb-top" },
+        title,
+        el("div", { class:"lb-actions" }, prevBtn, nextBtn, closeBtn)
+      );
+
+      const img = el("img", { alt:"" });
+      const media = el("div", { class:"lb-media" }, img);
+
+      const metaTitle = el("div", { style:"font-weight:650" }, "");
+      const metaSub = el("div", { class:"sub" }, "");
+      const metaDesc = el("div", { class:"sub", style:"font-size:15px; line-height:1.65" }, "");
+
+      const meta = el("div", { class:"lb-meta" }, metaTitle, metaSub, el("hr", { class:"sep" }), metaDesc);
+
+      const body = el("div", { class:"lb-body" }, media, meta);
+      const panel = el("div", { class:"lb" }, top, body);
+
+      backdrop.appendChild(panel);
+
+      let lastActive = null;
+
+      function open(item){
+        lastActive = document.activeElement;
+
+        title.textContent = item.title || "Untitled";
+        metaTitle.textContent = item.title || "Untitled";
+
+        const bits = [
+          item.series ? item.series : null,
+          item.year ? item.year : null,
+          item.featured ? "Featured" : null
+        ].filter(Boolean).join(" • ");
+
+        metaSub.textContent = bits || "";
+        metaDesc.textContent = item.description || "";
+
+        img.src = item.image || item.thumb || "";
+        img.alt = item.alt || item.title || "Artwork";
+
+        backdrop.style.display = "flex";
+        closeBtn.focus();
+      }
+
+      function close(){
+        backdrop.style.display = "none";
+        if (lastActive && typeof lastActive.focus === "function") lastActive.focus();
+      }
+
+      backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) close();
+      });
+
+      closeBtn.addEventListener("click", close);
+      nextBtn.addEventListener("click", () => next());
+      prevBtn.addEventListener("click", () => prev());
+
+      document.addEventListener("keydown", (e) => {
+        if (backdrop.style.display !== "flex") return;
+        if (e.key === "Escape") close();
+        if (e.key === "ArrowRight") next();
+        if (e.key === "ArrowLeft") prev();
+      });
+
+      return { host: backdrop, open, close };
+    }
+
+    renderChips();
+    renderFeatured();
+    renderAll();
   </script>
 </body>
 </html>

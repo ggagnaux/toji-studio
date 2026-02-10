@@ -33,15 +33,33 @@
 
   <main class="container">
     <section class="hero" style="padding-bottom:10px">
-      <h1>Upload (Mock)</h1>
-      <p>This simulates uploads by creating draft records. Later, the backend will generate thumbnails + variants.</p>
+      <h1>Upload</h1>
+      <p>
+        Upload originals privately to the backend. Only resized variants are served publicly.
+        (Local-first — deployment later.)
+      </p>
     </section>
 
     <section class="grid">
       <div class="card" style="grid-column: span 7">
         <div class="meta">
-          <p class="title">Create drafts</p>
-          <p class="sub">Pick images locally (nothing is uploaded yet). We’ll use the filename as the title.</p>
+          <p class="title">Backend connection</p>
+          <p class="sub">Set your admin token (from <code>.env</code> → <code>ADMIN_TOKEN</code>).</p>
+
+          <div class="field" style="margin-top:12px">
+            <div class="sub">Admin token</div>
+            <input id="token" placeholder="Bearer token (stored in this browser)" />
+          </div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center">
+            <button class="btn" id="saveToken" type="button">Save token</button>
+            <span class="sub" id="tokenStatus" aria-live="polite"></span>
+          </div>
+
+          <hr class="sep" />
+
+          <p class="title">Upload originals</p>
+          <p class="sub">Select image files — they’ll be uploaded and converted into thumb + web variants.</p>
 
           <div class="field" style="margin-top:14px">
             <div class="sub">Select files</div>
@@ -49,14 +67,14 @@
           </div>
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center">
-            <button class="btn primary" id="createDrafts" type="button">Create draft records</button>
+            <button class="btn primary" id="uploadBtn" type="button">Upload to backend</button>
             <span class="sub" id="status" aria-live="polite"></span>
           </div>
 
           <hr class="sep" />
 
           <p class="title">Batch metadata</p>
-          <p class="sub">Apply to the newly created drafts:</p>
+          <p class="sub">Apply to the newly uploaded items:</p>
 
           <div style="display:grid; gap:12px; margin-top:12px">
             <div class="field">
@@ -84,7 +102,7 @@
             </div>
 
             <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
-              <button class="btn" id="applyBatch" type="button">Apply to new drafts</button>
+              <button class="btn" id="applyBatch" type="button">Apply to new items</button>
               <a class="btn" id="goDash" href="index.html">Back to dashboard</a>
             </div>
           </div>
@@ -93,7 +111,7 @@
 
       <div class="card" style="grid-column: span 5">
         <div class="meta">
-          <p class="title">New drafts</p>
+          <p class="title">New uploads</p>
           <p class="sub">Created in this session:</p>
           <div id="list" style="display:grid; gap:10px; margin-top:12px"></div>
         </div>
@@ -103,15 +121,18 @@
     <footer class="footer">
       <div class="row">
         <div>© <span id="y"></span> Toji Studios</div>
-        <div>Upload mock</div>
+        <div>Upload</div>
       </div>
     </footer>
   </main>
 
   <script type="module">
     import {
-      loadState, saveState, el, setYearFooter, ensureBaseStyles, upsertTag, uniqueId
+      loadState, saveState, el, setYearFooter, ensureBaseStyles,
+      upsertTag
     } from "./admin.js";
+
+    import { apiFetch, getAdminToken, setAdminToken, API_BASE } from "./admin.js";
 
     ensureBaseStyles();
     setYearFooter();
@@ -122,18 +143,27 @@
     const statusEl = document.getElementById("status");
     const list = document.getElementById("list");
 
+    const tokenInput = document.getElementById("token");
+    const tokenStatus = document.getElementById("tokenStatus");
+
     const newIds = [];
 
     function setStatus(msg){ statusEl.textContent = msg || ""; }
+    function setTokenStatus(msg){ tokenStatus.textContent = msg || ""; }
 
-    function filenameToTitle(name){
-      return name.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim();
-    }
+    // Seed token input
+    tokenInput.value = getAdminToken();
+
+    document.getElementById("saveToken").addEventListener("click", () => {
+      setAdminToken(tokenInput.value);
+      setTokenStatus("Saved.");
+      setTimeout(() => setTokenStatus(""), 900);
+    });
 
     function renderNew(){
       list.innerHTML = "";
       if (!newIds.length){
-        list.appendChild(el("div", { class:"sub" }, "No drafts yet."));
+        list.appendChild(el("div", { class:"sub" }, "No uploads yet."));
         return;
       }
       for (const id of newIds){
@@ -151,44 +181,61 @@
       }
     }
 
-    document.getElementById("createDrafts").addEventListener("click", () => {
+    function normalizeMediaUrl(p){
+      // backend returns "/media/....jpg"
+      // For local dev (front-end on 5173), need absolute URL.
+      if (!p) return p;
+      if (p.startsWith("http")) return p;
+      if (p.startsWith("/")) return `${API_BASE}${p}`;
+      return p;
+    }
+
+    document.getElementById("uploadBtn").addEventListener("click", async () => {
       const arr = Array.from(files.files || []);
       if (!arr.length) return setStatus("Pick at least one image.");
 
-      const now = new Date().toISOString();
+      // Make sure token exists
+      if (!getAdminToken()) return setStatus("Set and save your admin token first.");
 
-      for (const f of arr){
-        const id = uniqueId("a");
-        newIds.push(id);
+      setStatus(`Uploading ${arr.length} file(s)…`);
 
-        const placeholder = state.artworks[0]?.thumb || "../assets/img/placeholders/p1.jpg";
+      try{
+        const fd = new FormData();
+        for (const f of arr) fd.append("files", f);
 
-        state.artworks.unshift({
-          id,
-          title: filenameToTitle(f.name) || "Untitled",
-          year: "",
-          status: "draft",
-          featured: false,
-          series: "",
-          tags: [],
-          alt: "",
-          description: "",
-          thumb: placeholder,
-          image: placeholder,
-          sortOrder: 0,
-          createdAt: now,
-          updatedAt: now,
-          publishedAt: null
-        });
+        const result = await apiFetch("/api/admin/upload", { method:"POST", body: fd });
+        const created = result?.created || [];
+
+        if (!created.length){
+          setStatus("Upload succeeded, but nothing returned.");
+          return;
+        }
+
+        // Merge returned records into local admin state
+        // Ensure thumb/image are usable from the public site:
+        for (const a of created){
+          a.thumb = normalizeMediaUrl(a.thumb);
+          a.image = normalizeMediaUrl(a.image);
+        }
+
+        // Place new items at top, avoid duplicates
+        for (const a of created){
+          const idx = state.artworks.findIndex(x => x.id === a.id);
+          if (idx >= 0) state.artworks.splice(idx, 1);
+          state.artworks.unshift(a);
+          newIds.unshift(a.id);
+        }
+
+        saveState(state);
+        setStatus(`Uploaded ${created.length} item(s).`);
+        renderNew();
+      }catch(err){
+        setStatus(`Upload failed: ${err?.message || err}`);
       }
-
-      saveState(state);
-      setStatus(`Created ${arr.length} draft record(s).`);
-      renderNew();
     });
 
     document.getElementById("applyBatch").addEventListener("click", () => {
-      if (!newIds.length) return setStatus("Create drafts first.");
+      if (!newIds.length) return setStatus("Upload first.");
 
       const tags = document.getElementById("tags").value
         .split(",").map(t => t.trim().toLowerCase()).filter(Boolean);
@@ -216,7 +263,7 @@
       if (series && !state.series.includes(series)) state.series.push(series);
 
       saveState(state);
-      setStatus("Batch applied.");
+      setStatus("Batch applied locally.");
     });
 
     renderNew();

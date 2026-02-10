@@ -121,3 +121,52 @@ export function ensureSeriesMeta(state){
     state.seriesMeta[s] ||= { description: "", sortOrder: 0 };
   });
 }
+
+
+
+
+
+
+
+
+
+// --------------------
+// API helpers (local-first)
+// --------------------
+
+// Local dev default. For same-origin deployment later, set to "".
+export const API_BASE = localStorage.getItem("toji_api_base") || "http://localhost:5179";
+
+const TOKEN_KEY = "toji_admin_token_v1";
+
+export function getAdminToken() {
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+
+export function setAdminToken(token) {
+  localStorage.setItem(TOKEN_KEY, String(token || "").trim());
+}
+
+export async function apiFetch(path, options = {}) {
+  const token = getAdminToken();
+  const headers = new Headers(options.headers || {});
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  // Don't set Content-Type for FormData; browser will set boundary.
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  if (!res.ok) {
+    let msg = `${res.status} ${res.statusText}`;
+    try {
+      const j = await res.json();
+      if (j?.error) msg = j.error;
+    } catch {}
+    throw new Error(msg);
+  }
+
+  // Handle empty responses safely
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) return res.json();
+  return res.text();
+}
+

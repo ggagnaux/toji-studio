@@ -100,3 +100,27 @@ export function upsertTag(state, tagName) {
 export function uniqueId(prefix = "a") {
   return `${prefix}${Math.random().toString(16).slice(2, 8)}`;
 }
+
+
+export function getSortKey(a){
+  // Higher sortOrder first; fallback to publishedAt/createdAt
+  const so = Number(a.sortOrder || 0);
+  const date = a.publishedAt || a.createdAt || "";
+  return { so, date };
+}
+
+export function sortArtworksManualFirst(items){
+  return items.slice().sort((a,b) => {
+    const A = getSortKey(a), B = getSortKey(b);
+    if (B.so !== A.so) return B.so - A.so;
+    return (B.date || "").localeCompare(A.date || "");
+  });
+}
+
+export function ensureSeriesMeta(state){
+  state.seriesMeta ||= {};
+  (state.series || []).forEach(s => {
+    state.seriesMeta[s] ||= { description: "", sortOrder: 0 };
+  });
+}
+

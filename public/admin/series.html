@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Studio — Series</title>
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container nav">
+      <a class="brand" href="../index.html">Toji Studios <small>series</small></a>
+
+      <nav class="navlinks" aria-label="Primary">
+        <a href="../index.html">Public</a>
+        <a href="index.html">Studio</a>
+        <a href="upload.html">Upload</a>
+        <a class="active" href="series.html">Series</a>
+      </nav>
+
+      <div class="theme-controls">
+        <div class="segmented" role="group" aria-label="Theme mode">
+          <button type="button" data-theme-mode="system">System</button>
+          <button type="button" data-theme-mode="light">Light</button>
+          <button type="button" data-theme-mode="dark">Dark</button>
+        </div>
+        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
+      </div>
+
+      <a class="btn" href="index.html">Back</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" style="padding-bottom:10px">
+      <h1>Series Manager</h1>
+      <p>Set series descriptions and order pieces within each series (front-end only).</p>
+    </section>
+
+    <section class="grid" id="root"></section>
+
+    <footer class="footer">
+      <div class="row">
+        <div>© <span id="y"></span> Toji Studios</div>
+        <div>Series manager</div>
+      </div>
+    </footer>
+  </main>
+
+  <script type="module">
+    import {
+      loadState, saveState, el, setYearFooter, ensureBaseStyles,
+      sortArtworksManualFirst, ensureSeriesMeta
+    } from "./admin.js";
+
+    ensureBaseStyles();
+    setYearFooter();
+
+    const state = await loadState();
+    ensureSeriesMeta(state);
+    saveState(state);
+
+    const root = document.getElementById("root");
+
+    function render(){
+      root.innerHTML = "";
+
+      const series = (state.series || []).slice().sort((a,b)=>{
+        const A = state.seriesMeta?.[a]?.sortOrder || 0;
+        const B = state.seriesMeta?.[b]?.sortOrder || 0;
+        return (A - B) || a.localeCompare(b);
+      });
+
+      // Left: series list + description editor
+      const left = el("div", { class:"card", style:"grid-column: span 5" },
+        el("div", { class:"meta" },
+          el("p", { class:"title" }, "Series"),
+          el("p", { class:"sub" }, "Select a series to edit."),
+          el("div", { id:"seriesList", style:"display:grid; gap:10px; margin-top:12px" })
+        )
+      );
+
+      const right = el("div", { class:"card", style:"grid-column: span 7" },
+        el("div", { class:"meta" },
+          el("p", { class:"title" }, "Edit"),
+          el("p", { class:"sub" }, "Pick a series on the left.")
+        )
+      );
+
+      root.appendChild(left);
+      root.appendChild(right);
+
+      const list = left.querySelector("#seriesList");
+
+      series.forEach(name => {
+        const btn = el("button", { class:"btn", type:"button", style:"justify-content:flex-start" }, name);
+        btn.addEventListener("click", ()=> openSeries(name, right));
+        list.appendChild(btn);
+      });
+    }
+
+    function openSeries(name, rightHost){
+      const meta = state.seriesMeta[name] || (state.seriesMeta[name] = { description:"", sortOrder:0 });
+
+      rightHost.innerHTML = "";
+      rightHost.appendChild(
+        el("div", { class:"meta" },
+          el("div", { style:"display:flex; gap:10px; align-items:center; flex-wrap:wrap" },
+            el("p", { class:"title", style:"margin:0" }, name),
+            el("span", { class:"sub" }, "Drag to reorder within series")
+          ),
+
+          el("div", { class:"field", style:"margin-top:12px" },
+            el("div", { class:"sub" }, "Series description"),
+            (() => {
+              const t = el("textarea", {}, meta.description || "");
+              t.addEventListener("input", (e)=> {
+                meta.description = e.target.value;
+                saveState(state);
+              });
+              return t;
+            })()
+          ),
+
+          el("hr", { class:"sep" }),
+
+          el("p", { class:"title" }, "Pieces"),
+          el("div", { id:"pieceList", style:"display:grid; gap:10px; margin-top:12px" })
+        )
+      );
+
+      const pieceList = rightHost.querySelector("#pieceList");
+
+      let dragId = null;
+      const pieces = sortArtworksManualFirst(state.artworks.filter(a => a.series === name));
+
+      function rerenderPieces(){
+        pieceList.innerHTML = "";
+        const current = sortArtworksManualFirst(state.artworks.filter(a => a.series === name));
+
+        current.forEach(a => {
+          const row = el("div", {
+            class:"card",
+            draggable:"true",
+            style:"box-shadow:none; cursor:grab",
+            ondragstart:()=>{ dragId = a.id; },
+            ondragover:(e)=>{ e.preventDefault(); },
+            ondrop:(e)=>{ e.preventDefault(); if (dragId) move(dragId, a.id); }
+          },
+            el("div", { style:"display:flex; gap:10px; align-items:center; padding:10px" },
+              el("div", { class:"thumbSm" }, el("img", { src:a.thumb || a.image, alt:a.title, loading:"lazy" })),
+              el("div", { style:"min-width:0" },
+                el("div", { style:"font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" }, a.title),
+                el("div", { class:"sub" }, `${a.status} • ${a.year || "—"}`)
+              ),
+              el("a", { class:"btn mini", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"margin-left:auto" }, "Edit")
+            )
+          );
+          pieceList.appendChild(row);
+        });
+
+        if (!current.length){
+          pieceList.appendChild(el("div", { class:"sub" }, "No pieces in this series yet."));
+        }
+      }
+
+      function move(fromId, toId){
+        const list = sortArtworksManualFirst(state.artworks.filter(a => a.series === name));
+        const from = list.findIndex(x => x.id === fromId);
+        const to = list.findIndex(x => x.id === toId);
+        if (from < 0 || to < 0) return;
+
+        const [m] = list.splice(from, 1);
+        list.splice(to, 0, m);
+
+        // Assign sortOrder within the series too (still global field; works fine)
+        let base = 1000;
+        for (const a of list){
+          a.sortOrder = base;
+          base -= 10;
+          a.updatedAt = new Date().toISOString();
+        }
+        saveState(state);
+        rerenderPieces();
+      }
+
+      rerenderPieces();
+    }
+
+    render();
+  </script>
+</body>
+</html>

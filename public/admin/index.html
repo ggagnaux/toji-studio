@@ -40,6 +40,7 @@
       <aside class="sidebar" aria-label="Studio navigation">
         <a class="active" href="index.html">Dashboard</a>
         <a href="upload.html">Upload</a>
+        <a href="series.html">Series</a>
         <a href="../gallery.html">View public gallery</a>
         <hr class="sep" />
         <div class="sub">Quick filters</div>
@@ -63,12 +64,17 @@
           <div class="chip" data-tab="published">Published</div>
           <div class="chip" data-tab="draft">Draft</div>
           <div class="chip" data-tab="hidden">Hidden</div>
+          <div class="chip" data-tab="featured">Featured</div>
+
 
           <div class="search">
             <span>Search</span>
             <input id="q" placeholder="title, tag, series…" />
           </div>
         </div>
+
+        <button class="btn" id="toggleOrder" type="button">Manual order: Off</button>
+
 
         <table class="table" aria-label="Artwork table">
           <thead>
@@ -96,14 +102,31 @@
 
   <script type="module">
     import {
-      loadState, saveState, el, statusChip, formatStatus,
-      setYearFooter, ensureBaseStyles
+        loadState, saveState, el, statusChip,
+        setYearFooter, ensureBaseStyles,
+        sortArtworksManualFirst, ensureSeriesMeta
     } from "./admin.js";
 
     ensureBaseStyles();
     setYearFooter();
 
     const state = await loadState();
+
+    ensureSeriesMeta(state);
+    saveState(state);
+
+
+    let manualOrderMode = false;
+    const toggleOrderBtn = document.getElementById("toggleOrder");
+    toggleOrderBtn.addEventListener("click", () => {
+      manualOrderMode = !manualOrderMode;
+      toggleOrderBtn.textContent = `Manual order: ${manualOrderMode ? "On" : "Off"}`;
+      render();
+    });
+
+    let dragId = null;
+
+
 
     let tab = "all";
     let q = "";
@@ -127,7 +150,10 @@
     };
 
     function matches(a){
-      const tabOk = tab === "all" || a.status === tab;
+      //const tabOk = tab === "all" || a.status === tab;
+      const tabOk =
+        tab === "all" ||
+        tab === "featured" ? !!a.featured : a.status === tab;
       const text = `${a.title} ${(a.tags||[]).join(" ")} ${a.series||""}`.toLowerCase();
       const qOk = !q || text.includes(q);
       return tabOk && qOk;
@@ -142,42 +168,90 @@
       render();
     }
 
+
+    function moveItem(draggedId, targetId){
+      if (draggedId === targetId) return;
+
+      const visible = state.artworks.filter(matches);
+      const ordered = sortArtworksManualFirst(visible);
+
+      const from = ordered.findIndex(x => x.id === draggedId);
+      const to = ordered.findIndex(x => x.id === targetId);
+      if (from < 0 || to < 0) return;
+
+      const [moved] = ordered.splice(from, 1);
+      ordered.splice(to, 0, moved);
+
+      let base = 1000;
+      for (const a of ordered){
+        a.sortOrder = base;
+        base -= 10;
+        a.updatedAt = new Date().toISOString();
+      }
+
+      saveState(state);
+      render();
+    }
+
     function render(){
       counts();
       rows.innerHTML = "";
 
-      const items = state.artworks
-        .filter(matches)
-        .sort((a,b) => (b.updatedAt||b.createdAt||"").localeCompare(a.updatedAt||a.createdAt||""));
+      // Use manual-first ordering (sortOrder desc, then published/created date desc)
+      const items = sortArtworksManualFirst(state.artworks.filter(matches));
 
       for (const a of items){
         const tags = (a.tags||[]).slice(0,3).join(" · ") || "—";
 
-        rows.appendChild(
-          el("tr", {},
-            el("td", {},
-              el("div", { style:"display:flex; gap:10px; align-items:center" },
-                el("div", { class:"thumbSm" }, el("img", { src: a.thumb || a.image, alt: a.title, loading:"lazy" })),
-                el("div", {},
-                  el("div", { style:"font-weight:650" }, a.title),
-                  el("div", { class:"sub" }, a.featured ? "Featured" : "—")
-                )
+        const tr = el("tr", {
+          draggable: manualOrderMode ? "true" : null,
+          style: manualOrderMode ? "cursor:grab" : "",
+          ondragstart: () => { dragId = a.id; },
+          ondragover: (e) => { if (manualOrderMode) e.preventDefault(); },
+          ondrop: (e) => {
+            e.preventDefault();
+            if (manualOrderMode && dragId) moveItem(dragId, a.id);
+          },
+        },
+          el("td", {},
+            el("div", { style:"display:flex; gap:10px; align-items:center" },
+              el("div", { class:"thumbSm" },
+                el("img", { src: a.thumb || a.image, alt: a.title, loading:"lazy" })
+              ),
+              el("div", {},
+                el("div", { style:"font-weight:650" }, a.title),
+                el("div", { class:"sub" }, a.featured ? "Featured" : "—")
               )
-            ),
-            el("td", {}, statusChip(a.status)),
-            el("td", {}, el("span", { class:"sub" }, tags)),
-            el("td", {}, el("span", { class:"sub" }, a.series || "—")),
-            el("td", {}, el("span", { class:"sub" }, a.year || "—")),
-            el("td", {},
-              el("div", { class:"row-actions" },
-                el("a", { class:"btn mini", href:`edit.html?id=${encodeURIComponent(a.id)}` }, "Edit"),
-                el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"published"), type:"button" }, "Publish"),
-                el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"draft"), type:"button" }, "Draft"),
-                el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"hidden"), type:"button" }, "Hide")
-              )
+            )
+          ),
+          el("td", {}, statusChip(a.status)),
+          el("td", {}, el("span", { class:"sub" }, tags)),
+          el("td", {}, el("span", { class:"sub" }, a.series || "—")),
+          el("td", {}, el("span", { class:"sub" }, a.year || "—")),
+          el("td", {},
+            el("div", { class:"row-actions" },
+              el("a", { class:"btn mini", href:`edit.html?id=${encodeURIComponent(a.id)}` }, "Edit"),
+
+              // Featured toggle
+              el("button", {
+                class:"btn mini",
+                type:"button",
+                onclick:()=>{
+                  a.featured = !a.featured;
+                  a.updatedAt = new Date().toISOString();
+                  saveState(state);
+                  render();
+                }
+              }, a.featured ? "Unfeature" : "Feature"),
+
+              el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"published"), type:"button" }, "Publish"),
+              el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"draft"), type:"button" }, "Draft"),
+              el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"hidden"), type:"button" }, "Hide")
             )
           )
         );
+
+        rows.appendChild(tr);
       }
 
       if (!items.length){
@@ -190,6 +264,11 @@
         );
       }
     }
+
+
+
+
+
 
     chips.forEach(c => c.addEventListener("click", () => {
       chips.forEach(x => x.classList.remove("active"));

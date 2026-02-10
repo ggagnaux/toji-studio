@@ -15,6 +15,7 @@
         <a href="../index.html">Public</a>
         <a class="active" href="index.html">Studio</a>
         <a href="upload.html">Upload</a>
+        <a href="series.html">Series</a>
       </nav>
 
       <div class="theme-controls">
@@ -66,15 +67,13 @@
           <div class="chip" data-tab="hidden">Hidden</div>
           <div class="chip" data-tab="featured">Featured</div>
 
-
           <div class="search">
             <span>Search</span>
             <input id="q" placeholder="title, tag, series…" />
           </div>
+
+          <button class="btn" id="toggleOrder" type="button">Manual order: Off</button>
         </div>
-
-        <button class="btn" id="toggleOrder" type="button">Manual order: Off</button>
-
 
         <table class="table" aria-label="Artwork table">
           <thead>
@@ -102,20 +101,26 @@
 
   <script type="module">
     import {
-        loadState, saveState, el, statusChip,
-        setYearFooter, ensureBaseStyles,
-        sortArtworksManualFirst, ensureSeriesMeta
+      loadState, saveState, el, statusChip,
+      setYearFooter, ensureBaseStyles,
+      sortArtworksManualFirst, ensureSeriesMeta
     } from "./admin.js";
 
     ensureBaseStyles();
     setYearFooter();
 
     const state = await loadState();
-
     ensureSeriesMeta(state);
     saveState(state);
 
+    let tab = "all";
+    let q = "";
 
+    const chips = Array.from(document.querySelectorAll("[data-tab]"));
+    const qInput = document.getElementById("q");
+    const rows = document.getElementById("rows");
+
+    // Manual ordering
     let manualOrderMode = false;
     const toggleOrderBtn = document.getElementById("toggleOrder");
     toggleOrderBtn.addEventListener("click", () => {
@@ -125,15 +130,6 @@
     });
 
     let dragId = null;
-
-
-
-    let tab = "all";
-    let q = "";
-
-    const chips = Array.from(document.querySelectorAll("[data-tab]"));
-    const qInput = document.getElementById("q");
-    const rows = document.getElementById("rows");
 
     const counts = () => {
       const all = state.artworks.length;
@@ -150,10 +146,10 @@
     };
 
     function matches(a){
-      //const tabOk = tab === "all" || a.status === tab;
       const tabOk =
         tab === "all" ||
-        tab === "featured" ? !!a.featured : a.status === tab;
+        (tab === "featured" ? !!a.featured : a.status === tab);
+
       const text = `${a.title} ${(a.tags||[]).join(" ")} ${a.series||""}`.toLowerCase();
       const qOk = !q || text.includes(q);
       return tabOk && qOk;
@@ -163,11 +159,11 @@
       const a = state.artworks.find(x => x.id === id);
       if (!a) return;
       a.status = next;
+      a.updatedAt = new Date().toISOString();
       if (next === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
       saveState(state);
       render();
     }
-
 
     function moveItem(draggedId, targetId){
       if (draggedId === targetId) return;
@@ -197,7 +193,6 @@
       counts();
       rows.innerHTML = "";
 
-      // Use manual-first ordering (sortOrder desc, then published/created date desc)
       const items = sortArtworksManualFirst(state.artworks.filter(matches));
 
       for (const a of items){
@@ -232,7 +227,6 @@
             el("div", { class:"row-actions" },
               el("a", { class:"btn mini", href:`edit.html?id=${encodeURIComponent(a.id)}` }, "Edit"),
 
-              // Featured toggle
               el("button", {
                 class:"btn mini",
                 type:"button",
@@ -264,11 +258,6 @@
         );
       }
     }
-
-
-
-
-
 
     chips.forEach(c => c.addEventListener("click", () => {
       chips.forEach(x => x.classList.remove("active"));

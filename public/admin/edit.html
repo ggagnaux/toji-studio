@@ -15,6 +15,7 @@
         <a href="../index.html">Public</a>
         <a href="index.html">Studio</a>
         <a href="upload.html">Upload</a>
+        <a href="series.html">Series</a>
       </nav>
 
       <div class="theme-controls">
@@ -70,6 +71,8 @@
     h1.textContent = a.title || "Untitled";
     sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
 
+    const status = el("span", { class:"sub", id:"status", "aria-live":"polite" }, "");
+
     function save(){
       a.updatedAt = new Date().toISOString();
       saveState(state);
@@ -85,9 +88,6 @@
       save();
     }
 
-    const status = el("span", { class:"sub", id:"status", "aria-live":"polite" }, "");
-
-    // Left: preview
     const left = el("div", { class:"card", style:"grid-column: span 7" },
       el("div", { class:"thumb", style:"aspect-ratio:16/10" },
         el("img", { src: a.image || a.thumb, alt: a.alt || a.title, style:"object-fit:contain;background:var(--bg)" })
@@ -104,7 +104,6 @@
       )
     );
 
-    // Right: fields
     const right = el("div", { class:"card", style:"grid-column: span 5" },
       el("div", { class:"meta" },
         el("p", { class:"title" }, "Details"),

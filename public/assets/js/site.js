@@ -41,7 +41,6 @@ export function initThemeSystem(){
 
     if (animate) {
       root.classList.add("theme-animate");
-      // remove after transition window
       setTimeout(() => root.classList.remove("theme-animate"), 260);
     }
 
@@ -51,7 +50,6 @@ export function initThemeSystem(){
   };
 
   const syncUI = (mode, theme) => {
-    // Icon button
     const iconBtn = document.querySelector("[data-theme-icon]");
     if (iconBtn) {
       iconBtn.setAttribute(
@@ -62,14 +60,12 @@ export function initThemeSystem(){
       iconBtn.innerHTML = theme === "dark" ? moonSVG() : sunSVG();
     }
 
-    // Segmented mode buttons
     document.querySelectorAll("[data-theme-mode]").forEach(btn => {
       const v = btn.getAttribute("data-theme-mode");
       btn.classList.toggle("active", v === mode);
       btn.setAttribute("aria-pressed", v === mode ? "true" : "false");
     });
 
-    // Optional: display label
     const label = document.querySelector("[data-theme-label]");
     if (label) {
       label.textContent = (mode === "system") ? `System (${theme})` : mode[0].toUpperCase() + mode.slice(1);
@@ -79,7 +75,6 @@ export function initThemeSystem(){
   const savedMode = localStorage.getItem(MODE_KEY) || "system";
   applyTheme(savedMode, false);
 
-  // Mode picker (System/Light/Dark)
   document.addEventListener("click", (e) => {
     const btn = e.target.closest?.("[data-theme-mode]");
     if (!btn) return;
@@ -88,7 +83,7 @@ export function initThemeSystem(){
     applyTheme(mode, true);
   });
 
-  // Icon cycles Light <-> Dark quickly (does not set system; it toggles explicit mode)
+  // Icon cycles light<->dark (exits system mode on first click)
   document.addEventListener("click", (e) => {
     const btn = e.target.closest?.("[data-theme-icon]");
     if (!btn) return;
@@ -96,7 +91,6 @@ export function initThemeSystem(){
     const currentMode = root.dataset.themeMode || "system";
     const currentTheme = root.dataset.theme || getSystemTheme();
 
-    // If in system mode, first click flips to the opposite explicit theme
     const nextMode =
       currentMode === "system"
         ? (currentTheme === "dark" ? "light" : "dark")
@@ -106,7 +100,6 @@ export function initThemeSystem(){
     applyTheme(nextMode, true);
   });
 
-  // If user is in system mode and OS theme changes, update automatically
   media?.addEventListener?.("change", () => {
     const mode = root.dataset.themeMode || "system";
     if (mode === "system") applyTheme("system", true);

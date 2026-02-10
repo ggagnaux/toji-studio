@@ -57,7 +57,6 @@ export function setYearFooter() {
 }
 
 export function ensureBaseStyles() {
-  // Small admin-only helpers without touching your global CSS file
   const style = document.createElement("style");
   style.textContent = `
     .admin-layout{ display:grid; grid-template-columns: 240px 1fr; gap:16px; }
@@ -101,9 +100,8 @@ export function uniqueId(prefix = "a") {
   return `${prefix}${Math.random().toString(16).slice(2, 8)}`;
 }
 
-
+/* ---- Ordering helpers ---- */
 export function getSortKey(a){
-  // Higher sortOrder first; fallback to publishedAt/createdAt
   const so = Number(a.sortOrder || 0);
   const date = a.publishedAt || a.createdAt || "";
   return { so, date };
@@ -123,4 +121,3 @@ export function ensureSeriesMeta(state){
     state.seriesMeta[s] ||= { description: "", sortOrder: 0 };
   });
 }
-

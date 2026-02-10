@@ -7,30 +7,7 @@
   <link rel="stylesheet" href="assets/css/site.css" />
 </head>
 <body>
-  <header class="header">
-    <div class="container nav">
-      <a class="brand" href="index.html">Toji Studios <small>about</small></a>
-
-      <nav class="navlinks" aria-label="Primary">
-        <a href="index.html">Home</a>
-        <a href="gallery.html">Gallery</a>
-        <a class="active" href="about.html">About</a>
-        <a href="contact.html">Contact</a>
-      </nav>
-
-      <div class="theme-controls">
-        <div class="segmented" role="group" aria-label="Theme mode">
-          <button type="button" data-theme-mode="system">System</button>
-          <button type="button" data-theme-mode="light">Light</button>
-          <button type="button" data-theme-mode="dark">Dark</button>
-        </div>
-        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
-      </div>
-
-      <a class="btn" href="contact.html">Inquire</a>
-    </div>
-  </header>
-
+<header id="siteHeader"></header>
   <main class="container">
     <section class="hero">
       <h1>About</h1>
@@ -130,8 +107,10 @@
   </main>
 
   <script type="module">
-    import { initThemeSystem } from "./assets/js/site.js";
-    initThemeSystem();
+
+    import { renderPublicHeader } from "./assets/js/header.js";
+    renderPublicHeader({ active: "about", small: "about", ctaText: "Inquire", ctaHref: "contact.html" });
+
     document.getElementById("y").textContent = new Date().getFullYear();
   </script>
 </body>

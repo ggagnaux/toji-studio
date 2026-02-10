@@ -71,7 +71,6 @@
         return (A - B) || a.localeCompare(b);
       });
 
-      // Left: series list + description editor
       const left = el("div", { class:"card", style:"grid-column: span 5" },
         el("div", { class:"meta" },
           el("p", { class:"title" }, "Series"),
@@ -132,7 +131,6 @@
       const pieceList = rightHost.querySelector("#pieceList");
 
       let dragId = null;
-      const pieces = sortArtworksManualFirst(state.artworks.filter(a => a.series === name));
 
       function rerenderPieces(){
         pieceList.innerHTML = "";
@@ -173,7 +171,6 @@
         const [m] = list.splice(from, 1);
         list.splice(to, 0, m);
 
-        // Assign sortOrder within the series too (still global field; works fine)
         let base = 1000;
         for (const a of list){
           a.sortOrder = base;

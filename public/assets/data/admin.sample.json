@@ -1,16 +1,15 @@
 {
-    "seriesMeta": {
-    "Dark Fields": { "description": "High-contrast studies in depth and pressure.", "sortOrder": 10 },
-    "Event Horizon": { "description": "Edge conditions: bloom, pull, collapse.", "sortOrder": 20 },
-    "Studies": { "description": "Explorations and experiments.", "sortOrder": 30 }
-    },
-
   "settings": {
     "brand": "Toji Studios",
     "contactEmail": "you@example.com"
   },
   "tags": ["abstract", "cosmic", "geometry", "minimal", "ink"],
   "series": ["Dark Fields", "Event Horizon", "Studies"],
+  "seriesMeta": {
+    "Dark Fields": { "description": "High-contrast studies in depth and pressure.", "sortOrder": 10 },
+    "Event Horizon": { "description": "Edge conditions: bloom, pull, collapse.", "sortOrder": 20 },
+    "Studies": { "description": "Explorations and experiments.", "sortOrder": 30 }
+  },
   "artworks": [
     {
       "id": "a001",
@@ -24,8 +23,9 @@
       "description": "A study in contrast and quiet turbulence.",
       "thumb": "../assets/img/placeholders/p1.jpg",
       "image": "../assets/img/placeholders/p1.jpg",
-      "sortOrder": 10,
+      "sortOrder": 1000,
       "createdAt": "2026-02-01T10:00:00Z",
+      "updatedAt": "2026-02-01T10:00:00Z",
       "publishedAt": "2026-02-01T10:00:00Z"
     },
     {
@@ -40,8 +40,9 @@
       "description": "Soft edges around a hard center.",
       "thumb": "../assets/img/placeholders/p2.jpg",
       "image": "../assets/img/placeholders/p2.jpg",
-      "sortOrder": 0,
+      "sortOrder": 990,
       "createdAt": "2026-02-02T10:00:00Z",
+      "updatedAt": "2026-02-02T10:00:00Z",
       "publishedAt": null
     }
   ]

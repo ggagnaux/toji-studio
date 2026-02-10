@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="assets/css/site.css" />
 </head>
 <body>
-<header id="siteHeader"></header>
+  <header id="siteHeader"></header>
 
   <main class="container">
     <section class="hero">
@@ -113,19 +113,17 @@
           <hr style="border:0; border-top:1px solid var(--line); margin:16px 0" />
 
           <p class="title">Social</p>
-          <p class="sub" style="margin:10px 0 0">
-            Add your links when ready.
-          </p>
+          <p class="sub" style="margin:10px 0 0">Add your links when ready.</p>
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px">
-            <a class="btn" href="https://www.instagram.com/toji.studios/" aria-label="Instagram link">Instagram</a>
-            <a class="btn" href="https://www.threads.com/@toji.studios" aria-label="Threads link">Threads</a>
+            <a class="btn" href="#" aria-label="Instagram link">Instagram</a>
+            <a class="btn" href="#" aria-label="Threads link">Threads</a>
             <a class="btn" href="#" aria-label="Portfolio link">Portfolio</a>
           </div>
         </div>
       </div>
 
-      <!-- Optional small note -->
+      <!-- Optional note -->
       <div class="card" style="grid-column: span 12">
         <div class="meta">
           <p class="title">What helps</p>
@@ -136,21 +134,18 @@
         </div>
       </div>
     </section>
-
-    <footer class="footer">
-      <div class="row">
-        <div>© <span id="y"></span> Toji Studios</div>
-        <div><a href="gallery.html">Gallery</a> • <a href="about.html">About</a></div>
-      </div>
-    </footer>
   </main>
 
+  <footer id="siteFooter"></footer>
+
   <script type="module">
-
     import { renderPublicHeader } from "./assets/js/header.js";
-    renderPublicHeader({ active: "contact", small: "contact", ctaText: "View Gallery", ctaHref: "gallery.html" });
+    import { renderPublicFooter } from "./assets/js/footer.js";
 
-    document.getElementById("y").textContent = new Date().getFullYear();
+    renderPublicHeader({ active: "contact", small: "contact", ctaText: "View Gallery", ctaHref: "gallery.html" });
+    renderPublicFooter({
+      rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="about.html">About</a> • <a href="admin/index.html">Studio</a>`
+    });
 
     // TODO: set this to your real email later
     const TO_EMAIL = "you@example.com";
@@ -198,7 +193,7 @@
       await navigator.clipboard.writeText(text);
     }
 
-    form.addEventListener("submit", async (e) => {
+    form.addEventListener("submit", (e) => {
       e.preventDefault();
       setStatus("");
 

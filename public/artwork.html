@@ -12,6 +12,11 @@
   <main class="container" id="root"></main>
 
   <script type="module">
+
+    import { renderPublicHeader } from "./assets/js/header.js";
+    renderPublicHeader({ active: "home", small: "home", ctaText: "Explore", ctaHref: "gallery.html" });
+
+
     import { loadGallery, el, qs, initThemeSystem } from "./assets/js/site.js";
 
     initThemeSystem();

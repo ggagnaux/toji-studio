@@ -7,7 +7,8 @@
   <link rel="stylesheet" href="assets/css/site.css" />
 </head>
 <body>
-<header id="siteHeader"></header>
+  <header id="siteHeader"></header>
+
   <main class="container">
     <section class="hero">
       <h1>About</h1>
@@ -18,24 +19,17 @@
     </section>
 
     <section class="grid" aria-label="About content">
-      <!-- Left column: statement -->
       <div class="card" style="grid-column: span 7">
         <div class="meta">
           <p class="title">Artist statement</p>
           <p class="sub" style="font-size:15px; line-height:1.65; margin:10px 0 0">
             My work lives between structure and drift—hard edges meeting soft fields, like constellations
-            forming and dissolving. I’m interested in how simple systems can produce surprise: repetition,
-            constraint, variation, and the occasional deliberate mistake.
-          </p>
-          <p class="sub" style="font-size:15px; line-height:1.65; margin:10px 0 0">
-            Each piece is built to reward long looks. Up close: texture, micro-choices, and weird little
-            decisions. From across the room: bold shapes and a quiet pull.
+            forming and dissolving. I’m interested in how simple systems can produce surprise.
           </p>
           <p class="sub" style="font-size:15px; line-height:1.65; margin:10px 0 0">
             If you’d like to license a piece, commission a variation, or talk about a custom backlit print,
             head to the contact page.
           </p>
-
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px">
             <a class="btn primary" href="gallery.html">Explore the Gallery</a>
             <a class="btn" href="contact.html">Contact</a>
@@ -43,75 +37,42 @@
         </div>
       </div>
 
-      <!-- Right column: quick facts -->
       <div class="card" style="grid-column: span 5">
         <div class="meta">
           <p class="title">Quick facts</p>
-
           <div style="display:grid; gap:10px; margin-top:12px">
-            <div>
-              <div class="sub">Location</div>
-              <div>Vancouver, BC</div>
-            </div>
-
-            <div>
-              <div class="sub">Focus</div>
-              <div>Abstract • Cosmic • Geometric</div>
-            </div>
-
-            <div>
-              <div class="sub">Medium</div>
-              <div>Digital (generative + hand-built)</div>
-            </div>
-
-            <div>
-              <div class="sub">Availability</div>
-              <div>Licensing • Commissions • Prints</div>
-            </div>
-          </div>
-
-          <hr style="border:0; border-top:1px solid var(--line); margin:16px 0" />
-
-          <p class="title">Elsewhere</p>
-          <p class="sub" style="margin:10px 0 0">
-            Add your socials here when ready.
-          </p>
-
-          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px">
-            <a class="btn" href="#" aria-label="Instagram link">Instagram</a>
-            <a class="btn" href="#" aria-label="Threads link">Threads</a>
-            <a class="btn" href="#" aria-label="Email link">Email</a>
+            <div><div class="sub">Location</div><div>Vancouver, BC</div></div>
+            <div><div class="sub">Focus</div><div>Abstract • Cosmic • Geometric</div></div>
+            <div><div class="sub">Medium</div><div>Digital (generative + hand-built)</div></div>
+            <div><div class="sub">Availability</div><div>Licensing • Commissions • Prints</div></div>
           </div>
         </div>
       </div>
 
-      <!-- Optional: process -->
       <div class="card" style="grid-column: span 12">
         <div class="meta">
           <p class="title">Process</p>
           <p class="sub" style="font-size:15px; line-height:1.65; margin:10px 0 0">
-            The workflow is part design, part experiment. I start with a constraint (palette, shapes,
-            symmetry, or a rule), iterate until something “clicks,” then refine. Some pieces are fully
-            generative; others are guided by intuition and a lot of ruthless simplification.
+            The workflow is part design, part experiment. I start with a constraint, iterate until something clicks,
+            then refine.
           </p>
         </div>
       </div>
     </section>
-
-    <footer class="footer">
-      <div class="row">
-        <div>© <span id="y"></span> Toji Studios</div>
-        <div><a href="gallery.html">Gallery</a> • <a href="contact.html">Contact</a></div>
-      </div>
-    </footer>
   </main>
 
+  <footer id="siteFooter"></footer>
+
   <script type="module">
-
     import { renderPublicHeader } from "./assets/js/header.js";
-    renderPublicHeader({ active: "about", small: "about", ctaText: "Inquire", ctaHref: "contact.html" });
+    import { renderPublicFooter } from "./assets/js/footer.js";
 
-    document.getElementById("y").textContent = new Date().getFullYear();
+    renderPublicHeader({ active: "about", small: "about", ctaText: "Inquire", ctaHref: "contact.html" });
+    renderPublicFooter({
+      rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
+    });
+
+    // page-specific JS (if needed)
   </script>
 </body>
 </html>

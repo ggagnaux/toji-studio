@@ -3,65 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Toji Studios — Art</title>
+  <title>Toji Studios</title>
   <link rel="stylesheet" href="assets/css/site.css" />
 </head>
 <body>
-<header id="siteHeader"></header>
+  <header id="siteHeader"></header>
 
   <main class="container">
     <section class="hero">
-      <h1>Abstract, cosmic geometry — built to glow.</h1>
-      <p>
-        A curated collection of generative and hand-crafted digital works.
-        Minimal presentation. Maximum atmosphere.
-      </p>
+      <h1>Toji Studios</h1>
+      <p>Abstract, cosmic-leaning digital artwork—geometry, atmosphere, and controlled chaos.</p>
       <div class="cta">
         <a class="btn primary" href="gallery.html">Explore the Gallery</a>
-        <a class="btn" href="about.html">Artist Statement</a>
+        <a class="btn" href="contact.html">Inquire</a>
       </div>
     </section>
 
-    <div class="section-title">
-      <h2>Featured works</h2>
-      <span>Selected pieces</span>
-    </div>
-
-    <section id="featured" class="grid"></section>
-
-    <footer class="footer">
-      <div class="row">
-        <div>© <span id="y"></span> Toji Studios</div>
-        <div>Instagram / Threads / Email (add later)</div>
-      </div>
-    </footer>
+    <!-- Your homepage sections here -->
   </main>
 
+  <footer id="siteFooter"></footer>
+
   <script type="module">
+    import { renderPublicHeader } from "./assets/js/header.js";
+    import { renderPublicFooter } from "./assets/js/footer.js";
 
-    import { renderPublicHeader } from "./assets/js/header.js"; 
     renderPublicHeader({ active: "home", small: "home", ctaText: "Explore", ctaHref: "gallery.html" });
-
-    import { loadGallery, el, initThemeSystem } from "./assets/js/site.js";
-
-    initThemeSystem();
-
-    document.getElementById("y").textContent = new Date().getFullYear();
-    const items = await loadGallery();
-    const featured = items.slice(0, 6);
-
-    const host = document.getElementById("featured");
-    featured.forEach(item => {
-      host.appendChild(
-        el("a", { class:"card", href:`artwork.html?id=${item.id}`, style:"grid-column: span 4" },
-          el("div", { class:"thumb" }, el("img", { src:item.thumb, alt:item.title, loading:"lazy" })),
-          el("div", { class:"meta" },
-            el("p", { class:"title" }, item.title),
-            el("p", { class:"sub" }, `${item.year} • ${(item.tags||[]).slice(0,2).join(" · ")}`)
-          )
-        )
-      );
+    renderPublicFooter({
+      rightHtml: `<a href="gallery.html">Gallery</a> • <a href="about.html">About</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
     });
+
+    // page-specific JS goes here
   </script>
 </body>
 </html>

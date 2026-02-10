@@ -53,7 +53,7 @@
 
     renderPublicHeader({ active: "home", small: "home", ctaText: "Explore", ctaHref: "gallery.html" });
     renderPublicFooter({
-      rightHtml: `<a href="gallery.html">Gallery</a> • <a href="about.html">About</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
+      rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
     });
 
     // ---- Data source: Admin localStorage first, fallback JSON ----
@@ -290,7 +290,7 @@
       items.forEach((a, idx) => {
         const card = el("a", {
           class:"card",
-          href:"#",
+          href:`artwork.html?id=${encodeURIComponent(a.id)}`,
           style:`
             min-width: 260px;
             max-width: 320px;
@@ -331,9 +331,9 @@
       items.forEach((a, idx) => {
         const card = el("a", {
           class:"card",
-          href:"#",
+          href:`artwork.html?id=${encodeURIComponent(a.id)}`,
           style:"grid-column: span 4",
-          onclick:(e)=>{ e.preventDefault(); openLightbox(items, idx); }
+          //onclick:(e)=>{ e.preventDefault(); openLightbox(items, idx); }
         },
           el("div", { class:"thumb" }, el("img", { src:a.thumb || a.image, alt:a.alt || a.title || "Artwork", loading:"lazy" })),
           el("div", { class:"meta" },

@@ -1,8 +1,8 @@
 import { initThemeSystem } from "./site.js";
 
 export function renderPublicHeader({
-  active = "home",       // "home" | "gallery" | "about" | "contact"
-  small = "",            // e.g. "home", "gallery"
+  active = "home",       // "home" | "gallery" | "series" | "about" | "contact"
+  small = "",
   ctaText = "Explore",
   ctaHref = "gallery.html",
 } = {}) {
@@ -17,6 +17,7 @@ export function renderPublicHeader({
       <nav class="navlinks" aria-label="Primary">
         <a href="index.html" data-nav="home">Home</a>
         <a href="gallery.html" data-nav="gallery">Gallery</a>
+        <a href="series.html" data-nav="series">Series</a>
         <a href="about.html" data-nav="about">About</a>
         <a href="contact.html" data-nav="contact">Contact</a>
         <a href="admin/index.html" data-nav="studio">Studio</a>
@@ -35,7 +36,6 @@ export function renderPublicHeader({
     </div>
   `;
 
-  // highlight active link
   headerHost.querySelectorAll("[data-nav]").forEach(a => {
     a.classList.toggle("active", a.getAttribute("data-nav") === active);
   });
@@ -50,6 +50,5 @@ function escapeHtml(s) {
 }
 
 function escapeAttr(s) {
-  // minimal attribute escaping
   return String(s ?? "").replace(/"/g, "&quot;");
 }

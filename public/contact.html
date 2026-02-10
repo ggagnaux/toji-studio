@@ -138,93 +138,145 @@
 
   <footer id="siteFooter"></footer>
 
-  <script type="module">
-    import { renderPublicHeader } from "./assets/js/header.js";
-    import { renderPublicFooter } from "./assets/js/footer.js";
+<script type="module">
+  import { renderPublicHeader } from "./assets/js/header.js";
+  import { renderPublicFooter } from "./assets/js/footer.js";
 
-    renderPublicHeader({ active: "contact", small: "contact", ctaText: "View Gallery", ctaHref: "gallery.html" });
-    renderPublicFooter({
-      rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="about.html">About</a> • <a href="admin/index.html">Studio</a>`
-    });
+  renderPublicHeader({ active: "contact", small: "contact", ctaText: "View Gallery", ctaHref: "gallery.html" });
+  renderPublicFooter({
+    rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="about.html">About</a> • <a href="admin/index.html">Studio</a>`
+  });
 
-    // TODO: set this to your real email later
-    const TO_EMAIL = "you@example.com";
-    const emailEl = document.getElementById("contactEmail");
-    emailEl.textContent = TO_EMAIL;
+  // TODO: set this to your real email later
+  const TO_EMAIL = "you@example.com";
+  const emailEl = document.getElementById("contactEmail");
+  emailEl.textContent = TO_EMAIL;
 
-    const form = document.getElementById("contactForm");
-    const status = document.getElementById("status");
-    const draftBox = document.getElementById("draftBox");
-    const draftPre = document.getElementById("draft");
+  const form = document.getElementById("contactForm");
+  const status = document.getElementById("status");
+  const draftBox = document.getElementById("draftBox");
+  const draftPre = document.getElementById("draft");
 
-    function setStatus(msg){ status.textContent = msg || ""; }
+  const nameEl = document.getElementById("name");
+  const fromEl = document.getElementById("email");
+  const topicEl = document.getElementById("topic");
+  const linksEl = document.getElementById("links");
+  const msgEl = document.getElementById("message");
 
-    function buildDraft(){
-      const name = document.getElementById("name").value.trim();
-      const from = document.getElementById("email").value.trim();
-      const topic = document.getElementById("topic").value;
-      const links = document.getElementById("links").value.trim();
-      const message = document.getElementById("message").value.trim();
+  function setStatus(msg){ status.textContent = msg || ""; }
 
-      const subject = `[Toji Studios] ${topic} — ${name}`;
-      const bodyLines = [
+  function qs(name){
+    return new URLSearchParams(location.search).get(name);
+  }
+
+  function prefillFromQuery(){
+    const topic = qs("topic");
+    const title = qs("title");
+    const id = qs("id");
+    const url = qs("url");
+
+    // topic (match existing options or fall back to Other)
+    if (topic) {
+      const opts = Array.from(topicEl.options).map(o => o.value);
+      topicEl.value = opts.includes(topic) ? topic : "Other";
+    }
+
+    // Artwork link(s)
+    const linkParts = [];
+    if (url) linkParts.push(url);
+    if (id && !url) linkParts.push(`artwork.html?id=${encodeURIComponent(id)}`);
+    if (linkParts.length && !linksEl.value.trim()) linksEl.value = linkParts.join("\n");
+
+    // Message template
+    if (title && !msgEl.value.trim()) {
+      const lines = [
         `Hi Greg,`,
         ``,
-        `Topic: ${topic}`,
-        `From: ${name} <${from}>`,
-        links ? `Links: ${links}` : null,
+        `I'm interested in: ${title}${id ? ` (ID: ${id})` : ""}.`,
         ``,
-        message,
+        `Use case:`,
+        `Timeline:`,
+        `Budget range (optional):`,
         ``,
-        `—`,
-        `${name}`
-      ].filter(Boolean);
-
-      return { subject, body: bodyLines.join("\n") };
+        `Notes:`
+      ];
+      msgEl.value = lines.join("\n");
     }
 
-    function mailtoLink(subject, body){
-      const s = encodeURIComponent(subject);
-      const b = encodeURIComponent(body);
-      return `mailto:${encodeURIComponent(TO_EMAIL)}?subject=${s}&body=${b}`;
+    // Small UX nudge
+    if (topic || title || id || url) setStatus("Prefilled from artwork link.");
+  }
+
+  prefillFromQuery();
+
+  function buildDraft(){
+    const name = nameEl.value.trim();
+    const from = fromEl.value.trim();
+    const topic = topicEl.value;
+    const links = linksEl.value.trim();
+    const message = msgEl.value.trim();
+
+    // Subject stays short and scan-friendly
+    const subject = `[Toji Studios] ${topic} — ${name || "Inquiry"}`;
+
+    const bodyLines = [
+      `Hi Greg,`,
+      ``,
+      `Topic: ${topic}`,
+      name ? `From: ${name}${from ? ` <${from}>` : ""}` : (from ? `From: ${from}` : null),
+      links ? `Links:\n${links}` : null,
+      ``,
+      message,
+      ``,
+      `—`,
+      name || ""
+    ].filter(Boolean);
+
+    return { subject, body: bodyLines.join("\n") };
+  }
+
+  function mailtoLink(subject, body){
+    const s = encodeURIComponent(subject);
+    const b = encodeURIComponent(body);
+    return `mailto:${encodeURIComponent(TO_EMAIL)}?subject=${s}&body=${b}`;
+  }
+
+  async function copyToClipboard(text){
+    await navigator.clipboard.writeText(text);
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    setStatus("");
+
+    const { subject, body } = buildDraft();
+    draftPre.textContent = `To: ${TO_EMAIL}\nSubject: ${subject}\n\n${body}`;
+    draftBox.style.display = "block";
+
+    location.href = mailtoLink(subject, body);
+    setStatus("Email draft created.");
+  });
+
+  document.getElementById("copyEmail").addEventListener("click", async () => {
+    try{
+      await copyToClipboard(TO_EMAIL);
+      setStatus("Email copied.");
+    }catch{
+      setStatus("Couldn’t copy email (browser blocked).");
     }
+  });
 
-    async function copyToClipboard(text){
-      await navigator.clipboard.writeText(text);
+  document.getElementById("copyDraft").addEventListener("click", async () => {
+    try{
+      const txt = draftPre.textContent || "";
+      if (!txt) return setStatus("Create a draft first.");
+      await copyToClipboard(txt);
+      setStatus("Draft copied.");
+    }catch{
+      setStatus("Couldn’t copy draft (browser blocked).");
     }
+  });
+</script>
 
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      setStatus("");
-
-      const { subject, body } = buildDraft();
-      draftPre.textContent = `To: ${TO_EMAIL}\nSubject: ${subject}\n\n${body}`;
-      draftBox.style.display = "block";
-
-      // Open mail app with prefilled email
-      location.href = mailtoLink(subject, body);
-      setStatus("Email draft created.");
-    });
-
-    document.getElementById("copyEmail").addEventListener("click", async () => {
-      try{
-        await copyToClipboard(TO_EMAIL);
-        setStatus("Email copied.");
-      }catch{
-        setStatus("Couldn’t copy email (browser blocked).");
-      }
-    });
-
-    document.getElementById("copyDraft").addEventListener("click", async () => {
-      try{
-        const txt = draftPre.textContent || "";
-        if (!txt) return setStatus("Create a draft first.");
-        await copyToClipboard(txt);
-        setStatus("Draft copied.");
-      }catch{
-        setStatus("Couldn’t copy draft (browser blocked).");
-      }
-    });
-  </script>
 </body>
 </html>

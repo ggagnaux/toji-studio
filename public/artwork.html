@@ -7,42 +7,250 @@
   <link rel="stylesheet" href="assets/css/site.css" />
 </head>
 <body>
-<header id="siteHeader"></header>
+  <header id="siteHeader"></header>
 
-  <main class="container" id="root"></main>
+  <main class="container">
+    <section class="hero" style="padding-bottom:10px">
+      <h1 id="t">Artwork</h1>
+      <p id="sub">Loading…</p>
+    </section>
+
+    <section class="grid" aria-label="Artwork layout">
+      <div class="card" style="grid-column: span 8">
+        <div class="thumb" style="aspect-ratio: 16/10">
+          <img id="img" alt="" />
+        </div>
+      </div>
+
+      <div class="card" style="grid-column: span 4">
+        <div class="meta">
+          <p class="title" id="title">—</p>
+          <p class="sub" id="metaLine">—</p>
+
+          <hr class="sep" />
+
+          <p class="sub" id="desc" style="font-size:15px; line-height:1.65; white-space:pre-wrap"></p>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px">
+            <a class="btn primary" id="inquireBtn" href="contact.html">Inquire</a>
+            <button class="btn" id="copyLink" type="button">Copy link</button>
+            <a class="btn" href="gallery.html">Back to gallery</a>
+          </div>
+
+          <div id="tagsWrap" style="margin-top:14px"></div>
+        </div>
+      </div>
+
+      <div class="card" style="grid-column: span 12">
+        <div class="meta">
+          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap">
+            <p class="title" style="margin:0">More like this</p>
+            <a class="btn" id="moreLink" href="gallery.html">View all</a>
+          </div>
+          <p class="sub" style="margin-top:8px">From the same series (if available), otherwise from recent work.</p>
+
+          <div class="grid" id="moreGrid" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="siteFooter"></footer>
 
   <script type="module">
-
     import { renderPublicHeader } from "./assets/js/header.js";
-    renderPublicHeader({ active: "home", small: "home", ctaText: "Explore", ctaHref: "gallery.html" });
+    import { renderPublicFooter } from "./assets/js/footer.js";
 
+    // Header/footers
+    renderPublicHeader({ active: "gallery", small: "artwork", ctaText: "Explore", ctaHref: "gallery.html" });
+    renderPublicFooter({
+      rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="about.html">About</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
+    });
 
-    import { loadGallery, el, qs, initThemeSystem } from "./assets/js/site.js";
+    // Data
+    const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
+    const FALLBACK_URL = "assets/data/admin.sample.json";
 
-    initThemeSystem();
+    function qs(name){ return new URLSearchParams(location.search).get(name); }
 
+    async function loadStateLike(){
+      const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
+      if (saved) { try { return JSON.parse(saved); } catch {} }
+      const res = await fetch(FALLBACK_URL, { cache:"no-store" });
+      return res.json();
+    }
+
+    function publishedOnly(state){
+      return (state.artworks || []).filter(a => a.status === "published");
+    }
+
+    function el(tag, attrs = {}, ...children){
+      const n = document.createElement(tag);
+      for (const [k,v] of Object.entries(attrs)) {
+        if (k === "class") n.className = v;
+        else if (k === "style") n.setAttribute("style", v);
+        else if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
+        else if (v !== undefined && v !== null) n.setAttribute(k, v);
+      }
+      for (const c of children.flat()) {
+        if (c == null) continue;
+        n.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+      }
+      return n;
+    }
+
+    function sortRecent(items){
+      return items.slice().sort((a,b) => {
+        const soA = Number(a.sortOrder || 0), soB = Number(b.sortOrder || 0);
+        if (soA !== soB) return soB - soA;
+        const da = (a.publishedAt || a.createdAt || ""), db = (b.publishedAt || b.createdAt || "");
+        return String(db).localeCompare(String(da));
+      });
+    }
+
+    // DOM
+    const h1 = document.getElementById("t");
+    const sub = document.getElementById("sub");
+    const img = document.getElementById("img");
+    const titleEl = document.getElementById("title");
+    const metaLine = document.getElementById("metaLine");
+    const desc = document.getElementById("desc");
+    const tagsWrap = document.getElementById("tagsWrap");
+    const inquireBtn = document.getElementById("inquireBtn");
+    const copyLinkBtn = document.getElementById("copyLink");
+    const moreGrid = document.getElementById("moreGrid");
+    const moreLink = document.getElementById("moreLink");
+
+    // Load + render
     const id = qs("id");
-    const items = await loadGallery();
-    const item = items.find(x => x.id === id) || items[0];
+    if (!id){
+      h1.textContent = "Missing artwork id";
+      sub.textContent = "Open a piece from the Gallery, or add ?id=... to the URL.";
+      img.alt = "Missing";
+      img.src = "assets/img/placeholders/p1.jpg";
+      titleEl.textContent = "Not found";
+      metaLine.textContent = "";
+      desc.textContent = "";
+      moreGrid.innerHTML = "";
+      throw new Error("Missing id");
+    }
 
-    const root = document.getElementById("root");
+    const state = await loadStateLike();
+    const items = publishedOnly(state);
+    const art = items.find(a => String(a.id) === String(id));
 
-    root.appendChild(
-      el("div", {},
-        el("section", { class:"hero" },
-          el("h1", {}, item.title),
-          el("p", {}, `${item.year} • ${(item.tags||[]).join(" · ")}`)
-        ),
-        el("div", { class:"card" },
-          el("div", { class:"thumb", style:"aspect-ratio: 16/10" },
-            el("img", { src:item.image, alt:item.title, loading:"eager", style:"object-fit:contain;background:#0b0c10" })
-          ),
-          el("div", { class:"meta" },
-            el("p", { class:"sub", style:"font-size:15px" }, item.description || "")
+    if (!art){
+      h1.textContent = "Not found";
+      sub.textContent = "This piece may be unpublished, deleted, or the link is wrong.";
+      img.alt = "Not found";
+      img.src = "assets/img/placeholders/p1.jpg";
+      titleEl.textContent = "Artwork not found";
+      metaLine.textContent = "";
+      desc.textContent = "";
+      moreGrid.innerHTML = "";
+      throw new Error("Not found");
+    }
+
+    // Title/meta
+    document.title = `${art.title || "Artwork"} — Toji Studios`;
+    h1.textContent = art.title || "Artwork";
+    sub.textContent = [art.series || null, art.year || null].filter(Boolean).join(" • ") || "Published work";
+
+    titleEl.textContent = art.title || "Untitled";
+    metaLine.textContent = [
+      art.series ? `Series: ${art.series}` : null,
+      art.year ? `Year: ${art.year}` : null,
+      art.featured ? "Featured" : null
+    ].filter(Boolean).join(" • ") || "";
+
+    // Image
+    img.src = art.image || art.thumb || "assets/img/placeholders/p1.jpg";
+    img.alt = art.alt || art.title || "Artwork";
+    img.loading = "eager";
+
+    // Description
+    desc.textContent = art.description || "—";
+
+    // Tags
+    const tags = (art.tags || []).map(t => String(t).toLowerCase()).filter(Boolean);
+    tagsWrap.innerHTML = "";
+    if (tags.length){
+      tagsWrap.appendChild(el("div", { class:"sub" }, "Tags"));
+      const row = el("div", { style:"display:flex; gap:10px; flex-wrap:wrap; margin-top:10px" });
+      tags.forEach(t => {
+        row.appendChild(el("a", { class:"chip", href:`gallery.html?tag=${encodeURIComponent(t)}` }, t));
+      });
+      tagsWrap.appendChild(row);
+    }
+
+    // Inquire link (pre-fill info via query params)
+    inquireBtn.href =
+      `contact.html?topic=${encodeURIComponent("Licensing / inquiry")}` +
+      `&title=${encodeURIComponent(art.title || "")}` +
+      `&id=${encodeURIComponent(art.id)}` +
+      `&url=${encodeURIComponent(location.href)}`;
+
+    // Copy link
+    copyLinkBtn.addEventListener("click", async () => {
+      try{
+        await navigator.clipboard.writeText(location.href);
+        copyLinkBtn.textContent = "Copied!";
+        setTimeout(() => copyLinkBtn.textContent = "Copy link", 900);
+      }catch{
+        copyLinkBtn.textContent = "Copy failed";
+        setTimeout(() => copyLinkBtn.textContent = "Copy link", 900);
+      }
+    });
+
+    // More like this: same series first, else recent
+    const sameSeries = art.series
+      ? items.filter(a => a.series === art.series && a.id !== art.id)
+      : [];
+
+    let more = sameSeries.length ? sortRecent(sameSeries) : sortRecent(items.filter(a => a.id !== art.id));
+    more = more.slice(0, 6);
+
+    moreLink.href = art.series ? `series.html?s=${encodeURIComponent(art.series)}` : "gallery.html";
+
+    renderMore(more);
+
+    function renderMore(list){
+      moreGrid.innerHTML = "";
+      if (!list.length){
+        moreGrid.appendChild(
+          el("div", { class:"sub" }, "No additional work to show yet.")
+        );
+        return;
+      }
+
+      list.forEach(a => {
+        moreGrid.appendChild(
+          el("a", {
+            class:"card",
+            href:`artwork.html?id=${encodeURIComponent(a.id)}`,
+            style:"grid-column: span 4; box-shadow:none"
+          },
+            el("div", { class:"thumb" },
+              el("img", { src:a.thumb || a.image, alt:a.alt || a.title || "Artwork", loading:"lazy" })
+            ),
+            el("div", { class:"meta" },
+              el("p", { class:"title" }, a.title || "Untitled"),
+              el("p", { class:"sub" }, [a.series || null, a.year || null].filter(Boolean).join(" • ") || " ")
+            )
           )
-        )
-      )
-    );
+        );
+      });
+
+      const mq1 = window.matchMedia("(max-width: 920px)");
+      const mq2 = window.matchMedia("(max-width: 620px)");
+      const apply = () => {
+        const span = mq2.matches ? 12 : (mq1.matches ? 6 : 4);
+        moreGrid.querySelectorAll(".card").forEach(c => c.style.gridColumn = `span ${span}`);
+      };
+      apply();
+      mq1.onchange = apply;
+      mq2.onchange = apply;
+    }
   </script>
 </body>
 </html>

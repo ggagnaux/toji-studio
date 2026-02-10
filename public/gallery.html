@@ -50,7 +50,7 @@
 
     renderPublicHeader({ active: "gallery", small: "gallery", ctaText: "Inquire", ctaHref: "contact.html" });
     renderPublicFooter({
-      rightHtml: `<a href="index.html">Home</a> • <a href="about.html">About</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
+      rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
     });
 
     // ---- Gallery data source: Admin localStorage first, fallback to sample JSON ----
@@ -199,9 +199,9 @@
       items.forEach((a, idx) => {
         const card = el("a", {
           class:"card",
-          href:"#",
-          style:"grid-column: span 4",
-          onclick:(e)=>{ e.preventDefault(); openLightbox(items, idx); }
+          href:`artwork.html?id=${encodeURIComponent(a.id)}`,
+          style:"grid-column: span 4"
+          //onclick:(e)=>{ e.preventDefault(); openLightbox(items, idx);}
         },
           el("div", { class:"thumb" }, el("img", { src: a.thumb || a.image, alt: a.alt || a.title || "Artwork", loading:"lazy" })),
           el("div", { class:"meta" },

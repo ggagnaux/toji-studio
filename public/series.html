@@ -1,0 +1,454 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Series — Toji Studios</title>
+  <link rel="stylesheet" href="assets/css/site.css" />
+</head>
+<body>
+  <header id="siteHeader"></header>
+
+  <main class="container">
+    <section class="hero" style="padding-bottom:10px">
+      <h1>Series</h1>
+      <p>Browse collections. Each series includes its own description and ordered pieces.</p>
+    </section>
+
+    <section class="grid" aria-label="Series layout">
+      <!-- Left: series list -->
+      <div class="card" style="grid-column: span 5">
+        <div class="meta">
+          <div style="display:flex; align-items:end; justify-content:space-between; gap:10px">
+            <p class="title" style="margin:0">All series</p>
+            <span class="sub" id="seriesCount">—</span>
+          </div>
+
+          <div id="seriesList" style="display:grid; gap:10px; margin-top:14px"></div>
+
+          <div class="sub" style="margin-top:14px">
+            Tip: publish + assign series in Studio to populate this page.
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: series detail -->
+      <div class="card" style="grid-column: span 7">
+        <div class="meta" id="detail">
+          <p class="title" style="margin:0">Pick a series</p>
+          <p class="sub" style="margin-top:8px">Select a series on the left to view its pieces.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="siteFooter"></footer>
+
+  <script type="module">
+    import { renderPublicHeader } from "./assets/js/header.js";
+    import { renderPublicFooter } from "./assets/js/footer.js";
+
+    renderPublicHeader({ active: "series", small: "series", ctaText: "Explore", ctaHref: "gallery.html" });
+    renderPublicFooter({
+      rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
+    });
+
+    const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
+    const FALLBACK_URL = "assets/data/admin.sample.json";
+
+    async function loadStateLike(){
+      const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
+      if (saved) {
+        try { return JSON.parse(saved); } catch {}
+      }
+      const res = await fetch(FALLBACK_URL, { cache:"no-store" });
+      return res.json();
+    }
+
+    function publishedOnly(state){
+      return (state.artworks || []).filter(a => a.status === "published");
+    }
+
+    function sortPieces(items){
+      return items.slice().sort((a,b) => {
+        // manual order (sortOrder desc), then date desc
+        const soA = Number(a.sortOrder || 0), soB = Number(b.sortOrder || 0);
+        if (soA !== soB) return soB - soA;
+        const da = (a.publishedAt || a.createdAt || ""), db = (b.publishedAt || b.createdAt || "");
+        return String(db).localeCompare(String(da));
+      });
+    }
+
+    function el(tag, attrs = {}, ...children){
+      const n = document.createElement(tag);
+      for (const [k,v] of Object.entries(attrs)) {
+        if (k === "class") n.className = v;
+        else if (k === "style") n.setAttribute("style", v);
+        else if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
+        else if (v !== undefined && v !== null) n.setAttribute(k, v);
+      }
+      for (const c of children.flat()) {
+        if (c == null) continue;
+        n.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+      }
+      return n;
+    }
+
+    function qs(name){
+      return new URLSearchParams(location.search).get(name);
+    }
+
+    function setQS(name, value){
+      const u = new URL(location.href);
+      if (!value) u.searchParams.delete(name);
+      else u.searchParams.set(name, value);
+      history.replaceState(null, "", u.toString());
+    }
+
+    // --- Lightbox (shared behavior) ---
+    const lightbox = createLightbox();
+    document.body.appendChild(lightbox.host);
+
+    let currentList = [];
+    let currentIndex = -1;
+
+    function openLightbox(list, idx){
+      currentList = list;
+      currentIndex = idx;
+      lightbox.open(currentList[currentIndex]);
+    }
+    function next(){
+      if (!currentList.length) return;
+      currentIndex = (currentIndex + 1) % currentList.length;
+      lightbox.open(currentList[currentIndex]);
+    }
+    function prev(){
+      if (!currentList.length) return;
+      currentIndex = (currentIndex - 1 + currentList.length) % currentList.length;
+      lightbox.open(currentList[currentIndex]);
+    }
+
+    function createLightbox(){
+      const style = document.createElement("style");
+      style.textContent = `
+        .lb-backdrop{
+          position:fixed; inset:0; z-index:1000;
+          background: rgba(0,0,0,.72);
+          display:none; align-items:center; justify-content:center;
+          padding: 24px;
+        }
+        [data-theme="light"] .lb-backdrop{ background: rgba(0,0,0,.55); }
+        .lb{
+          width:min(1100px, 96vw);
+          border:1px solid var(--line);
+          border-radius: var(--radius);
+          background: var(--panel);
+          box-shadow: var(--shadow);
+          overflow:hidden;
+        }
+        .lb-top{
+          display:flex; align-items:center; justify-content:space-between;
+          gap:10px; padding:12px;
+          border-bottom:1px solid var(--line);
+        }
+        .lb-title{ font-weight:650; }
+        .lb-body{ display:grid; grid-template-columns: 1fr 320px; }
+        .lb-media{
+          background: rgba(255,255,255,.03);
+          display:flex; align-items:center; justify-content:center;
+          min-height: 56vh;
+        }
+        .lb-media img{
+          width:100%; height:100%;
+          max-height: 76vh;
+          object-fit: contain;
+          background: var(--bg);
+        }
+        .lb-meta{ padding:14px; border-left:1px solid var(--line); }
+        .lb-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+        .lb-actions .btn{ padding:8px 10px; font-size:13px; }
+        @media (max-width: 920px){
+          .lb-body{ grid-template-columns: 1fr; }
+          .lb-meta{ border-left:0; border-top:1px solid var(--line); }
+        }
+      `;
+      document.head.appendChild(style);
+
+      const backdrop = el("div", { class:"lb-backdrop", role:"dialog", "aria-modal":"true" });
+
+      const title = el("div", { class:"lb-title" }, "");
+      const closeBtn = el("button", { class:"btn", type:"button" }, "Close");
+      const prevBtn = el("button", { class:"btn", type:"button" }, "Prev");
+      const nextBtn = el("button", { class:"btn", type:"button" }, "Next");
+
+      const top = el("div", { class:"lb-top" },
+        title,
+        el("div", { class:"lb-actions" }, prevBtn, nextBtn, closeBtn)
+      );
+
+      const img = el("img", { alt:"" });
+      const media = el("div", { class:"lb-media" }, img);
+
+      const metaTitle = el("div", { style:"font-weight:650" }, "");
+      const metaSub = el("div", { class:"sub" }, "");
+      const metaDesc = el("div", { class:"sub", style:"font-size:15px; line-height:1.65" }, "");
+      const meta = el("div", { class:"lb-meta" }, metaTitle, metaSub, el("hr", { class:"sep" }), metaDesc);
+
+      const panel = el("div", { class:"lb" }, top, el("div", { class:"lb-body" }, media, meta));
+      backdrop.appendChild(panel);
+
+      let lastActive = null;
+
+      function open(item){
+        lastActive = document.activeElement;
+
+        title.textContent = item.title || "Untitled";
+        metaTitle.textContent = item.title || "Untitled";
+
+        const bits = [item.series || null, item.year || null, item.featured ? "Featured" : null]
+          .filter(Boolean).join(" • ");
+        metaSub.textContent = bits || "";
+        metaDesc.textContent = item.description || "";
+
+        img.src = item.image || item.thumb || "";
+        img.alt = item.alt || item.title || "Artwork";
+
+        backdrop.style.display = "flex";
+        closeBtn.focus();
+      }
+
+      function close(){
+        backdrop.style.display = "none";
+        if (lastActive && typeof lastActive.focus === "function") lastActive.focus();
+      }
+
+      backdrop.addEventListener("click", (e) => { if (e.target === backdrop) close(); });
+      closeBtn.addEventListener("click", close);
+      nextBtn.addEventListener("click", () => next());
+      prevBtn.addEventListener("click", () => prev());
+
+      document.addEventListener("keydown", (e) => {
+        if (backdrop.style.display !== "flex") return;
+        if (e.key === "Escape") close();
+        if (e.key === "ArrowRight") next();
+        if (e.key === "ArrowLeft") prev();
+      });
+
+      return { host: backdrop, open, close };
+    }
+
+    // --- Page rendering ---
+    const state = await loadStateLike();
+    const published = publishedOnly(state);
+
+    // Derive series list from state.series OR from published artworks
+    const seriesNames = (state.series && state.series.length)
+      ? state.series.slice()
+      : Array.from(new Set(published.map(a => a.series).filter(Boolean)));
+
+    // Build series meta map (optional)
+    const seriesMeta = state.seriesMeta || {};
+
+    // Count pieces per series (published only)
+    const counts = new Map();
+    for (const a of published){
+      const s = a.series;
+      if (!s) continue;
+      counts.set(s, (counts.get(s) || 0) + 1);
+    }
+
+    // Sort series by meta.sortOrder asc, else alpha
+    seriesNames.sort((a,b) => {
+      const A = Number(seriesMeta[a]?.sortOrder || 0);
+      const B = Number(seriesMeta[b]?.sortOrder || 0);
+      return (A - B) || a.localeCompare(b);
+    });
+
+    const seriesCountEl = document.getElementById("seriesCount");
+    const seriesList = document.getElementById("seriesList");
+    const detail = document.getElementById("detail");
+
+    seriesCountEl.textContent = `${seriesNames.length} series`;
+
+    function renderSeriesList(active){
+      seriesList.innerHTML = "";
+
+      if (!seriesNames.length){
+        seriesList.appendChild(
+          el("div", { class:"sub" }, "No series yet. Add a series + publish pieces in Studio.")
+        );
+        return;
+      }
+
+      for (const name of seriesNames){
+        const c = counts.get(name) || 0;
+        const desc = (seriesMeta[name]?.description || "").trim();
+
+        const btn = el("button", {
+          class: "btn",
+          type:"button",
+          style: `
+            justify-content:flex-start;
+            border-radius:14px;
+            text-align:left;
+            padding:12px;
+            ${name === active ? "border-color: rgba(138,167,255,.35); background: rgba(138,167,255,.10); color: var(--text);" : ""}
+          `
+        },
+          el("div", { style:"display:grid; gap:4px" },
+            el("div", { style:"font-weight:650" }, name),
+            el("div", { class:"sub" }, `${c} piece${c===1?"":"s"}${desc ? " • " + desc.slice(0,64) + (desc.length>64?"…":"") : ""}`)
+          )
+        );
+
+        btn.addEventListener("click", () => {
+          setQS("s", name);
+          openSeries(name);
+        });
+
+        seriesList.appendChild(btn);
+      }
+
+      // All button
+      seriesList.prepend(
+        el("button", {
+          class:"btn",
+          type:"button",
+          style: `
+            justify-content:flex-start;
+            border-radius:14px;
+            text-align:left;
+            padding:12px;
+            ${!active ? "border-color: rgba(138,167,255,.35); background: rgba(138,167,255,.10); color: var(--text);" : ""}
+          `
+        },
+          el("div", { style:"display:grid; gap:4px" },
+            el("div", { style:"font-weight:650" }, "All series"),
+            el("div", { class:"sub" }, "Overview + counts")
+          )
+        )
+      ).addEventListener("click", () => {
+        setQS("s", "");
+        renderOverview();
+      });
+    }
+
+    function renderOverview(){
+      detail.innerHTML = "";
+      detail.appendChild(el("p", { class:"title", style:"margin:0" }, "Series overview"));
+
+      if (!seriesNames.length){
+        detail.appendChild(el("p", { class:"sub", style:"margin-top:10px" }, "No series yet."));
+        renderSeriesList(null);
+        return;
+      }
+
+      detail.appendChild(el("p", { class:"sub", style:"margin-top:8px" }, "Pick a series to view its pieces."));
+
+      // Simple overview list
+      const wrap = el("div", { style:"display:grid; gap:10px; margin-top:14px" });
+
+      for (const name of seriesNames){
+        const c = counts.get(name) || 0;
+        const desc = (seriesMeta[name]?.description || "").trim();
+
+        wrap.appendChild(
+          el("div", { class:"card", style:"box-shadow:none" },
+            el("div", { class:"meta" },
+              el("div", { style:"display:flex; justify-content:space-between; gap:10px; align-items:baseline" },
+                el("div", { style:"font-weight:650" }, name),
+                el("div", { class:"sub" }, `${c} piece${c===1?"":"s"}`)
+              ),
+              desc ? el("div", { class:"sub", style:"margin-top:8px; font-size:15px; line-height:1.65" }, desc) : null,
+              el("div", { style:"margin-top:12px" },
+                el("a", {
+                  class:"btn",
+                  href:`series.html?s=${encodeURIComponent(name)}`
+                }, "Open series →")
+              )
+            )
+          )
+        );
+      }
+
+      detail.appendChild(wrap);
+      renderSeriesList(null);
+    }
+
+    function openSeries(name){
+      const desc = (seriesMeta[name]?.description || "").trim();
+      const pieces = sortPieces(published.filter(a => a.series === name));
+
+      detail.innerHTML = "";
+
+      detail.appendChild(
+        el("div", { style:"display:flex; gap:10px; align-items:baseline; justify-content:space-between; flex-wrap:wrap" },
+          el("p", { class:"title", style:"margin:0" }, name),
+          el("span", { class:"sub" }, `${pieces.length} piece${pieces.length===1?"":"s"}`)
+        )
+      );
+
+      if (desc){
+        detail.appendChild(el("p", { class:"sub", style:"margin-top:10px; font-size:15px; line-height:1.65" }, desc));
+      } else {
+        detail.appendChild(el("p", { class:"sub", style:"margin-top:10px" }, "No description yet (add it in Studio → Series)."));
+      }
+
+      detail.appendChild(el("hr", { class:"sep" }));
+
+      const grid = el("div", { class:"grid", style:"margin-top:8px" });
+      detail.appendChild(grid);
+
+      if (!pieces.length){
+        grid.appendChild(
+          el("div", { class:"card", style:"grid-column: span 12; box-shadow:none" },
+            el("div", { class:"meta" },
+              el("p", { class:"title" }, "No published pieces in this series"),
+              el("p", { class:"sub" }, "Publish pieces in Studio to show them here.")
+            )
+          )
+        );
+        renderSeriesList(name);
+        return;
+      }
+
+      pieces.forEach((a, idx) => {
+        grid.appendChild(
+          el("a", {
+            class:"card",
+            href:`artwork.html?id=${encodeURIComponent(a.id)}`,
+            style:"grid-column: span 4"
+            //onclick:(e)=>{ e.preventDefault(); openLightbox(pieces, idx);}
+          },
+            el("div", { class:"thumb" },
+              el("img", { src:a.thumb || a.image, alt:a.alt || a.title || "Artwork", loading:"lazy" })
+            ),
+            el("div", { class:"meta" },
+              el("p", { class:"title" }, a.title || "Untitled"),
+              el("p", { class:"sub" }, [a.year || null, a.featured ? "Featured" : null].filter(Boolean).join(" • ") || " ")
+            )
+          )
+        );
+      });
+
+      // responsive spans
+      const mq1 = window.matchMedia("(max-width: 920px)");
+      const mq2 = window.matchMedia("(max-width: 620px)");
+      const apply = () => {
+        const span = mq2.matches ? 12 : (mq1.matches ? 6 : 4);
+        grid.querySelectorAll(".card").forEach(c => c.style.gridColumn = `span ${span}`);
+      };
+      apply();
+      mq1.onchange = apply;
+      mq2.onchange = apply;
+
+      renderSeriesList(name);
+    }
+
+    // initial route
+    const initial = qs("s");
+    if (initial && seriesNames.includes(initial)) openSeries(initial);
+    else renderOverview();
+  </script>
+</body>
+</html>

@@ -18,6 +18,10 @@
         <a href="series.html">Series</a>
       </nav>
 
+      <button class="btn" id="syncBtn" type="button">Sync from backend</button>
+      <span class="sub" id="syncStatus" aria-live="polite"></span>
+
+
       <div class="theme-controls">
         <div class="segmented" role="group" aria-label="Theme mode">
           <button type="button" data-theme-mode="system">System</button>
@@ -272,6 +276,37 @@
     });
 
     render();
+
+
+
+
+
+    import { syncFromBackend, getAdminToken } from "./admin.js";
+
+    const syncBtn = document.getElementById("syncBtn");
+    const syncStatus = document.getElementById("syncStatus");
+
+    function setSyncStatus(msg){ syncStatus.textContent = msg || ""; }
+
+    syncBtn?.addEventListener("click", async () => {
+      if (!getAdminToken()) {
+        setSyncStatus("Set admin token in Upload page first.");
+        return;
+      }
+      setSyncStatus("Syncing…");
+      try {
+        const state = await loadState();
+        await syncFromBackend(state);
+        setSyncStatus("Synced.");
+        // If your dashboard renders a list/grid from state, call your render() now:
+        // render();
+      } catch (e) {
+        setSyncStatus(`Sync failed: ${e?.message || e}`);
+      }
+
+      render();
+    });
+
   </script>
 </body>
 </html>

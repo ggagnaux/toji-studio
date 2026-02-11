@@ -170,3 +170,92 @@ export async function apiFetch(path, options = {}) {
   return res.text();
 }
 
+
+
+
+
+
+
+
+
+
+
+// --------------------
+// Backend sync helpers
+// --------------------
+
+function mergeById(existing, incoming) {
+  const map = new Map((existing || []).map(a => [a.id, a]));
+  for (const a of (incoming || [])) map.set(a.id, a);
+  return Array.from(map.values());
+}
+
+export async function syncFromBackend(state) {
+  // Fetch all artworks from backend and merge into local state cache
+  const rows = await apiFetch("/api/admin/artworks", { method: "GET" });
+
+  // Ensure media URLs are usable when front-end is on a different origin
+  const normalize = (p) => {
+    if (!p) return p;
+    if (p.startsWith("http")) return p;
+    if (p.startsWith("/")) return `${API_BASE}${p}`;
+    return p;
+  };
+
+  const normalized = (rows || []).map(a => ({
+    ...a,
+    featured: !!a.featured,
+    tags: Array.isArray(a.tags) ? a.tags : (typeof a.tags === "string" ? safeJson(a.tags, []) : []),
+    thumb: normalize(a.thumb),
+    image: normalize(a.image)
+  }));
+
+  state.artworks = mergeById(state.artworks || [], normalized);
+
+  // Optional: rebuild tags list from artworks if your state keeps one
+  // (If you already have helper functions for tags/series, keep using them.)
+  // Here’s a safe minimal:
+  state.tags = state.tags || [];
+  for (const a of state.artworks) {
+    for (const t of (a.tags || [])) {
+      if (!state.tags.includes(t)) state.tags.push(t);
+    }
+  }
+
+  state.series = state.series || [];
+  for (const a of state.artworks) {
+    if (a.series && !state.series.includes(a.series)) state.series.push(a.series);
+  }
+
+  saveState(state);
+  return state.artworks;
+}
+
+export async function patchArtworkToBackend(id, patch) {
+  // patch: {title, year, series, description, alt, tags, status, featured, sortOrder}
+  const updated = await apiFetch(`/api/admin/artworks/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch || {})
+  });
+
+  // normalize media
+  const normalize = (p) => {
+    if (!p) return p;
+    if (p.startsWith("http")) return p;
+    if (p.startsWith("/")) return `${API_BASE}${p}`;
+    return p;
+  };
+
+  updated.thumb = normalize(updated.thumb);
+  updated.image = normalize(updated.image);
+  updated.featured = !!updated.featured;
+  if (!Array.isArray(updated.tags)) updated.tags = safeJson(updated.tags, []);
+
+  return updated;
+}
+
+function safeJson(s, fallback) {
+  try { return JSON.parse(s); } catch { return fallback; }
+}
+

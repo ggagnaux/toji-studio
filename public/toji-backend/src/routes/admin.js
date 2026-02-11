@@ -37,13 +37,14 @@ adminRouter.patch("/admin/artworks/:id", (req, res) => {
     updatedAt
   };
 
-  db.prepare(`
+    db.prepare(`
     UPDATE artworks SET
-      title=@title, year=@year, series=@series, description=@description, alt=@alt,
-      status=@status, featured=@featured, sortOrder=@sortOrder, tags=@tags,
-      publishedAt=@publishedAt, updatedAt=@updatedAt
-    WHERE id='${id}'
-  `).run(next);
+        title=@title, year=@year, series=@series, description=@description, alt=@alt,
+        status=@status, featured=@featured, sortOrder=@sortOrder, tags=@tags,
+        publishedAt=@publishedAt, updatedAt=@updatedAt
+    WHERE id=@id
+    `).run({ id, ...next });
+
 
   const out = db.prepare(`
     SELECT a.*,

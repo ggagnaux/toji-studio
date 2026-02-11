@@ -48,6 +48,9 @@
         <a href="series.html">Series</a>
         <a href="../gallery.html">View public gallery</a>
         <hr class="sep" />
+        <button class="btn" id="cleanupBtn" type="button">Cleanup files</button>
+        <span class="sub" id="cleanupStatus" aria-live="polite"></span>
+        <hr class="sep" />
         <div class="sub">Quick filters</div>
         <div class="pillrow" style="margin-top:10px">
           <span class="pill" id="countAll">All</span>
@@ -306,6 +309,42 @@
 
       render();
     });
+
+
+
+
+
+
+    //import { getAdminToken } from "./admin.js";
+
+    const cleanupBtn = document.getElementById("cleanupBtn");
+    const cleanupStatus = document.getElementById("cleanupStatus");
+    const setCleanup = (m)=> cleanupStatus.textContent = m || "";
+
+    cleanupBtn?.addEventListener("click", async () => {
+      if (!confirm("Cleanup orphan files (variants/originals) and broken variant rows?")) return;
+
+      if (!getAdminToken()) return setCleanup("Set admin token in Upload page first.");
+
+      setCleanup("Cleaning…");
+
+      try{
+        const { API_BASE } = await import("./admin.js");
+        const res = await fetch(`${API_BASE}/api/admin/cleanup`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${getAdminToken()}` }
+        });
+
+        const j = await res.json();
+        if (!res.ok) throw new Error(j?.error || `${res.status} ${res.statusText}`);
+
+        setCleanup(`Done. Deleted variants: ${j.deletedVariantFiles}, originals: ${j.deletedOriginalFiles}, broken rows: ${j.deletedBrokenVariantRows}.`);
+      }catch(err){
+        setCleanup(`Cleanup failed: ${err?.message || err}`);
+      }
+    });
+
+
 
   </script>
 </body>

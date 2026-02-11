@@ -239,6 +239,35 @@
       }
     }
 
+    async function deleteArtwork(){
+      if (!confirm("Delete this artwork? This removes the original + variants on the server and cannot be undone.")) return;
+
+      const token = getAdminToken();
+      if (!token) return setStatusText("No admin token — set it in Upload page.", 1600);
+
+      setStatusText("Deleting…", 0);
+
+      try{
+        const { API_BASE } = await import("./admin.js");
+        const res = await fetch(`${API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}`, {
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${getAdminToken()}` }
+        });
+
+        const j = await res.json().catch(()=> ({}));
+        if (!res.ok) throw new Error(j?.error || `${res.status} ${res.statusText}`);
+
+        // Remove from local cache
+        const idx = state.artworks.findIndex(x => x.id === a.id);
+        if (idx >= 0) state.artworks.splice(idx, 1);
+        saveState(state);
+
+        // Go back to dashboard
+        location.href = "index.html";
+      }catch(err){
+        setStatusText(`Delete failed: ${err?.message || err}`, 2500);
+      }
+    }
 
 
 
@@ -331,6 +360,19 @@
 
         el("hr", { class:"sep" }),
 
+        // el("div", { class:"pillrow" },
+        //   el("label", { class:"pill", style:"cursor:pointer" },
+        //     el("input", {
+        //       type:"checkbox",
+        //       style:"margin-right:8px",
+        //       checked: a.featured ? "" : null,
+        //       onchange:(e)=>{ a.featured = e.target.checked; scheduleBackendSave(); }
+        //     }),
+        //     "Featured"
+        //   ),
+        //   el("a", { class:"btn mini", href:"index.html", style:"margin-left:auto" }, "Done")
+        // )
+
         el("div", { class:"pillrow" },
           el("label", { class:"pill", style:"cursor:pointer" },
             el("input", {
@@ -341,7 +383,15 @@
             }),
             "Featured"
           ),
-          el("a", { class:"btn mini", href:"index.html", style:"margin-left:auto" }, "Done")
+
+          el("button", {
+            class:"btn mini",
+            type:"button",
+            style:"margin-left:auto",
+            onclick: deleteArtwork
+          }, "Delete"),
+
+          el("a", { class:"btn mini", href:"index.html" }, "Done")
         )
       )
     );

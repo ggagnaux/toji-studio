@@ -18,10 +18,6 @@
         <a href="series.html">Series</a>
       </nav>
 
-      <button class="btn" id="syncBtn" type="button">Sync from backend</button>
-      <span class="sub" id="syncStatus" aria-live="polite"></span>
-
-
       <div class="theme-controls">
         <div class="segmented" role="group" aria-label="Theme mode">
           <button type="button" data-theme-mode="system">System</button>
@@ -38,7 +34,7 @@
   <main class="container">
     <section class="hero" style="padding-bottom:10px">
       <h1>Studio Dashboard</h1>
-      <p>Manage drafts, published work, and hidden pieces. (Front-end mock with localStorage persistence.)</p>
+      <p>Manage drafts, published work, and hidden pieces.</p>
     </section>
 
     <div class="admin-layout">
@@ -48,8 +44,10 @@
         <a href="series.html">Series</a>
         <a href="../gallery.html">View public gallery</a>
         <hr class="sep" />
+
         <button class="btn" id="cleanupBtn" type="button">Cleanup files</button>
         <span class="sub" id="cleanupStatus" aria-live="polite"></span>
+
         <hr class="sep" />
         <div class="sub">Quick filters</div>
         <div class="pillrow" style="margin-top:10px">
@@ -99,7 +97,7 @@
         <footer class="footer">
           <div class="row">
             <div>© <span id="y"></span> Toji Studios</div>
-            <div>Studio mock</div>
+            <div>Studio</div>
           </div>
         </footer>
       </section>
@@ -108,14 +106,18 @@
 
   <script type="module">
     import {
-      loadState, saveState, el, statusChip,
+      loadStateAutoSync, saveState, el, statusChip,
       setYearFooter, ensureBaseStyles,
-      sortArtworksManualFirst, ensureSeriesMeta
+      sortArtworksManualFirst, ensureSeriesMeta,
+      getAdminToken,
+      patchArtworkToBackend
     } from "./admin.js";
 
     ensureBaseStyles();
     setYearFooter();
-    const state = await loadState();
+
+    // Auto-sync on load (token permitting)
+    const state = await loadStateAutoSync();
     ensureSeriesMeta(state);
     saveState(state);
 
@@ -142,9 +144,11 @@
       const pub = state.artworks.filter(a => a.status === "published").length;
       const draft = state.artworks.filter(a => a.status === "draft").length;
       const hidden = state.artworks.filter(a => a.status === "hidden").length;
+
       document.getElementById("kPub").textContent = pub;
       document.getElementById("kDraft").textContent = draft;
       document.getElementById("kHidden").textContent = hidden;
+
       document.getElementById("countAll").textContent = `All ${all}`;
       document.getElementById("countPub").textContent = `Published ${pub}`;
       document.getElementById("countDraft").textContent = `Draft ${draft}`;
@@ -161,13 +165,90 @@
       return tabOk && qOk;
     }
 
-    function setStatus(id, next){
-      const a = state.artworks.find(x => x.id === id);
-      if (!a) return;
-      a.status = next;
+    function findById(id){ return state.artworks.find(x => x.id === id); }
+
+    function localTouch(a){
       a.updatedAt = new Date().toISOString();
-      if (next === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
       saveState(state);
+    }
+
+    async function writeThrough(id, patch, { force = false } = {}){
+      // Always update local cache first (snappy UI)
+      const a = findById(id);
+      if (a) Object.assign(a, patch);
+
+      // Handle publishedAt rule locally
+      if (a && patch.status === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
+
+      if (a) localTouch(a);
+
+      // No token? local-only
+      if (!getAdminToken()) return;
+
+      try {
+        const updated = await patchArtworkToBackend(id, patch);
+        // Merge backend truth back into local cache
+        const target = findById(id);
+        if (target) Object.assign(target, updated);
+        localTouch(target || a);
+      } catch (e) {
+        // Keep local-only if backend fails
+        console.warn("Dashboard write-through failed; local cache kept.", e);
+        if (force) render();
+      }
+    }
+
+    // Batch write-through for multiple rows (e.g., manual ordering)
+    async function writeThroughBatch(patches){
+      // Local first
+      for (const { id, patch } of patches){
+        const a = findById(id);
+        if (a) Object.assign(a, patch);
+        if (a && patch.status === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
+        if (a) a.updatedAt = new Date().toISOString();
+      }
+      saveState(state);
+
+      if (!getAdminToken()) return;
+
+      // Backend: best-effort parallel
+      const jobs = patches.map(({ id, patch }) =>
+        patchArtworkToBackend(id, patch)
+          .then(updated => ({ ok:true, id, updated }))
+          .catch(err => ({ ok:false, id, err }))
+      );
+
+      const results = await Promise.all(jobs);
+
+      // Merge successes
+      for (const r of results){
+        if (!r.ok) continue;
+        const a = findById(r.id);
+        if (a) Object.assign(a, r.updated);
+      }
+      saveState(state);
+
+      // If anything failed, don't block UI; just log
+      const fails = results.filter(r => !r.ok);
+      if (fails.length) console.warn("Some order updates failed; local cache kept for those.", fails);
+    }
+
+    function setStatus(id, next){
+      const a = findById(id);
+      if (!a) return;
+
+      const patch = { status: next };
+      // publishedAt handled in writeThrough
+      writeThrough(id, patch, { force:true });
+      render();
+    }
+
+    function toggleFeatured(id){
+      const a = findById(id);
+      if (!a) return;
+
+      const next = !a.featured;
+      writeThrough(id, { featured: next }, { force:true });
       render();
     }
 
@@ -184,15 +265,21 @@
       const [moved] = ordered.splice(from, 1);
       ordered.splice(to, 0, moved);
 
+      // Reassign sortOrder (higher first)
       let base = 1000;
+      const patches = [];
       for (const a of ordered){
         a.sortOrder = base;
         base -= 10;
         a.updatedAt = new Date().toISOString();
+        patches.push({ id: a.id, patch: { sortOrder: a.sortOrder } });
       }
 
       saveState(state);
       render();
+
+      // Write-through to backend (best effort)
+      writeThroughBatch(patches);
     }
 
     function render(){
@@ -236,12 +323,7 @@
               el("button", {
                 class:"btn mini",
                 type:"button",
-                onclick:()=>{
-                  a.featured = !a.featured;
-                  a.updatedAt = new Date().toISOString();
-                  saveState(state);
-                  render();
-                }
+                onclick:()=>toggleFeatured(a.id)
               }, a.featured ? "Unfeature" : "Feature"),
 
               el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"published"), type:"button" }, "Publish"),
@@ -279,43 +361,9 @@
 
     render();
 
-
-
-
-
-    import { syncFromBackend, getAdminToken } from "./admin.js";
-
-    const syncBtn = document.getElementById("syncBtn");
-    const syncStatus = document.getElementById("syncStatus");
-
-    function setSyncStatus(msg){ syncStatus.textContent = msg || ""; }
-
-    syncBtn?.addEventListener("click", async () => {
-      if (!getAdminToken()) {
-        setSyncStatus("Set admin token in Upload page first.");
-        return;
-      }
-      setSyncStatus("Syncing…");
-      try {
-        const state = await loadState();
-        await syncFromBackend(state);
-        setSyncStatus("Synced.");
-        // If your dashboard renders a list/grid from state, call your render() now:
-        // render();
-      } catch (e) {
-        setSyncStatus(`Sync failed: ${e?.message || e}`);
-      }
-
-      render();
-    });
-
-
-
-
-
-
-    //import { getAdminToken } from "./admin.js";
-
+    // ---------------------------
+    // Cleanup files (admin-only)
+    // ---------------------------
     const cleanupBtn = document.getElementById("cleanupBtn");
     const cleanupStatus = document.getElementById("cleanupStatus");
     const setCleanup = (m)=> cleanupStatus.textContent = m || "";
@@ -342,9 +390,7 @@
         setCleanup(`Cleanup failed: ${err?.message || err}`);
       }
     });
-
-
-
   </script>
+
 </body>
 </html>

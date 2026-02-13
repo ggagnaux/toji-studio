@@ -178,6 +178,30 @@ export async function apiFetch(path, options = {}) {
 
 
 
+// Loads local state immediately, then (if token exists) syncs from backend.
+// Use this in Studio pages instead of loadState().
+export async function loadStateAutoSync() {
+  const state = await loadState();
+
+  // No token => keep local-only UX (useful offline)
+  if (!getAdminToken()) return state;
+
+  try {
+    await syncFromBackend(state); // this should also call syncSeriesFromBackend inside it (as we set up)
+  } catch (e) {
+    // Silent-ish fallback: keep local cache if backend is unavailable
+    // (Optionally log)
+    console.warn("Auto-sync failed; using local cache.", e);
+  }
+
+  return state;
+}
+
+
+
+
+
+
 
 
 // --------------------

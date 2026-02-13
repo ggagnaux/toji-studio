@@ -53,7 +53,6 @@
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center">
             <button class="btn primary" id="createBtn" type="button">Create</button>
-            <button class="btn" id="syncBtn" type="button">Sync</button>
             <span class="sub" id="status" aria-live="polite"></span>
           </div>
 
@@ -82,7 +81,7 @@
 
   <script type="module">
     import {
-      loadState, saveState, el, setYearFooter, ensureBaseStyles,
+      loadStateAutoSync, saveState, el, setYearFooter, ensureBaseStyles,
       getAdminToken,
       syncSeriesFromBackend,
       apiUpsertSeries,
@@ -93,7 +92,7 @@
     ensureBaseStyles();
     setYearFooter();
 
-    const state = await loadState();
+    const state = await loadStateAutoSync();
     state.seriesMeta = state.seriesMeta || {};
 
     const listEl = document.getElementById("list");
@@ -335,20 +334,6 @@
         }
       } else {
         setStatus("Created locally (no token).", 1400);
-      }
-    });
-
-    // Sync
-    document.getElementById("syncBtn").addEventListener("click", async () => {
-      if (!getAdminToken()) return setStatus("Set admin token first (Upload page).", 1800);
-      setStatus("Syncing…", 0);
-      try {
-        await syncSeriesFromBackend(state);
-        setStatus("Synced.");
-        renderList();
-        if (activeSlug && state.seriesMeta[activeSlug]) renderEditor(activeSlug);
-      } catch (e) {
-        setStatus(`Sync failed: ${e?.message || e}`, 2500);
       }
     });
 

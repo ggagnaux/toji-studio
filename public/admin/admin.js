@@ -227,6 +227,8 @@ export async function syncFromBackend(state) {
     if (a.series && !state.series.includes(a.series)) state.series.push(a.series);
   }
 
+  await syncSeriesFromBackend(state);
+
   saveState(state);
   return state.artworks;
 }
@@ -259,3 +261,71 @@ function safeJson(s, fallback) {
   try { return JSON.parse(s); } catch { return fallback; }
 }
 
+
+
+
+
+
+
+
+
+
+export function slugifySeries(name){
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+export async function apiGetSeries(){
+  return apiFetch("/api/admin/series", { method:"GET" });
+}
+
+export async function apiUpsertSeries(slug, payload){
+  return apiFetch(`/api/admin/series/${encodeURIComponent(slug)}`, {
+    method:"PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload || {})
+  });
+}
+
+export async function apiDeleteSeries(slug){
+  return apiFetch(`/api/admin/series/${encodeURIComponent(slug)}`, { method:"DELETE" });
+}
+
+// Extend your existing syncFromBackend(state) to also sync series meta
+// Add this inside syncFromBackend after artworks merge:
+export async function syncSeriesFromBackend(state){
+  const rows = await apiGetSeries();
+
+  const normalize = (p) => {
+    if (!p) return p;
+    if (p.startsWith("http")) return p;
+    if (p.startsWith("/")) return `${API_BASE}${p}`;
+    return p;
+  };
+
+  state.seriesMeta = state.seriesMeta || {};
+  state.series = state.series || [];
+
+  for (const r of (rows || [])) {
+    const slug = r.slug;
+    state.seriesMeta[slug] = {
+      slug,
+      name: r.name,
+      description: r.description || "",
+      sortOrder: Number(r.sortOrder || 0),
+      isPublic: !!r.isPublic,
+      coverArtworkId: r.coverArtworkId || "",
+      coverThumb: normalize(r.coverThumb)
+    };
+
+    // Keep a convenient display list too (names)
+    if (r.name && !state.series.includes(r.name)) state.series.push(r.name);
+  }
+
+  saveState(state);
+  return rows;
+}

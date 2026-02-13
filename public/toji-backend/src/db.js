@@ -39,6 +39,21 @@ CREATE TABLE IF NOT EXISTS variants (
   createdAt TEXT,
   UNIQUE(artworkId, kind)
 );
+
+
+CREATE TABLE IF NOT EXISTS series (
+  slug TEXT PRIMARY KEY,               -- stable key
+  name TEXT NOT NULL,                  -- display name
+  description TEXT DEFAULT '',
+  sortOrder INTEGER DEFAULT 0,
+  isPublic INTEGER DEFAULT 1,          -- 1=show publicly, 0=hidden
+  coverArtworkId TEXT DEFAULT NULL,    -- optional
+  createdAt TEXT,
+  updatedAt TEXT
+);
+
+
+
 `);
 
 export function nowIso() {

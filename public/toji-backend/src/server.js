@@ -8,6 +8,8 @@ import { requireAdmin } from "./auth.js";
 import { publicRouter } from "./routes/public.js";
 import { adminRouter } from "./routes/admin.js";
 import { uploadRouter } from "./routes/upload.js";
+import { seriesRouter } from "./routes/series.js";
+
 
 const app = express();
 
@@ -31,6 +33,7 @@ app.use("/api", (req, res, next) => {
 });
 app.use("/api", adminRouter);
 app.use("/api", uploadRouter);
+app.use("/api", seriesRouter);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 

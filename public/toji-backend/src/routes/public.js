@@ -33,3 +33,29 @@ publicRouter.get("/public/artworks/:id", (req, res) => {
 
   res.json({ ...r, featured: !!r.featured, tags: jsonArray(r.tags) });
 });
+
+
+publicRouter.get("/public/series", (req, res) => {
+  // Public series meta (isPublic=1) + coverThumb + published piece count
+  const rows = db.prepare(`
+    SELECT
+      s.slug,
+      s.name,
+      s.description,
+      s.sortOrder,
+      s.isPublic,
+      s.coverArtworkId,
+      (SELECT path FROM variants v
+        WHERE v.artworkId=s.coverArtworkId AND v.kind='thumb') AS coverThumb,
+      (SELECT COUNT(*) FROM artworks a
+        WHERE a.status='published' AND a.series = s.name) AS publishedCount
+    FROM series s
+    WHERE s.isPublic=1
+    ORDER BY s.sortOrder ASC, s.name ASC
+  `).all();
+
+  res.json(rows.map(r => ({
+    ...r,
+    isPublic: !!r.isPublic
+  })));
+});

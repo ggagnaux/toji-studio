@@ -9,7 +9,7 @@
 <body>
   <header class="header">
     <div class="container nav">
-      <a class="brand" href="../index.html">Toji Studios <small>series</small></a>
+      <a class="brand" href="../index.html">Toji Studios <small>studio</small></a>
 
       <nav class="navlinks" aria-label="Primary">
         <a href="../index.html">Public</a>
@@ -27,22 +27,55 @@
         <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
       </div>
 
-      <a class="btn" href="index.html">Back</a>
+      <a class="btn" href="index.html">Dashboard</a>
     </div>
   </header>
 
   <main class="container">
     <section class="hero" style="padding-bottom:10px">
       <h1>Series Manager</h1>
-      <p>Set series descriptions and order pieces within each series (front-end only).</p>
+      <p>Manage series metadata: ordering, description, public visibility, and a cover image.</p>
     </section>
 
-    <section class="grid" id="root"></section>
+    <section class="grid">
+      <!-- Left: list -->
+      <div class="card" style="grid-column: span 5">
+        <div class="meta">
+          <div style="display:flex; gap:10px; align-items:baseline; justify-content:space-between; flex-wrap:wrap">
+            <p class="title" style="margin:0">Series</p>
+            <span class="sub" id="count">—</span>
+          </div>
+
+          <div class="field" style="margin-top:12px">
+            <div class="sub">New series name</div>
+            <input id="newName" placeholder="e.g., Dark Fields" />
+          </div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center">
+            <button class="btn primary" id="createBtn" type="button">Create</button>
+            <button class="btn" id="syncBtn" type="button">Sync</button>
+            <span class="sub" id="status" aria-live="polite"></span>
+          </div>
+
+          <hr class="sep" />
+
+          <div id="list" style="display:grid; gap:10px"></div>
+        </div>
+      </div>
+
+      <!-- Right: editor -->
+      <div class="card" style="grid-column: span 7">
+        <div class="meta" id="editor">
+          <p class="title" style="margin:0">Select a series</p>
+          <p class="sub" style="margin-top:8px">Pick a series on the left to edit its metadata.</p>
+        </div>
+      </div>
+    </section>
 
     <footer class="footer">
       <div class="row">
         <div>© <span id="y"></span> Toji Studios</div>
-        <div>Series manager</div>
+        <div>Series</div>
       </div>
     </footer>
   </main>
@@ -50,141 +83,317 @@
   <script type="module">
     import {
       loadState, saveState, el, setYearFooter, ensureBaseStyles,
-      sortArtworksManualFirst, ensureSeriesMeta
+      getAdminToken,
+      syncSeriesFromBackend,
+      apiUpsertSeries,
+      apiDeleteSeries,
+      slugifySeries
     } from "./admin.js";
 
     ensureBaseStyles();
     setYearFooter();
 
     const state = await loadState();
-    ensureSeriesMeta(state);
-    saveState(state);
+    state.seriesMeta = state.seriesMeta || {};
 
-    const root = document.getElementById("root");
+    const listEl = document.getElementById("list");
+    const editor = document.getElementById("editor");
+    const count = document.getElementById("count");
+    const status = document.getElementById("status");
+    const newName = document.getElementById("newName");
 
-    function render(){
-      root.innerHTML = "";
+    let activeSlug = null;
 
-      const series = (state.series || []).slice().sort((a,b)=>{
-        const A = state.seriesMeta?.[a]?.sortOrder || 0;
-        const B = state.seriesMeta?.[b]?.sortOrder || 0;
-        return (A - B) || a.localeCompare(b);
-      });
+    const setStatus = (m, ms=900) => {
+      status.textContent = m || "";
+      if (m && ms) setTimeout(() => { if (status.textContent === m) status.textContent = ""; }, ms);
+    };
 
-      const left = el("div", { class:"card", style:"grid-column: span 5" },
-        el("div", { class:"meta" },
-          el("p", { class:"title" }, "Series"),
-          el("p", { class:"sub" }, "Select a series to edit."),
-          el("div", { id:"seriesList", style:"display:grid; gap:10px; margin-top:12px" })
-        )
-      );
-
-      const right = el("div", { class:"card", style:"grid-column: span 7" },
-        el("div", { class:"meta" },
-          el("p", { class:"title" }, "Edit"),
-          el("p", { class:"sub" }, "Pick a series on the left.")
-        )
-      );
-
-      root.appendChild(left);
-      root.appendChild(right);
-
-      const list = left.querySelector("#seriesList");
-
-      series.forEach(name => {
-        const btn = el("button", { class:"btn", type:"button", style:"justify-content:flex-start" }, name);
-        btn.addEventListener("click", ()=> openSeries(name, right));
-        list.appendChild(btn);
-      });
+    function seriesArray(){
+      return Object.values(state.seriesMeta || {})
+        .sort((a,b) => (Number(a.sortOrder||0) - Number(b.sortOrder||0)) || String(a.name||"").localeCompare(String(b.name||"")));
     }
 
-    function openSeries(name, rightHost){
-      const meta = state.seriesMeta[name] || (state.seriesMeta[name] = { description:"", sortOrder:0 });
+    function renderList(){
+      const rows = seriesArray();
+      count.textContent = `${rows.length} series`;
+      listEl.innerHTML = "";
 
-      rightHost.innerHTML = "";
-      rightHost.appendChild(
-        el("div", { class:"meta" },
-          el("div", { style:"display:flex; gap:10px; align-items:center; flex-wrap:wrap" },
-            el("p", { class:"title", style:"margin:0" }, name),
-            el("span", { class:"sub" }, "Drag to reorder within series")
-          ),
+      if (!rows.length){
+        listEl.appendChild(el("div", { class:"sub" }, "No series yet. Create one above."));
+        return;
+      }
 
-          el("div", { class:"field", style:"margin-top:12px" },
-            el("div", { class:"sub" }, "Series description"),
-            (() => {
-              const t = el("textarea", {}, meta.description || "");
-              t.addEventListener("input", (e)=> {
-                meta.description = e.target.value;
-                saveState(state);
-              });
-              return t;
-            })()
-          ),
-
-          el("hr", { class:"sep" }),
-
-          el("p", { class:"title" }, "Pieces"),
-          el("div", { id:"pieceList", style:"display:grid; gap:10px; margin-top:12px" })
-        )
-      );
-
-      const pieceList = rightHost.querySelector("#pieceList");
-
-      let dragId = null;
-
-      function rerenderPieces(){
-        pieceList.innerHTML = "";
-        const current = sortArtworksManualFirst(state.artworks.filter(a => a.series === name));
-
-        current.forEach(a => {
-          const row = el("div", {
-            class:"card",
-            draggable:"true",
-            style:"box-shadow:none; cursor:grab",
-            ondragstart:()=>{ dragId = a.id; },
-            ondragover:(e)=>{ e.preventDefault(); },
-            ondrop:(e)=>{ e.preventDefault(); if (dragId) move(dragId, a.id); }
-          },
-            el("div", { style:"display:flex; gap:10px; align-items:center; padding:10px" },
-              el("div", { class:"thumbSm" }, el("img", { src:a.thumb || a.image, alt:a.title, loading:"lazy" })),
-              el("div", { style:"min-width:0" },
-                el("div", { style:"font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis" }, a.title),
-                el("div", { class:"sub" }, `${a.status} • ${a.year || "—"}`)
-              ),
-              el("a", { class:"btn mini", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"margin-left:auto" }, "Edit")
+      for (const s of rows){
+        const isActive = s.slug === activeSlug;
+        const btn = el("button", {
+          class:"btn",
+          type:"button",
+          style: `
+            justify-content:flex-start; text-align:left; padding:12px; border-radius:14px;
+            ${isActive ? "border-color: rgba(138,167,255,.35); background: rgba(138,167,255,.10);" : ""}
+          `
+        },
+          el("div", { style:"display:flex; gap:12px; align-items:center" },
+            s.coverThumb ? el("img", { src:s.coverThumb, style:"width:48px;height:48px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" }) : null,
+            el("div", { style:"display:grid; gap:4px; min-width:0" },
+              el("div", { style:"font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" }, s.name || s.slug),
+              el("div", { class:"sub" }, `${s.isPublic ? "Public" : "Hidden"} • Order ${Number(s.sortOrder||0)}`)
             )
-          );
-          pieceList.appendChild(row);
+          )
+        );
+
+        btn.addEventListener("click", () => {
+          activeSlug = s.slug;
+          renderList();
+          renderEditor(s.slug);
         });
 
-        if (!current.length){
-          pieceList.appendChild(el("div", { class:"sub" }, "No pieces in this series yet."));
-        }
+        listEl.appendChild(btn);
       }
-
-      function move(fromId, toId){
-        const list = sortArtworksManualFirst(state.artworks.filter(a => a.series === name));
-        const from = list.findIndex(x => x.id === fromId);
-        const to = list.findIndex(x => x.id === toId);
-        if (from < 0 || to < 0) return;
-
-        const [m] = list.splice(from, 1);
-        list.splice(to, 0, m);
-
-        let base = 1000;
-        for (const a of list){
-          a.sortOrder = base;
-          base -= 10;
-          a.updatedAt = new Date().toISOString();
-        }
-        saveState(state);
-        rerenderPieces();
-      }
-
-      rerenderPieces();
     }
 
-    render();
+    function artworkOptions(){
+      // Published + drafts are both valid for cover selection
+      return (state.artworks || [])
+        .slice()
+        .sort((a,b) => String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")))
+        .map(a => ({
+          id: a.id,
+          label: `${a.title || "Untitled"} (${a.id})`,
+          thumb: a.thumb || ""
+        }));
+    }
+
+    function renderEditor(slug){
+      const s = state.seriesMeta[slug];
+      if (!s){
+        editor.innerHTML = "";
+        editor.appendChild(el("div", { class:"sub" }, "Series not found."));
+        return;
+      }
+
+      editor.innerHTML = "";
+      editor.appendChild(
+        el("div", { style:"display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap" },
+          el("p", { class:"title", style:"margin:0" }, `Edit: ${s.name}`),
+          el("span", { class:"sub" }, `slug: ${s.slug}`)
+        )
+      );
+
+      const saveMsg = el("span", { class:"sub", "aria-live":"polite" }, "");
+
+      const nameField = inputField("Name", s.name || "", (v)=>{ s.name = v; queueSave(); });
+      const descField = textareaField("Description", s.description || "", (v)=>{ s.description = v; queueSave(); });
+      const orderField = inputField("Sort order (lower = earlier)", String(s.sortOrder ?? 0), (v)=>{ s.sortOrder = Number(v || 0); queueSave(); }, "number");
+      const pubField = checkboxField("Public", !!s.isPublic, (v)=>{ s.isPublic = v; queueSave(true); });
+
+      const covers = artworkOptions();
+      const coverSelect = selectField(
+        "Cover artwork",
+        [{ value:"", label:"— none —" }, ...covers.map(o => ({ value:o.id, label:o.label }))],
+        s.coverArtworkId || "",
+        (v)=>{ s.coverArtworkId = v; queueSave(true); }
+      );
+
+      const coverPreview = el("div", { class:"sub", style:"margin-top:10px" }, "");
+      const refreshCoverPreview = () => {
+        coverPreview.innerHTML = "";
+        const opt = covers.find(x => x.id === (s.coverArtworkId || ""));
+        if (!opt) return coverPreview.appendChild(el("span", {}, "No cover selected."));
+        if (opt.thumb) coverPreview.appendChild(el("img", { src: opt.thumb, style:"width:120px;height:120px;border-radius:16px;object-fit:cover;border:1px solid var(--line);display:block" }));
+      };
+      refreshCoverPreview();
+
+      editor.appendChild(el("hr", { class:"sep" }));
+      editor.appendChild(nameField);
+      editor.appendChild(descField);
+      editor.appendChild(orderField);
+      editor.appendChild(pubField);
+      editor.appendChild(coverSelect);
+      editor.appendChild(coverPreview);
+
+      editor.appendChild(el("hr", { class:"sep" }));
+
+      const saveBtn = el("button", { class:"btn primary", type:"button" }, "Save now");
+      const delBtn  = el("button", { class:"btn", type:"button" }, "Delete series");
+
+      editor.appendChild(el("div", { style:"display:flex; gap:10px; flex-wrap:wrap; align-items:center" },
+        saveBtn,
+        delBtn,
+        el("span", { style:"margin-left:auto" }, saveMsg)
+      ));
+
+      // Save logic: local immediately, backend debounced
+      let t = null;
+
+      function localSave(){
+        state.seriesMeta[slug] = { ...s };
+        saveState(state);
+        renderList();
+      }
+
+      async function backendSave(){
+        // If token missing, keep local-only
+        if (!getAdminToken()){
+          saveMsg.textContent = "Saved locally (no token).";
+          setTimeout(()=> saveMsg.textContent="", 900);
+          return;
+        }
+
+        // Use slug as stable key; allow rename without changing slug
+        const payload = {
+          name: s.name,
+          description: s.description,
+          sortOrder: Number(s.sortOrder || 0),
+          isPublic: !!s.isPublic,
+          coverArtworkId: s.coverArtworkId || ""
+        };
+
+        saveMsg.textContent = "Saving…";
+        try {
+          const out = await apiUpsertSeries(slug, payload);
+          // Merge backend response back in
+          state.seriesMeta[slug] = {
+            ...state.seriesMeta[slug],
+            ...out,
+            isPublic: !!out.isPublic
+          };
+          saveState(state);
+          saveMsg.textContent = "Saved.";
+          setTimeout(()=> saveMsg.textContent="", 900);
+          refreshCoverPreview();
+          renderList();
+        } catch (e) {
+          saveMsg.textContent = `Backend save failed (local ok): ${e?.message || e}`;
+        }
+      }
+
+      function queueSave(immediateCover=false){
+        localSave();
+        refreshCoverPreview();
+
+        clearTimeout(t);
+        t = setTimeout(()=> backendSave(), immediateCover ? 0 : 600);
+      }
+
+      saveBtn.addEventListener("click", () => backendSave());
+
+      delBtn.addEventListener("click", async () => {
+        if (!confirm(`Delete series "${s.name}"? (Does NOT change artworks)`)) return;
+
+        // local
+        delete state.seriesMeta[slug];
+        saveState(state);
+        activeSlug = null;
+        renderList();
+        editor.innerHTML = "";
+        editor.appendChild(el("div", { class:"sub" }, "Deleted locally."));
+
+        // backend
+        if (getAdminToken()){
+          try { await apiDeleteSeries(slug); }
+          catch (e) { setStatus(`Backend delete failed: ${e?.message || e}`, 2500); }
+        } else {
+          setStatus("Deleted locally (no token).", 1400);
+        }
+      });
+    }
+
+    // Create series
+    document.getElementById("createBtn").addEventListener("click", async () => {
+      const name = newName.value.trim();
+      if (!name) return setStatus("Enter a series name.", 1400);
+
+      const slug = slugifySeries(name);
+      if (!slug) return setStatus("Name produced an invalid slug.", 1400);
+
+      if (!state.seriesMeta[slug]) {
+        state.seriesMeta[slug] = {
+          slug,
+          name,
+          description: "",
+          sortOrder: seriesArray().length * 10,
+          isPublic: true,
+          coverArtworkId: ""
+        };
+        saveState(state);
+      }
+
+      activeSlug = slug;
+      newName.value = "";
+      renderList();
+      renderEditor(slug);
+
+      // Attempt backend create
+      if (getAdminToken()){
+        try {
+          await apiUpsertSeries(slug, state.seriesMeta[slug]);
+          setStatus("Created (and saved to backend).");
+        } catch(e) {
+          setStatus(`Created locally; backend failed: ${e?.message || e}`, 2500);
+        }
+      } else {
+        setStatus("Created locally (no token).", 1400);
+      }
+    });
+
+    // Sync
+    document.getElementById("syncBtn").addEventListener("click", async () => {
+      if (!getAdminToken()) return setStatus("Set admin token first (Upload page).", 1800);
+      setStatus("Syncing…", 0);
+      try {
+        await syncSeriesFromBackend(state);
+        setStatus("Synced.");
+        renderList();
+        if (activeSlug && state.seriesMeta[activeSlug]) renderEditor(activeSlug);
+      } catch (e) {
+        setStatus(`Sync failed: ${e?.message || e}`, 2500);
+      }
+    });
+
+    // -----------------------
+    // Field helpers
+    // -----------------------
+    function inputField(label, value, onChange, type = "text"){
+      const input = el("input", { type, value: value ?? "" });
+      input.addEventListener("input", (e)=> onChange(e.target.value));
+      return el("div", { class:"field", style:"margin-top:12px" },
+        el("div", { class:"sub" }, label),
+        input
+      );
+    }
+
+    function textareaField(label, value, onChange){
+      const t = el("textarea", {}, value ?? "");
+      t.addEventListener("input", (e)=> onChange(e.target.value));
+      return el("div", { class:"field", style:"margin-top:12px" },
+        el("div", { class:"sub" }, label),
+        t
+      );
+    }
+
+    function checkboxField(label, checked, onChange){
+      const input = el("input", { type:"checkbox", checked: checked ? "" : null });
+      input.addEventListener("change", (e)=> onChange(e.target.checked));
+      return el("div", { style:"display:flex; align-items:center; gap:10px; margin-top:12px" },
+        input,
+        el("label", { style:"cursor:pointer; margin:0" }, label)
+      );
+    }
+
+    function selectField(label, options, current, onChange){
+      const s = el("select", {},
+        ...options.map(o => el("option", { value:o.value, selected: o.value===current ? "" : null }, o.label))
+      );
+      s.addEventListener("change", (e)=> onChange(e.target.value));
+      return el("div", { class:"field", style:"margin-top:12px" },
+        el("div", { class:"sub" }, label),
+        s
+      );
+    }
+ 
+    renderList();
   </script>
 </body>
 </html>

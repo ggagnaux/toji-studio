@@ -268,3 +268,156 @@ input, textarea, select{
   .search{width:100%; margin-left:0}
   .segmented{ display:none; }
 }
+
+
+input, textarea, select{
+  color: var(--text);
+  background: transparent;
+}
+
+
+/* -----------------------------
+   Theme-safe dropdown styling
+------------------------------ */
+
+select{
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+
+  width:100%;
+  background: var(--panel);
+  border:1px solid var(--line);
+  border-radius:14px;
+
+  padding:10px 44px 10px 12px; /* room for arrow */
+  font:inherit;
+  line-height:1.2;
+  box-shadow:none;
+
+  /* Arrow (CSS) */
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) 50%,
+    calc(100% - 14px) 50%;
+  background-size:6px 6px, 6px 6px;
+  background-repeat:no-repeat;
+}
+
+select:hover{
+  border-color: rgba(138,167,255,.35);
+}
+[data-theme="light"] select:hover{
+  border-color: rgba(47,91,255,.28);
+}
+
+select:focus,
+select:focus-visible{
+  outline:none;
+  border-color: rgba(138,167,255,.55);
+  box-shadow: 0 0 0 3px rgba(138,167,255,.18);
+}
+[data-theme="light"] select:focus,
+[data-theme="light"] select:focus-visible{
+  border-color: rgba(47,91,255,.45);
+  box-shadow: 0 0 0 3px rgba(47,91,255,.16);
+}
+
+select:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+
+/* Try to theme the open dropdown list (browser support varies) */
+select option{
+  background: var(--panel);
+  color: var(--text);
+}
+
+/* Keep selects aligned with inputs inside .field blocks */
+.field select{
+  margin-top:6px;
+}
+
+
+
+
+
+
+
+
+
+/* -----------------------------
+   Theme-safe input styling
+------------------------------ */
+
+input, textarea{
+  width:100%;
+  background: var(--panel);
+  color: var(--text);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:10px 12px;
+  font:inherit;
+  box-shadow:none;
+}
+
+/* Textarea sizing */
+textarea{
+  min-height: 120px;
+  resize: vertical;
+}
+
+/* Hover */
+input:hover, textarea:hover{
+  border-color: rgba(138,167,255,.35);
+}
+[data-theme="light"] input:hover,
+[data-theme="light"] textarea:hover{
+  border-color: rgba(47,91,255,.28);
+}
+
+/* Focus */
+input:focus, input:focus-visible,
+textarea:focus, textarea:focus-visible{
+  outline:none;
+  border-color: rgba(138,167,255,.55);
+  box-shadow: 0 0 0 3px rgba(138,167,255,.18);
+}
+[data-theme="light"] input:focus,
+[data-theme="light"] input:focus-visible,
+[data-theme="light"] textarea:focus,
+[data-theme="light"] textarea:focus-visible{
+  border-color: rgba(47,91,255,.45);
+  box-shadow: 0 0 0 3px rgba(47,91,255,.16);
+}
+
+/* Disabled */
+input:disabled, textarea:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+
+/* Placeholder */
+input::placeholder,
+textarea::placeholder{
+  color: color-mix(in srgb, var(--muted) 85%, transparent);
+}
+
+/* Keep your search pill looking like a pill */
+.search input{
+  width:auto;
+  border:none;
+  background:transparent;
+  padding:0;
+  box-shadow:none;
+}
+.search input:focus,
+.search input:focus-visible{
+  border:none;
+  box-shadow:none;
+}
+
+

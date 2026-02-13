@@ -7,10 +7,12 @@
 /* Default theme: dark */
 :root, [data-theme="dark"]{
   --bg:#0b0c10;
-  --panel:#10121a;
+  /* --panel:#10121a; */
+  --panel:#222222;
   --text:#e9eef5;
   --muted:#aab4c0;
-  --line:rgba(255,255,255,.08);
+  /* --line:rgba(255,255,255,.08); */
+  --line:rgba(100, 100, 100, .20);
   --accent:#8aa7ff;
   --shadow: 0 12px 30px rgba(0,0,0,.35);
 }
@@ -421,3 +423,29 @@ textarea::placeholder{
 }
 
 
+
+
+
+
+
+/* -----------------------------
+   Dashboard table zebra rows
+------------------------------ */
+
+.table tbody tr:nth-child(odd){
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+}
+
+.table tbody tr:nth-child(even){
+  background: color-mix(in srgb, var(--panel) 74%, transparent);
+}
+
+/* Keep hover readable */
+.table tbody tr:hover{
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+}
+
+/* If your rows have borders, this helps them stay crisp */
+.table tbody tr{
+  border-bottom: 1px solid var(--line);
+}

@@ -78,11 +78,55 @@
           </div>
 
           <button class="btn" id="toggleOrder" type="button">Manual order: Off</button>
+
+          <!-- Bulk actions -->
+          <div id="bulkBar" style="display:none; align-items:center; gap:10px; flex-wrap:wrap">
+            <span class="sub"><b id="bulkCount">0</b> selected</span>
+
+            <select id="bulkAction" aria-label="Bulk action" style="width:auto; min-width:220px">
+              <option value="">Bulk action…</option>
+              <option value="publish">Publish</option>
+              <option value="draft">Set Draft</option>
+              <option value="hidden">Hide</option>
+              <option value="feature">Feature</option>
+              <option value="unfeature">Unfeature</option>
+              <option value="tags">Edit tags…</option>
+              <option value="clear">Clear selection</option>
+            </select>
+
+            <button class="btn" id="bulkApply" type="button">Apply</button>
+
+
+            <!-- Bulk tag editor (shown only for tag actions) -->
+            <div id="bulkTagBox" style="display:none; align-items:center; gap:10px; flex-wrap:wrap">
+              <select id="bulkTagMode" aria-label="Tag operation" style="width:auto; min-width:170px">
+                <option value="add">Add tag</option>
+                <option value="remove">Remove tag</option>
+              </select>
+
+              <input id="bulkTagInput" placeholder="tags… (comma-separated)" style="width:auto; min-width:240px" />
+
+              <select id="bulkTagPick" aria-label="Pick existing tag" style="width:auto; min-width:220px">
+                <option value="">Pick existing tag…</option>
+              </select>
+
+              <button class="btn" id="bulkTagApply" type="button">Apply tag</button>
+            </div>
+
+          </div>
+
+
+
+
+
         </div>
 
         <table class="table" aria-label="Artwork table">
           <thead>
             <tr>
+              <th style="width:36px">
+                <input id="selectAll" type="checkbox" aria-label="Select all visible" />
+              </th>
               <th>Artwork</th>
               <th>Status</th>
               <th>Tags</th>
@@ -104,293 +148,561 @@
     </div>
   </main>
 
-  <script type="module">
-    import {
-      loadStateAutoSync, saveState, el, statusChip,
-      setYearFooter, ensureBaseStyles,
-      sortArtworksManualFirst, ensureSeriesMeta,
-      getAdminToken,
-      patchArtworkToBackend
-    } from "./admin.js";
 
-    ensureBaseStyles();
-    setYearFooter();
 
-    // Auto-sync on load (token permitting)
-    const state = await loadStateAutoSync();
-    ensureSeriesMeta(state);
-    saveState(state);
+<script type="module">
+  import {
+    loadStateAutoSync, saveState, el, statusChip,
+    setYearFooter, ensureBaseStyles,
+    sortArtworksManualFirst, ensureSeriesMeta,
+    getAdminToken,
+    patchArtworkToBackend
+  } from "./admin.js";
 
-    let tab = "all";
-    let q = "";
+  ensureBaseStyles();
+  setYearFooter();
 
-    const chips = Array.from(document.querySelectorAll("[data-tab]"));
-    const qInput = document.getElementById("q");
-    const rows = document.getElementById("rows");
+  // Auto-sync on load (token permitting)
+  const state = await loadStateAutoSync();
+  ensureSeriesMeta(state);
+  saveState(state);
 
-    // Manual ordering
-    let manualOrderMode = false;
-    const toggleOrderBtn = document.getElementById("toggleOrder");
-    toggleOrderBtn.addEventListener("click", () => {
-      manualOrderMode = !manualOrderMode;
-      toggleOrderBtn.textContent = `Manual order: ${manualOrderMode ? "On" : "Off"}`;
-      render();
+  let tab = "all";
+  let q = "";
+
+  const chips = Array.from(document.querySelectorAll("[data-tab]"));
+  const qInput = document.getElementById("q");
+  const rows = document.getElementById("rows");
+
+  // Bulk selection
+  const selected = new Set();
+
+  const selectAll = document.getElementById("selectAll");
+  const bulkBar = document.getElementById("bulkBar");
+  const bulkCount = document.getElementById("bulkCount");
+  const bulkAction = document.getElementById("bulkAction");
+  const bulkApplyBtn = document.getElementById("bulkApply");
+
+  // Bulk tag editor
+  const bulkTagBox = document.getElementById("bulkTagBox");
+  const bulkTagMode = document.getElementById("bulkTagMode");
+  const bulkTagInput = document.getElementById("bulkTagInput");
+  const bulkTagPick = document.getElementById("bulkTagPick");
+  const bulkTagApplyBtn = document.getElementById("bulkTagApply");
+
+  // Manual ordering
+  let manualOrderMode = false;
+  const toggleOrderBtn = document.getElementById("toggleOrder");
+  toggleOrderBtn.addEventListener("click", () => {
+    manualOrderMode = !manualOrderMode;
+    toggleOrderBtn.textContent = `Manual order: ${manualOrderMode ? "On" : "Off"}`;
+    render();
+  });
+
+  let dragId = null;
+
+  const counts = () => {
+    const all = state.artworks.length;
+    const pub = state.artworks.filter(a => a.status === "published").length;
+    const draft = state.artworks.filter(a => a.status === "draft").length;
+    const hidden = state.artworks.filter(a => a.status === "hidden").length;
+
+    document.getElementById("kPub").textContent = pub;
+    document.getElementById("kDraft").textContent = draft;
+    document.getElementById("kHidden").textContent = hidden;
+
+    document.getElementById("countAll").textContent = `All ${all}`;
+    document.getElementById("countPub").textContent = `Published ${pub}`;
+    document.getElementById("countDraft").textContent = `Draft ${draft}`;
+    document.getElementById("countHidden").textContent = `Hidden ${hidden}`;
+  };
+
+  function matches(a){
+    const tabOk =
+      tab === "all" ||
+      (tab === "featured" ? !!a.featured : a.status === tab);
+
+    const text = `${a.title} ${(a.tags||[]).join(" ")} ${a.series||""}`.toLowerCase();
+    const qOk = !q || text.includes(q);
+    return tabOk && qOk;
+  }
+
+  function visibleItems(){
+    return sortArtworksManualFirst(state.artworks.filter(matches));
+  }
+
+  function updateBulkUI(){
+    const visible = visibleItems();
+    const visibleSelected = visible.filter(a => selected.has(a.id)).length;
+
+    bulkCount.textContent = String(selected.size);
+    bulkBar.style.display = selected.size ? "inline-flex" : "none";
+
+    if (selectAll) {
+      const allVisibleSelected = visible.length > 0 && visibleSelected === visible.length;
+      const noneVisibleSelected = visibleSelected === 0;
+
+      selectAll.checked = allVisibleSelected;
+      selectAll.indeterminate = !allVisibleSelected && !noneVisibleSelected;
+    }
+  }
+
+  selectAll?.addEventListener("change", () => {
+    const visible = visibleItems();
+    if (selectAll.checked) visible.forEach(a => selected.add(a.id));
+    else visible.forEach(a => selected.delete(a.id));
+    updateBulkUI();
+    render();
+  });
+
+  // -------- Bulk tag helpers --------
+  function normTag(t){
+    return String(t || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .replace(/^[#]+/, "");
+  }
+
+
+  function parseTags(raw){
+    return Array.from(new Set(
+      String(raw || "")
+        .split(/[,;\n]+/g)
+        .map(normTag)
+        .filter(Boolean)
+    )).sort((a,b)=>a.localeCompare(b));
+  }
+
+
+  function allKnownTags(){
+    const set = new Set();
+
+    (state.tags || []).forEach(t => {
+      const nt = normTag(t);
+      if (nt) set.add(nt);
     });
 
-    let dragId = null;
-
-    const counts = () => {
-      const all = state.artworks.length;
-      const pub = state.artworks.filter(a => a.status === "published").length;
-      const draft = state.artworks.filter(a => a.status === "draft").length;
-      const hidden = state.artworks.filter(a => a.status === "hidden").length;
-
-      document.getElementById("kPub").textContent = pub;
-      document.getElementById("kDraft").textContent = draft;
-      document.getElementById("kHidden").textContent = hidden;
-
-      document.getElementById("countAll").textContent = `All ${all}`;
-      document.getElementById("countPub").textContent = `Published ${pub}`;
-      document.getElementById("countDraft").textContent = `Draft ${draft}`;
-      document.getElementById("countHidden").textContent = `Hidden ${hidden}`;
-    };
-
-    function matches(a){
-      const tabOk =
-        tab === "all" ||
-        (tab === "featured" ? !!a.featured : a.status === tab);
-
-      const text = `${a.title} ${(a.tags||[]).join(" ")} ${a.series||""}`.toLowerCase();
-      const qOk = !q || text.includes(q);
-      return tabOk && qOk;
-    }
-
-    function findById(id){ return state.artworks.find(x => x.id === id); }
-
-    function localTouch(a){
-      a.updatedAt = new Date().toISOString();
-      saveState(state);
-    }
-
-    async function writeThrough(id, patch, { force = false } = {}){
-      // Always update local cache first (snappy UI)
-      const a = findById(id);
-      if (a) Object.assign(a, patch);
-
-      // Handle publishedAt rule locally
-      if (a && patch.status === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
-
-      if (a) localTouch(a);
-
-      // No token? local-only
-      if (!getAdminToken()) return;
-
-      try {
-        const updated = await patchArtworkToBackend(id, patch);
-        // Merge backend truth back into local cache
-        const target = findById(id);
-        if (target) Object.assign(target, updated);
-        localTouch(target || a);
-      } catch (e) {
-        // Keep local-only if backend fails
-        console.warn("Dashboard write-through failed; local cache kept.", e);
-        if (force) render();
-      }
-    }
-
-    // Batch write-through for multiple rows (e.g., manual ordering)
-    async function writeThroughBatch(patches){
-      // Local first
-      for (const { id, patch } of patches){
-        const a = findById(id);
-        if (a) Object.assign(a, patch);
-        if (a && patch.status === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
-        if (a) a.updatedAt = new Date().toISOString();
-      }
-      saveState(state);
-
-      if (!getAdminToken()) return;
-
-      // Backend: best-effort parallel
-      const jobs = patches.map(({ id, patch }) =>
-        patchArtworkToBackend(id, patch)
-          .then(updated => ({ ok:true, id, updated }))
-          .catch(err => ({ ok:false, id, err }))
-      );
-
-      const results = await Promise.all(jobs);
-
-      // Merge successes
-      for (const r of results){
-        if (!r.ok) continue;
-        const a = findById(r.id);
-        if (a) Object.assign(a, r.updated);
-      }
-      saveState(state);
-
-      // If anything failed, don't block UI; just log
-      const fails = results.filter(r => !r.ok);
-      if (fails.length) console.warn("Some order updates failed; local cache kept for those.", fails);
-    }
-
-    function setStatus(id, next){
-      const a = findById(id);
-      if (!a) return;
-
-      const patch = { status: next };
-      // publishedAt handled in writeThrough
-      writeThrough(id, patch, { force:true });
-      render();
-    }
-
-    function toggleFeatured(id){
-      const a = findById(id);
-      if (!a) return;
-
-      const next = !a.featured;
-      writeThrough(id, { featured: next }, { force:true });
-      render();
-    }
-
-    function moveItem(draggedId, targetId){
-      if (draggedId === targetId) return;
-
-      const visible = state.artworks.filter(matches);
-      const ordered = sortArtworksManualFirst(visible);
-
-      const from = ordered.findIndex(x => x.id === draggedId);
-      const to = ordered.findIndex(x => x.id === targetId);
-      if (from < 0 || to < 0) return;
-
-      const [moved] = ordered.splice(from, 1);
-      ordered.splice(to, 0, moved);
-
-      // Reassign sortOrder (higher first)
-      let base = 1000;
-      const patches = [];
-      for (const a of ordered){
-        a.sortOrder = base;
-        base -= 10;
-        a.updatedAt = new Date().toISOString();
-        patches.push({ id: a.id, patch: { sortOrder: a.sortOrder } });
-      }
-
-      saveState(state);
-      render();
-
-      // Write-through to backend (best effort)
-      writeThroughBatch(patches);
-    }
-
-    function render(){
-      counts();
-      rows.innerHTML = "";
-
-      const items = sortArtworksManualFirst(state.artworks.filter(matches));
-
-      for (const a of items){
-        const tags = (a.tags||[]).slice(0,3).join(" · ") || "—";
-
-        const tr = el("tr", {
-          draggable: manualOrderMode ? "true" : null,
-          style: manualOrderMode ? "cursor:grab" : "",
-          ondragstart: () => { dragId = a.id; },
-          ondragover: (e) => { if (manualOrderMode) e.preventDefault(); },
-          ondrop: (e) => {
-            e.preventDefault();
-            if (manualOrderMode && dragId) moveItem(dragId, a.id);
-          },
-        },
-          el("td", {},
-            el("div", { style:"display:flex; gap:10px; align-items:center" },
-              el("div", { class:"thumbSm" },
-                el("img", { src: a.thumb || a.image, alt: a.title, loading:"lazy" })
-              ),
-              el("div", {},
-                el("div", { style:"font-weight:650" }, a.title),
-                el("div", { class:"sub" }, a.featured ? "Featured" : "—")
-              )
-            )
-          ),
-          el("td", {}, statusChip(a.status)),
-          el("td", {}, el("span", { class:"sub" }, tags)),
-          el("td", {}, el("span", { class:"sub" }, a.series || "—")),
-          el("td", {}, el("span", { class:"sub" }, a.year || "—")),
-          el("td", {},
-            el("div", { class:"row-actions" },
-              el("a", { class:"btn mini", href:`edit.html?id=${encodeURIComponent(a.id)}` }, "Edit"),
-
-              el("button", {
-                class:"btn mini",
-                type:"button",
-                onclick:()=>toggleFeatured(a.id)
-              }, a.featured ? "Unfeature" : "Feature"),
-
-              el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"published"), type:"button" }, "Publish"),
-              el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"draft"), type:"button" }, "Draft"),
-              el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"hidden"), type:"button" }, "Hide")
-            )
-          )
-        );
-
-        rows.appendChild(tr);
-      }
-
-      if (!items.length){
-        rows.appendChild(
-          el("tr", {},
-            el("td", { colspan:"6" },
-              el("div", { class:"sub", style:"padding:14px" }, "No items match your filter.")
-            )
-          )
-        );
-      }
-    }
-
-    chips.forEach(c => c.addEventListener("click", () => {
-      chips.forEach(x => x.classList.remove("active"));
-      c.classList.add("active");
-      tab = c.getAttribute("data-tab");
-      render();
+    (state.artworks || []).forEach(a => (a.tags || []).forEach(t => {
+      const nt = normTag(t);
+      if (nt) set.add(nt);
     }));
 
-    qInput.addEventListener("input", (e) => {
-      q = e.target.value.trim().toLowerCase();
-      render();
-    });
+    return Array.from(set).sort((a,b)=>a.localeCompare(b));
+  }
 
+  function refreshTagPick(){
+    if (!bulkTagPick) return;
+    const tags = allKnownTags();
+
+    bulkTagPick.innerHTML = "";
+    bulkTagPick.appendChild(new Option("Pick existing tag…", ""));
+
+    for (const t of tags){
+      bulkTagPick.appendChild(new Option(t, t));
+    }
+  }
+
+  function setTagBoxVisible(on){
+    if (!bulkTagBox) return;
+    bulkTagBox.style.display = on ? "inline-flex" : "none";
+    if (on){
+      refreshTagPick();
+      bulkTagInput?.focus();
+    }
+  }
+
+  bulkAction?.addEventListener("change", () => {
+    setTagBoxVisible(bulkAction.value === "tags");
+  });
+
+  bulkTagPick?.addEventListener("change", () => {
+    const v = bulkTagPick.value;
+    if (!v) return;
+
+    const cur = bulkTagInput.value.trim();
+    bulkTagInput.value = cur ? `${cur}, ${v}` : v;
+
+    bulkTagPick.value = "";
+    bulkTagInput.focus();
+  });
+
+
+  bulkTagApplyBtn?.addEventListener("click", async () => {
+    if (!selected.size) {
+      alert("Select at least one item first.");
+      return;
+    }
+
+    const mode = bulkTagMode?.value || "add";
+    const tags = parseTags(bulkTagInput?.value || "");
+
+    if (!tags.length) {
+      alert("Enter one or more tags (comma-separated).");
+      return;
+    }
+
+    const label = mode === "remove" ? "Remove tag(s)" : "Add tag(s)";
+    const ok = confirm(`${label} [${tags.join(", ")}] for ${selected.size} selected item(s)?`);
+    if (!ok) return;
+
+    const patches = [];
+
+    for (const id of selected){
+      const a = state.artworks.find(x => x.id === id);
+      if (!a) continue;
+
+      const cur = Array.isArray(a.tags) ? a.tags.map(normTag).filter(Boolean) : [];
+      const set = new Set(cur);
+
+      if (mode === "add") {
+        tags.forEach(t => set.add(t));
+      } else {
+        tags.forEach(t => set.delete(t));
+      }
+
+      const nextTags = Array.from(set).sort((x,y)=>x.localeCompare(y));
+
+      const changed = cur.length !== nextTags.length || cur.some((t,i)=>t !== nextTags[i]);
+      if (changed){
+        patches.push({ id, patch: { tags: nextTags } });
+      }
+    }
+
+    if (!patches.length) {
+      alert("Nothing to change for the selected items.");
+      return;
+    }
+
+    await writeThroughBatch(patches);
+
+    // Keep global tag pool current (only adds matter)
+    if (mode === "add"){
+      state.tags = Array.from(new Set([...(state.tags || []), ...tags])).sort((a,b)=>a.localeCompare(b));
+      saveState(state);
+    }
+
+    bulkTagInput.value = "";
+    refreshTagPick();
+    render();
+  });
+
+
+  // -------- Backend write-through helpers --------
+  function findById(id){ return state.artworks.find(x => x.id === id); }
+
+  function localTouch(a){
+    if (!a) return;
+    a.updatedAt = new Date().toISOString();
+    saveState(state);
+  }
+
+  async function writeThrough(id, patch){
+    const a = findById(id);
+    if (a) Object.assign(a, patch);
+
+    if (a && patch.status === "published" && !a.publishedAt) {
+      a.publishedAt = new Date().toISOString();
+    }
+
+    if (a) localTouch(a);
+
+    if (!getAdminToken()) return;
+
+    try {
+      const updated = await patchArtworkToBackend(id, patch);
+      const target = findById(id);
+      if (target) Object.assign(target, updated);
+      localTouch(target || a);
+    } catch (e) {
+      console.warn("Dashboard write-through failed; local cache kept.", e);
+    }
+  }
+
+  async function writeThroughBatch(patches){
+    // Local first
+    for (const { id, patch } of patches){
+      const a = findById(id);
+      if (a) Object.assign(a, patch);
+      if (a && patch.status === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
+      if (a) a.updatedAt = new Date().toISOString();
+    }
+    saveState(state);
+
+    if (!getAdminToken()) return;
+
+    const jobs = patches.map(({ id, patch }) =>
+      patchArtworkToBackend(id, patch)
+        .then(updated => ({ ok:true, id, updated }))
+        .catch(err => ({ ok:false, id, err }))
+    );
+
+    const results = await Promise.all(jobs);
+
+    for (const r of results){
+      if (!r.ok) continue;
+      const a = findById(r.id);
+      if (a) Object.assign(a, r.updated);
+    }
+    saveState(state);
+
+    const fails = results.filter(r => !r.ok);
+    if (fails.length) console.warn("Some bulk updates failed; local cache kept for those.", fails);
+  }
+
+  // -------- Bulk actions menu (non-tag actions) --------
+  function buildBulkPatches(action){
+    const patches = [];
+
+    for (const id of selected) {
+      const a = state.artworks.find(x => x.id === id);
+      if (!a) continue;
+
+      if (action === "publish") {
+        if (a.status !== "published") patches.push({ id, patch: { status: "published" } });
+      } else if (action === "draft") {
+        if (a.status !== "draft") patches.push({ id, patch: { status: "draft" } });
+      } else if (action === "hidden") {
+        if (a.status !== "hidden") patches.push({ id, patch: { status: "hidden" } });
+      } else if (action === "feature") {
+        if (!a.featured) patches.push({ id, patch: { featured: true } });
+      } else if (action === "unfeature") {
+        if (a.featured) patches.push({ id, patch: { featured: false } });
+      }
+    }
+
+    return patches;
+  }
+
+  bulkApplyBtn?.addEventListener("click", async () => {
+    const action = bulkAction?.value || "";
+    if (!action) return;
+
+    if (action === "clear") {
+      selected.clear();
+      bulkAction.value = "";
+      setTagBoxVisible(false);
+      updateBulkUI();
+      render();
+      return;
+    }
+
+    if (action === "tags") {
+      setTagBoxVisible(true);
+      return;
+    }
+
+    if (!selected.size) {
+      alert("Select at least one item first.");
+      bulkAction.value = "";
+      return;
+    }
+
+    const labels = {
+      publish: "Publish",
+      draft: "Set Draft",
+      hidden: "Hide",
+      feature: "Feature",
+      unfeature: "Unfeature"
+    };
+
+    const ok = confirm(`${labels[action] || "Apply"} ${selected.size} selected item(s)?`);
+    if (!ok) return;
+
+    const patches = buildBulkPatches(action);
+
+    if (!patches.length) {
+      alert("Nothing to change for the selected items.");
+      bulkAction.value = "";
+      setTagBoxVisible(false);
+      return;
+    }
+
+    await writeThroughBatch(patches);
+
+    selected.clear();
+    bulkAction.value = "";
+    setTagBoxVisible(false);
+    updateBulkUI();
+    render();
+  });
+
+  bulkAction?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") bulkApplyBtn?.click();
+  });
+
+  // -------- Row actions --------
+  function setStatus(id, next){
+    writeThrough(id, { status: next });
+    render();
+  }
+
+  function toggleFeatured(id){
+    const a = findById(id);
+    if (!a) return;
+    writeThrough(id, { featured: !a.featured });
+    render();
+  }
+
+  function moveItem(draggedId, targetId){
+    if (draggedId === targetId) return;
+
+    const ordered = sortArtworksManualFirst(visibleItems());
+
+    const from = ordered.findIndex(x => x.id === draggedId);
+    const to = ordered.findIndex(x => x.id === targetId);
+    if (from < 0 || to < 0) return;
+
+    const [moved] = ordered.splice(from, 1);
+    ordered.splice(to, 0, moved);
+
+    let base = 1000;
+    const patches = [];
+    for (const a of ordered){
+      a.sortOrder = base;
+      base -= 10;
+      a.updatedAt = new Date().toISOString();
+      patches.push({ id: a.id, patch: { sortOrder: a.sortOrder } });
+    }
+
+    saveState(state);
     render();
 
-    // ---------------------------
-    // Cleanup files (admin-only)
-    // ---------------------------
-    const cleanupBtn = document.getElementById("cleanupBtn");
-    const cleanupStatus = document.getElementById("cleanupStatus");
-    const setCleanup = (m)=> cleanupStatus.textContent = m || "";
+    writeThroughBatch(patches);
+  }
 
-    cleanupBtn?.addEventListener("click", async () => {
-      if (!confirm("Cleanup orphan files (variants/originals) and broken variant rows?")) return;
+  function render(){
+    counts();
+    rows.innerHTML = "";
 
-      if (!getAdminToken()) return setCleanup("Set admin token in Upload page first.");
+    const items = visibleItems();
 
-      setCleanup("Cleaning…");
+    for (const a of items){
+      const tags = (a.tags||[]).slice(0,3).join(" · ") || "—";
 
-      try{
-        const { API_BASE } = await import("./admin.js");
-        const res = await fetch(`${API_BASE}/api/admin/cleanup`, {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${getAdminToken()}` }
-        });
+      const tr = el("tr", {
+        draggable: manualOrderMode ? "true" : null,
+        style: manualOrderMode ? "cursor:grab" : "",
+        ondragstart: () => { dragId = a.id; },
+        ondragover: (e) => { if (manualOrderMode) e.preventDefault(); },
+        ondrop: (e) => {
+          e.preventDefault();
+          if (manualOrderMode && dragId) moveItem(dragId, a.id);
+        },
+      },
+        el("td", {},
+          el("input", {
+            type: "checkbox",
+            checked: selected.has(a.id) ? "" : null,
+            "aria-label": `Select ${a.title || a.id}`,
+            onchange: (e) => {
+              if (e.target.checked) selected.add(a.id);
+              else selected.delete(a.id);
+              updateBulkUI();
+            }
+          })
+        ),
+        el("td", {},
+          el("div", { style:"display:flex; gap:10px; align-items:center" },
+            el("div", { class:"thumbSm" },
+              el("img", { src: a.thumb || a.image, alt: a.title, loading:"lazy" })
+            ),
+            el("div", {},
+              el("div", { style:"font-weight:650" }, a.title),
+              el("div", { class:"sub" }, a.featured ? "Featured" : "—")
+            )
+          )
+        ),
+        el("td", {}, statusChip(a.status)),
+        el("td", {}, el("span", { class:"sub" }, tags)),
+        el("td", {}, el("span", { class:"sub" }, a.series || "—")),
+        el("td", {}, el("span", { class:"sub" }, a.year || "—")),
+        el("td", {},
+          el("div", { class:"row-actions" },
+            el("a", { class:"btn mini", href:`edit.html?id=${encodeURIComponent(a.id)}` }, "Edit"),
 
-        const j = await res.json();
-        if (!res.ok) throw new Error(j?.error || `${res.status} ${res.statusText}`);
+            el("button", {
+              class:"btn mini",
+              type:"button",
+              onclick:()=>toggleFeatured(a.id)
+            }, a.featured ? "Unfeature" : "Feature"),
 
-        setCleanup(`Done. Deleted variants: ${j.deletedVariantFiles}, originals: ${j.deletedOriginalFiles}, broken rows: ${j.deletedBrokenVariantRows}.`);
-      }catch(err){
-        setCleanup(`Cleanup failed: ${err?.message || err}`);
-      }
-    });
-  </script>
+            el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"published"), type:"button" }, "Publish"),
+            el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"draft"), type:"button" }, "Draft"),
+            el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"hidden"), type:"button" }, "Hide")
+          )
+        )
+      );
+
+      rows.appendChild(tr);
+    }
+
+    if (!items.length){
+      rows.appendChild(
+        el("tr", {},
+          el("td", { colspan:"7" },
+            el("div", { class:"sub", style:"padding:14px" }, "No items match your filter.")
+          )
+        )
+      );
+    }
+
+    // Keep tag editor visibility sane if selection goes to 0
+    if (!selected.size){
+      setTagBoxVisible(false);
+      if (bulkAction) bulkAction.value = "";
+    }
+
+    updateBulkUI();
+  }
+
+  chips.forEach(c => c.addEventListener("click", () => {
+    chips.forEach(x => x.classList.remove("active"));
+    c.classList.add("active");
+    tab = c.getAttribute("data-tab");
+    render();
+  }));
+
+  qInput.addEventListener("input", (e) => {
+    q = e.target.value.trim().toLowerCase();
+    render();
+  });
+
+  render();
+
+  // ---------------------------
+  // Cleanup files (admin-only)
+  // ---------------------------
+  const cleanupBtn = document.getElementById("cleanupBtn");
+  const cleanupStatus = document.getElementById("cleanupStatus");
+  const setCleanup = (m)=> cleanupStatus.textContent = m || "";
+
+  cleanupBtn?.addEventListener("click", async () => {
+    if (!confirm("Cleanup orphan files (variants/originals) and broken variant rows?")) return;
+
+    if (!getAdminToken()) return setCleanup("Set admin token in Upload page first.");
+
+    setCleanup("Cleaning…");
+
+    try{
+      const { API_BASE } = await import("./admin.js");
+      const res = await fetch(`${API_BASE}/api/admin/cleanup`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${getAdminToken()}` }
+      });
+
+      const j = await res.json();
+      if (!res.ok) throw new Error(j?.error || `${res.status} ${res.statusText}`);
+
+      setCleanup(`Done. Deleted variants: ${j.deletedVariantFiles}, originals: ${j.deletedOriginalFiles}, broken rows: ${j.deletedBrokenVariantRows}.`);
+    }catch(err){
+      setCleanup(`Cleanup failed: ${err?.message || err}`);
+    }
+  });
+</script>
+
+
+
 
 </body>
 </html>

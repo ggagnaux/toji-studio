@@ -91,6 +91,7 @@
               <option value="feature">Feature</option>
               <option value="unfeature">Unfeature</option>
               <option value="tags">Edit tags…</option>
+              <option value="series">Assign series…</option>
               <option value="clear">Clear selection</option>
             </select>
 
@@ -112,6 +113,21 @@
 
               <button class="btn" id="bulkTagApply" type="button">Apply tag</button>
             </div>
+
+            <!-- Bulk series assignment (shown only for series action) -->
+            <div id="bulkSeriesBox" style="display:none; align-items:center; gap:10px; flex-wrap:wrap">
+              <select id="bulkSeriesPick" aria-label="Pick series" style="width:auto; min-width:220px">
+                <option value="">Pick series…</option>
+              </select>
+
+              <input id="bulkSeriesInput" placeholder="or type a new series…" style="width:auto; min-width:240px" />
+
+              <button class="btn" id="bulkSeriesApply" type="button">Apply series</button>
+
+              <button class="btn" id="bulkSeriesClear" type="button">Clear series</button>
+            </div>
+
+
 
           </div>
 
@@ -189,6 +205,16 @@
   const bulkTagInput = document.getElementById("bulkTagInput");
   const bulkTagPick = document.getElementById("bulkTagPick");
   const bulkTagApplyBtn = document.getElementById("bulkTagApply");
+
+  // Bulk series assignment
+  const bulkSeriesBox = document.getElementById("bulkSeriesBox");
+  const bulkSeriesPick = document.getElementById("bulkSeriesPick");
+  const bulkSeriesInput = document.getElementById("bulkSeriesInput");
+  const bulkSeriesApplyBtn = document.getElementById("bulkSeriesApply");
+  const bulkSeriesClearBtn = document.getElementById("bulkSeriesClear");
+
+
+
 
   // Manual ordering
   let manualOrderMode = false;
@@ -313,7 +339,9 @@
   }
 
   bulkAction?.addEventListener("change", () => {
-    setTagBoxVisible(bulkAction.value === "tags");
+    const v = bulkAction.value;
+    setTagBoxVisible(v === "tags");
+    setSeriesBoxVisible(v === "series");
   });
 
   bulkTagPick?.addEventListener("change", () => {
@@ -386,6 +414,100 @@
     refreshTagPick();
     render();
   });
+
+
+
+  function normSeries(s){
+    return String(s || "").trim().replace(/\s+/g, " ");
+  }
+
+  function allKnownSeries(){
+    const set = new Set();
+    (state.series || []).forEach(s => { const ns = normSeries(s); if (ns) set.add(ns); });
+    (state.artworks || []).forEach(a => { const ns = normSeries(a.series); if (ns) set.add(ns); });
+    return Array.from(set).sort((a,b)=>a.localeCompare(b));
+  }
+
+  function refreshSeriesPick(){
+    if (!bulkSeriesPick) return;
+    const list = allKnownSeries();
+    bulkSeriesPick.innerHTML = "";
+    bulkSeriesPick.appendChild(new Option("Pick series…", ""));
+    for (const s of list){
+      bulkSeriesPick.appendChild(new Option(s, s));
+    }
+  }
+
+  function setSeriesBoxVisible(on){
+    if (!bulkSeriesBox) return;
+    bulkSeriesBox.style.display = on ? "inline-flex" : "none";
+    if (on){
+      refreshSeriesPick();
+      bulkSeriesInput?.focus();
+    }
+  }
+
+  bulkSeriesPick?.addEventListener("change", () => {
+    const v = bulkSeriesPick.value;
+    if (!v) return;
+    bulkSeriesInput.value = v;
+    bulkSeriesPick.value = "";
+    bulkSeriesInput.focus();
+  });
+
+
+  async function applySeriesToSelection(seriesValue){
+    if (!selected.size) {
+      alert("Select at least one item first.");
+      return;
+    }
+
+    const series = normSeries(seriesValue);
+    const label = series ? `Assign series "${series}"` : "Clear series";
+    const ok = confirm(`${label} for ${selected.size} selected item(s)?`);
+    if (!ok) return;
+
+    const patches = [];
+    for (const id of selected){
+      const a = state.artworks.find(x => x.id === id);
+      if (!a) continue;
+
+      const cur = normSeries(a.series);
+      const next = series;
+
+      if (cur !== next){
+        patches.push({ id, patch: { series: next } });
+      }
+    }
+
+    if (!patches.length) {
+      alert("Nothing to change for the selected items.");
+      return;
+    }
+
+    await writeThroughBatch(patches);
+
+    // Keep series list fresh locally
+    if (series){
+      state.series = Array.from(new Set([...(state.series || []), series])).sort((a,b)=>a.localeCompare(b));
+      saveState(state);
+    }
+
+    bulkSeriesInput.value = "";
+    refreshSeriesPick();
+    render();
+  }
+
+  bulkSeriesApplyBtn?.addEventListener("click", () => {
+    applySeriesToSelection(bulkSeriesInput?.value || "");
+  });
+
+  bulkSeriesClearBtn?.addEventListener("click", () => {
+    applySeriesToSelection("");
+  });
+
+
+
 
 
   // -------- Backend write-through helpers --------
@@ -492,6 +614,12 @@
       return;
     }
 
+    if (action === "series") {
+      setSeriesBoxVisible(true);
+      return;
+    }
+
+
     if (!selected.size) {
       alert("Select at least one item first.");
       bulkAction.value = "";
@@ -523,6 +651,7 @@
     selected.clear();
     bulkAction.value = "";
     setTagBoxVisible(false);
+    setSeriesBoxVisible(false);
     updateBulkUI();
     render();
   });
@@ -650,6 +779,7 @@
     // Keep tag editor visibility sane if selection goes to 0
     if (!selected.size){
       setTagBoxVisible(false);
+      setSeriesBoxVisible(false);
       if (bulkAction) bulkAction.value = "";
     }
 

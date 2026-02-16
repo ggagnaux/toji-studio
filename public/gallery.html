@@ -9,22 +9,29 @@
   <style>
     #featuredGrid,
     #galleryGrid{
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 200px));
       gap: 12px;
       align-items: start;
       justify-content: center;
     }
-    #featuredGrid .card,
-    #galleryGrid .card{
+    #featuredGrid{
+      grid-template-columns: repeat(auto-fit, minmax(500px, 500px));
+    }
+    #galleryGrid{
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 200px));
+    }
+    #featuredGrid .card{
       width: 100%;
+      min-width: 500px;
+      max-width: 500px;
       justify-self: center;
       box-shadow: none;
     }
-    #featuredGrid .card{
-      min-width: 500px;
-      max-width: 500px;
+    #galleryGrid .card{
+      width: 100%;
+      max-width: 200px;
+      justify-self: center;
+      box-shadow: none;
     }
-    #galleryGrid .card{ max-width: 200px; }
     #featuredGrid .thumb img,
     #galleryGrid .thumb img{
       width: 100%;

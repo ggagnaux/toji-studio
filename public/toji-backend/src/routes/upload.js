@@ -139,6 +139,7 @@ uploadRouter.post("/admin/artworks/:id/regenerate-variants", async (req, res) =>
 
 
 uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) => {
+  debugger;
   const files = req.files || [];
   if (!files.length) return res.status(400).json({ error: "No files" });
 

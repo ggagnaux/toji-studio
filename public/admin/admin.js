@@ -147,29 +147,52 @@ export function setAdminToken(token) {
   localStorage.setItem(TOKEN_KEY, String(token || "").trim());
 }
 
-export async function apiFetch(path, options = {}) {
-  const token = getAdminToken();
-  const headers = new Headers(options.headers || {});
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+// export async function apiFetch(path, options = {}) {
+//   const token = getAdminToken();
+//   const headers = new Headers(options.headers || {});
+//   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  // Don't set Content-Type for FormData; browser will set boundary.
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+//   // Don't set Content-Type for FormData; browser will set boundary.
+//   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
-  if (!res.ok) {
-    let msg = `${res.status} ${res.statusText}`;
-    try {
-      const j = await res.json();
-      if (j?.error) msg = j.error;
-    } catch {}
-    throw new Error(msg);
-  }
+//   if (!res.ok) {
+//     let msg = `${res.status} ${res.statusText}`;
+//     try {
+//       const j = await res.json();
+//       if (j?.error) msg = j.error;
+//     } catch {}
+//     throw new Error(msg);
+//   }
 
-  // Handle empty responses safely
-  const ct = res.headers.get("content-type") || "";
-  if (ct.includes("application/json")) return res.json();
-  return res.text();
+//   // Handle empty responses safely
+//   const ct = res.headers.get("content-type") || "";
+//   if (ct.includes("application/json")) return res.json();
+//   return res.text();
+// }
+
+
+export async function apiFetch(path, opts = {}) {
+  const url = `${API_BASE}${path}`;
+  console.log("[apiFetch] start", url, opts);
+
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      ...(opts.headers || {}),
+      "Authorization": `Bearer ${getAdminToken()}`
+    }
+  });
+
+  console.log("[apiFetch] response", res.status, res.statusText);
+
+  const text = await res.text();
+  console.log("[apiFetch] body", text.slice(0, 500));
+
+  let json;
+  try { json = text ? JSON.parse(text) : null; } catch { json = { raw: text }; }
+  if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
+  return json;
 }
-
 
 
 
@@ -352,4 +375,9 @@ export async function syncSeriesFromBackend(state){
 
   saveState(state);
   return rows;
+}
+
+
+export async function deleteArtworkFromBackend(id){
+  return apiFetch(`/api/admin/artworks/${encodeURIComponent(id)}`, { method: "DELETE" });
 }

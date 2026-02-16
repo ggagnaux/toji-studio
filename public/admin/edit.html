@@ -110,6 +110,9 @@
       };
     }
 
+    // Treat current loaded state as baseline; prevents write-on-load loops.
+    lastPatchJson = JSON.stringify(buildPatch());
+
     async function flushBackendSave(force=false){
       const token = getAdminToken();
       if (!token) {
@@ -489,11 +492,8 @@
       return wrap;
     }
 
-    // One-time initial backend push (optional):
-    // If your local cache is newer than backend (common right after wiring),
-    // this ensures backend gets current values when you open the page.
-    // It will no-op if token missing.
-    flushBackendSave(false);
+    // No auto-write on load.
+    // Saves occur only after explicit user edits/actions.
   </script>
 </body>
 </html>

@@ -92,6 +92,7 @@
               <option value="unfeature">Unfeature</option>
               <option value="tags">Edit tags…</option>
               <option value="series">Assign series…</option>
+              <option value="delete">Delete</option>
               <option value="clear">Clear selection</option>
             </select>
 
@@ -172,7 +173,8 @@
     setYearFooter, ensureBaseStyles,
     sortArtworksManualFirst, ensureSeriesMeta,
     getAdminToken,
-    patchArtworkToBackend
+    patchArtworkToBackend,
+    deleteArtworkFromBackend
   } from "./admin.js";
 
   ensureBaseStyles();
@@ -572,6 +574,50 @@
     if (fails.length) console.warn("Some bulk updates failed; local cache kept for those.", fails);
   }
 
+
+  async function bulkDeleteSelected(){
+    // Local-first removal (fast UI)
+    const ids = Array.from(selected);
+
+    // Remove from local state immediately
+    const idSet = new Set(ids);
+    state.artworks = state.artworks.filter(a => !idSet.has(a.id));
+    saveState(state);
+    render();
+
+    // No token? stop here (local cache removed)
+    if (!getAdminToken()) {
+      alert("Deleted locally, but no admin token set — backend was not updated.");
+      return;
+    }
+
+    // Backend deletes
+    const jobs = ids.map(id =>
+      deleteArtworkFromBackend(id)
+        .then(() => ({ ok:true, id }))
+        .catch(err => ({ ok:false, id, err }))
+    );
+
+    const results = await Promise.all(jobs);
+    const fails = results.filter(r => !r.ok);
+
+    if (fails.length) {
+      console.warn("Some deletes failed:", fails);
+
+      alert(
+        `Some deletes failed on the backend (${fails.length}/${ids.length}).\n\n` +
+        `Those items may reappear after refresh/sync. Check console for details.`
+      );
+    }
+  }
+
+
+
+
+
+
+
+
   // -------- Bulk actions menu (non-tag actions) --------
   function buildBulkPatches(action){
     const patches = [];
@@ -620,6 +666,35 @@
     }
 
 
+
+    if (action === "delete") {
+      if (!selected.size) {
+        alert("Select at least one item first.");
+        bulkAction.value = "";
+        return;
+      }
+
+      const ok = confirm(
+        `Delete ${selected.size} selected item(s)?\n\n` +
+        `This will remove the artworks and their files on the server.\n` +
+        `This cannot be undone.`
+      );
+      if (!ok) return;
+
+      await bulkDeleteSelected();
+
+      // reset UI
+      selected.clear();
+      bulkAction.value = "";
+      setTagBoxVisible(false);
+      setSeriesBoxVisible(false);
+      updateBulkUI();
+      render();
+      return;
+    }
+
+
+
     if (!selected.size) {
       alert("Select at least one item first.");
       bulkAction.value = "";
@@ -631,7 +706,8 @@
       draft: "Set Draft",
       hidden: "Hide",
       feature: "Feature",
-      unfeature: "Unfeature"
+      unfeature: "Unfeature",
+      delete: "Delete"
     };
 
     const ok = confirm(`${labels[action] || "Apply"} ${selected.size} selected item(s)?`);
@@ -672,6 +748,38 @@
     writeThrough(id, { featured: !a.featured });
     render();
   }
+
+
+  async function deleteArtwork(id){
+    const a = findById(id);
+    if (!a) return;
+
+    const label = a.title ? `"${a.title}"` : id;
+    const ok = confirm(`Delete ${label}?\n\nThis will remove the artwork and its files on the server.`);
+    if (!ok) return;
+
+    // Local-first removal (snappy)
+    const idx = state.artworks.findIndex(x => x.id === id);
+    if (idx >= 0) state.artworks.splice(idx, 1);
+    selected?.delete?.(id);
+    saveState(state);
+    render();
+
+    // Backend write-through
+    if (!getAdminToken()) return;
+
+    try {
+      await deleteArtworkFromBackend(id);
+    } catch (e) {
+      console.warn("Delete failed on backend; local cache already removed.", e);
+      alert(`Delete failed on backend: ${e?.message || e}\n\nRefresh may bring the item back.`);
+    }
+  }
+
+
+
+
+
 
   function moveItem(draggedId, targetId){
     if (draggedId === targetId) return;
@@ -758,7 +866,8 @@
 
             el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"published"), type:"button" }, "Publish"),
             el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"draft"), type:"button" }, "Draft"),
-            el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"hidden"), type:"button" }, "Hide")
+            el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"hidden"), type:"button" }, "Hide"),
+            el("button", { class:"btn mini danger", onclick:()=>deleteArtwork(a.id), type: "button" }, "Delete")
           )
         )
       );
@@ -785,6 +894,11 @@
 
     updateBulkUI();
   }
+
+
+
+
+
 
   chips.forEach(c => c.addEventListener("click", () => {
     chips.forEach(x => x.classList.remove("active"));

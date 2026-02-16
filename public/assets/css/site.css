@@ -449,3 +449,18 @@ textarea::placeholder{
 .table tbody tr{
   border-bottom: 1px solid var(--line);
 }
+
+
+
+
+
+
+
+.btn.danger{
+  border-color: rgba(255,80,80,.35);
+  background: rgba(255,80,80,.10);
+}
+[data-theme="light"] .btn.danger{
+  border-color: rgba(255,80,80,.28);
+  background: rgba(255,80,80,.10);
+}

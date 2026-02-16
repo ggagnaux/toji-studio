@@ -56,6 +56,13 @@
             <span class="sub" id="status" aria-live="polite"></span>
           </div>
 
+          <div style="display:flex; gap:10px; align-items:center; margin-top:12px">
+            <label class="sub" style="display:flex; align-items:center; gap:8px; cursor:pointer">
+              <input id="showHidden" type="checkbox" />
+              Show hidden series
+            </label>
+          </div>
+
           <hr class="sep" />
 
           <div id="list" style="display:grid; gap:10px"></div>
@@ -100,8 +107,12 @@
     const count = document.getElementById("count");
     const status = document.getElementById("status");
     const newName = document.getElementById("newName");
+    const showHiddenToggle = document.getElementById("showHidden");
+    const SHOW_HIDDEN_KEY = "toji_admin_series_show_hidden_v1";
 
     let activeSlug = null;
+    let showHidden = localStorage.getItem(SHOW_HIDDEN_KEY) === "1";
+    if (showHiddenToggle) showHiddenToggle.checked = showHidden;
 
     const setStatus = (m, ms=900) => {
       status.textContent = m || "";
@@ -114,12 +125,17 @@
     }
 
     function renderList(){
-      const rows = seriesArray();
-      count.textContent = `${rows.length} series`;
+      const allRows = seriesArray();
+      const rows = showHidden ? allRows : allRows.filter(s => !!s.isPublic);
+      count.textContent = showHidden
+        ? `${rows.length} series`
+        : `${rows.length} visible (${allRows.length} total)`;
       listEl.innerHTML = "";
 
       if (!rows.length){
-        listEl.appendChild(el("div", { class:"sub" }, "No series yet. Create one above."));
+        listEl.appendChild(el("div", { class:"sub" }, showHidden
+          ? "No series yet. Create one above."
+          : "No public series yet. Enable \"Show hidden series\" to manage hidden ones."));
         return;
       }
 
@@ -151,6 +167,12 @@
         listEl.appendChild(btn);
       }
     }
+
+    showHiddenToggle?.addEventListener("change", (e) => {
+      showHidden = !!e.target.checked;
+      localStorage.setItem(SHOW_HIDDEN_KEY, showHidden ? "1" : "0");
+      renderList();
+    });
 
     function artworkOptions(){
       // Published + drafts are both valid for cover selection

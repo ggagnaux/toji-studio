@@ -78,7 +78,7 @@
 
           <div style="display:grid; gap:12px; margin-top:12px">
             <div class="field">
-              <div class="sub">Tags (comma-separated)</div>
+              <div class="sub">Tags (comma/semicolon/newline-separated)</div>
               <input id="tags" placeholder="abstract, cosmic, geometry" />
             </div>
 
@@ -129,10 +129,11 @@
   <script type="module">
     import {
       loadState, saveState, el, setYearFooter, ensureBaseStyles,
-      upsertTag
+      upsertTag,
+      patchArtworkToBackend,
+      getAdminToken, setAdminToken,
+      apiFetch, API_BASE
     } from "./admin.js";
-
-    import { apiFetch, getAdminToken, setAdminToken, API_BASE } from "./admin.js";
 
     ensureBaseStyles();
     setYearFooter();
@@ -151,6 +152,23 @@
     function setStatus(msg){ statusEl.textContent = msg || ""; }
     function setTokenStatus(msg){ tokenStatus.textContent = msg || ""; }
 
+    // ---- tag parsing (multi-tag safe) ----
+    function normTag(t){
+      return String(t || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .replace(/^[#]+/, "");
+    }
+    function parseTags(raw){
+      return Array.from(new Set(
+        String(raw || "")
+          .split(/[,;\n]+/g)
+          .map(normTag)
+          .filter(Boolean)
+      )).sort((a,b)=>a.localeCompare(b));
+    }
+
     // Seed token input
     tokenInput.value = getAdminToken();
 
@@ -162,21 +180,34 @@
 
     function renderNew(){
       list.innerHTML = "";
+
       if (!newIds.length){
         list.appendChild(el("div", { class:"sub" }, "No uploads yet."));
         return;
       }
+
+      let rendered = 0;
+
       for (const id of newIds){
         const a = state.artworks.find(x => x.id === id);
         if (!a) continue;
+
+        rendered++;
+
         list.appendChild(
           el("a", { class:"card", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"box-shadow:none" },
             el("div", { class:"thumb" }, el("img", { src:a.thumb, alt:a.title, loading:"lazy" })),
             el("div", { class:"meta" },
-              el("p", { class:"title" }, a.title),
-              el("p", { class:"sub" }, "Open to edit →")
+              el("p", { class:"title" }, a.title || "Untitled"),
+              el("p", { class:"sub" }, `ID: ${a.id} • Open to edit →`)
             )
           )
+        );
+      }
+
+      if (!rendered){
+        list.appendChild(
+          el("div", { class:"sub" }, "Uploads were created, but no matching items were found in local state (check backend id field).")
         );
       }
     }
@@ -190,11 +221,80 @@
       return p;
     }
 
+    async function applyBatchToIds(ids){
+      if (!ids?.length) return;
+
+      if (!getAdminToken()) {
+        setStatus("Uploaded, but batch metadata not applied (missing admin token).");
+        return;
+      }
+
+      const tags = parseTags(document.getElementById("tags").value);
+      const series = document.getElementById("series").value.trim();
+      const year = document.getElementById("year").value.trim();
+      const status = document.getElementById("statusSelect").value;
+
+      const basePatch = {};
+      if (series) basePatch.series = series;
+      if (year) basePatch.year = year;
+      if (status) basePatch.status = status;
+
+      const now = new Date().toISOString();
+
+      const hasWork = tags.length || Object.keys(basePatch).length;
+      if (!hasWork) return;
+
+      setStatus(`Applying batch metadata to ${ids.length} item(s)…`);
+
+      try{
+        const jobs = ids.map(async (id) => {
+          const a = state.artworks.find(x => x.id === id);
+          if (!a) return;
+
+          const patch = { ...basePatch };
+
+          if (tags.length){
+            const merged = Array.from(new Set([...(a.tags||[]).map(normTag).filter(Boolean), ...tags]))
+              .sort((x,y)=>x.localeCompare(y));
+            patch.tags = merged;
+          }
+
+          if (patch.status === "published" && !a.publishedAt) {
+            patch.publishedAt = now; // backend may ignore, fine
+          }
+
+          // Local-first
+          Object.assign(a, patch, { updatedAt: now });
+
+          // Write-through
+          const updated = await patchArtworkToBackend(id, patch);
+          if (updated){
+            if (updated.thumb) updated.thumb = normalizeMediaUrl(updated.thumb);
+            if (updated.image) updated.image = normalizeMediaUrl(updated.image);
+            Object.assign(a, updated);
+          }
+        });
+
+        await Promise.all(jobs);
+
+        // Maintain global tag/series pools locally
+        for (const t of tags) upsertTag(state, t);
+        if (series && !state.series.includes(series)) state.series.push(series);
+
+        saveState(state);
+        renderNew();
+        setStatus("Upload + batch metadata applied.");
+      }catch(err){
+        saveState(state);
+        setStatus(`Batch apply failed: ${err?.message || err}`);
+      }
+    }
+
     document.getElementById("uploadBtn").addEventListener("click", async () => {
+      //debugger;
       const arr = Array.from(files.files || []);
       if (!arr.length) return setStatus("Pick at least one image.");
 
-      // Make sure token exists
       if (!getAdminToken()) return setStatus("Set and save your admin token first.");
 
       setStatus(`Uploading ${arr.length} file(s)…`);
@@ -203,7 +303,28 @@
         const fd = new FormData();
         for (const f of arr) fd.append("files", f);
 
+        console.log("about to upload", fd, Array.from(fd.entries()));
+        debugger;
+
         const result = await apiFetch("/api/admin/upload", { method:"POST", body: fd });
+        // const ac = new AbortController();
+        // const t = setTimeout(() => ac.abort(), 20000);
+
+        // try {
+        //   const result = await apiFetch("/api/admin/upload", { method:"POST", body: fd, signal: ac.signal });
+        //   console.log("upload result", result);
+        // } catch (e) {
+        //   console.error("upload failed/timeout", e);
+        //   setStatus(`Upload error: ${e?.name === "AbortError" ? "Timed out" : (e?.message || e)}`);
+        // } finally {
+        //   clearTimeout(t);
+        // }
+
+
+
+
+
+
         const created = result?.created || [];
 
         if (!created.length){
@@ -212,58 +333,44 @@
         }
 
         // Merge returned records into local admin state
-        // Ensure thumb/image are usable from the public site:
         for (const a of created){
+          // --- normalize id coming from backend ---
+          const normId = a.id || a.artworkId || a._id || a.uuid;
+          if (!normId) {
+            console.warn("Upload returned item without id:", a);
+            continue;
+          }
+          a.id = String(normId);
+
+          // Ensure URLs are usable
           a.thumb = normalizeMediaUrl(a.thumb);
           a.image = normalizeMediaUrl(a.image);
-        }
 
-        // Place new items at top, avoid duplicates
-        for (const a of created){
+          // Dedup by id
           const idx = state.artworks.findIndex(x => x.id === a.id);
           if (idx >= 0) state.artworks.splice(idx, 1);
           state.artworks.unshift(a);
+
+          // Keep newIds unique
+          const nidx = newIds.indexOf(a.id);
+          if (nidx >= 0) newIds.splice(nidx, 1);
           newIds.unshift(a.id);
         }
 
         saveState(state);
-        setStatus(`Uploaded ${created.length} item(s).`);
         renderNew();
+
+        // Auto-apply batch metadata to the newly created items (if any batch fields are filled)
+        await applyBatchToIds(created.map(x => String(x.id || x.artworkId || x._id || x.uuid)).filter(Boolean));
+
       }catch(err){
         setStatus(`Upload failed: ${err?.message || err}`);
       }
     });
 
-    document.getElementById("applyBatch").addEventListener("click", () => {
+    document.getElementById("applyBatch").addEventListener("click", async () => {
       if (!newIds.length) return setStatus("Upload first.");
-
-      const tags = document.getElementById("tags").value
-        .split(",").map(t => t.trim().toLowerCase()).filter(Boolean);
-
-      const series = document.getElementById("series").value.trim();
-      const year = document.getElementById("year").value.trim();
-      const status = document.getElementById("statusSelect").value;
-
-      const now = new Date().toISOString();
-
-      for (const id of newIds){
-        const a = state.artworks.find(x => x.id === id);
-        if (!a) continue;
-
-        a.tags = Array.from(new Set([...(a.tags||[]), ...tags]));
-        a.series = series || a.series;
-        a.year = year || a.year;
-        a.status = status;
-        a.updatedAt = now;
-
-        if (status === "published" && !a.publishedAt) a.publishedAt = now;
-      }
-
-      for (const t of tags) upsertTag(state, t);
-      if (series && !state.series.includes(series)) state.series.push(series);
-
-      saveState(state);
-      setStatus("Batch applied locally.");
+      await applyBatchToIds([...newIds]);
     });
 
     renderNew();

@@ -6,6 +6,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Toji Studios</title>
   <link rel="stylesheet" href="assets/css/site.css" />
+  <style>
+    #latestGrid{
+      gap: 12px;
+    }
+    #latestGrid .card{
+      width: 100%;
+      min-width: 0;
+      max-width: none;
+    }
+  </style>
 </head>
 
 <body>
@@ -299,7 +309,8 @@
             scroll-snap-align:start;
             box-shadow:none;
           `,
-          onclick: null // (e)=>{ e.preventDefault(); openLightbox(items, idx); }
+          //onclick: null // (e)=>{ e.preventDefault(); openLightbox(items, idx); }
+          onclick: (e)=>{ e.preventDefault(); openLightbox(items, idx); }
         },
           el("div", { class: "thumb", style: "aspect-ratio: 16/10" },
             el("img", { src: a.thumb || a.image, alt: a.alt || a.title || "Artwork", loading: "lazy" })
@@ -334,10 +345,15 @@
         const card = el("a", {
           class: "card",
           href: `artwork.html?id=${encodeURIComponent(a.id)}`,
-          style: "grid-column: span 4",
-          // onclick:(e)=>{ e.preventDefault(); openLightbox(items, idx); }
+          style: `
+            grid-column: span 4;
+            box-shadow:none;
+          `,
+          onclick:(e)=>{ e.preventDefault(); openLightbox(items, idx); }
         },
-          el("div", { class: "thumb" }, el("img", { src: a.thumb || a.image, alt: a.alt || a.title || "Artwork", loading: "lazy" })),
+          el("div", { class: "thumb", style: "aspect-ratio: 16/10" },
+            el("img", { src: a.thumb || a.image, alt: a.alt || a.title || "Artwork", loading: "lazy" })
+          ),
           el("div", { class: "meta" },
             el("p", { class: "title" }, a.title || "Untitled"),
             el("p", { class: "sub" }, [a.series || null, a.year || null].filter(Boolean).join(" • ") || " ")

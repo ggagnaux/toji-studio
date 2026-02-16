@@ -1,5 +1,5 @@
 :root{
-  --max:1120px;
+  --max:none;
   --radius:18px;
   --shadow: 0 12px 30px rgba(0,0,0,.35);
 }
@@ -41,7 +41,12 @@ a{color:inherit;text-decoration:none}
 a:hover{color:var(--accent)}
 img{max-width:100%;display:block}
 
-.container{max-width:var(--max);margin:0 auto;padding:24px}
+.container{
+  width:100%;
+  max-width:var(--max);
+  margin:0 auto;
+  padding:24px clamp(14px, 2.5vw, 32px);
+}
 
 /* Smooth theme transitions (respects reduced motion) */
 @media (prefers-reduced-motion: no-preference){

@@ -87,6 +87,71 @@ export function ensureBaseStyles() {
     @media (max-width: 920px){ .admin-layout{ grid-template-columns: 1fr; } .sidebar{ position:relative; top:auto; } .kpi{ grid-template-columns: 1fr; } }
   `;
   document.head.appendChild(style);
+  initAdminNavMenu();
+}
+
+function initAdminNavMenu() {
+  const navRoot = document.querySelector(".header .nav");
+  const navLinks = navRoot?.querySelector(".navlinks");
+  if (!navRoot || !navLinks) return;
+  if (navRoot.dataset.navMenuReady === "1") return;
+  navRoot.dataset.navMenuReady = "1";
+
+  navLinks.id ||= "adminPrimaryNav";
+
+  let navToggle = navRoot.querySelector("[data-nav-toggle]");
+  if (!navToggle) {
+    navToggle = document.createElement("button");
+    navToggle.type = "button";
+    navToggle.className = "icon-btn nav-toggle";
+    navToggle.setAttribute("aria-label", "Toggle navigation menu");
+    navToggle.setAttribute("aria-expanded", "false");
+    navToggle.setAttribute("aria-controls", navLinks.id);
+    navToggle.setAttribute("data-nav-toggle", "");
+
+    const icon = document.createElement("span");
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = "☰";
+    navToggle.appendChild(icon);
+
+    navRoot.insertBefore(navToggle, navLinks);
+  }
+
+  const mobileQuery = window.matchMedia("(max-width: 760px)");
+
+  const setMenuOpen = (open) => {
+    navRoot.classList.toggle("nav-open", !!open);
+    navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    if (navToggle.firstElementChild) navToggle.firstElementChild.textContent = open ? "✕" : "☰";
+    navLinks.setAttribute("aria-hidden", open ? "false" : "true");
+  };
+
+  navToggle.addEventListener("click", () => {
+    const isOpen = navToggle.getAttribute("aria-expanded") === "true";
+    setMenuOpen(!isOpen);
+  });
+
+  navLinks.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      if (mobileQuery.matches) setMenuOpen(false);
+    });
+  });
+
+  const onModeChange = (e) => {
+    if (!e.matches) {
+      navRoot.classList.remove("nav-open");
+      navToggle.setAttribute("aria-expanded", "false");
+      if (navToggle.firstElementChild) navToggle.firstElementChild.textContent = "☰";
+      navLinks.removeAttribute("aria-hidden");
+      return;
+    }
+    setMenuOpen(false);
+  };
+
+  mobileQuery.addEventListener("change", onModeChange);
+
+  if (mobileQuery.matches) setMenuOpen(false);
+  else navLinks.removeAttribute("aria-hidden");
 }
 
 export function upsertTag(state, tagName) {

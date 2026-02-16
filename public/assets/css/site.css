@@ -85,6 +85,10 @@ img{max-width:100%;display:block}
 .navlinks{display:flex; gap:18px; align-items:center}
 .navlinks a{color:var(--muted)}
 .navlinks a.active{color:var(--text)}
+.nav-toggle{display:none}
+@media (min-width: 761px){
+  .nav-toggle{display:none !important}
+}
 
 .btn{
   display:inline-flex; align-items:center; justify-content:center;
@@ -271,9 +275,38 @@ input, textarea, select{
 }
 
 @media (max-width: 760px){
-  .navlinks{gap:12px}
+  .nav{
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .nav-toggle{
+    display:inline-flex;
+    order:30;
+    margin-left:8px;
+  }
+  .nav > .theme-controls{ margin-left:auto; }
+  .navlinks{
+    display:none;
+    width:100%;
+    order:10;
+    flex-direction:column;
+    align-items:stretch;
+    gap:6px;
+    margin-top:10px;
+    padding:10px;
+    border:1px solid var(--line);
+    border-radius:14px;
+    background:var(--panel);
+  }
+  .nav.nav-open .navlinks{display:flex}
+  .navlinks a{
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid transparent;
+  }
   .search{width:100%; margin-left:0}
   .segmented{ display:none; }
+  .nav > .btn{display:none}
 }
 
 

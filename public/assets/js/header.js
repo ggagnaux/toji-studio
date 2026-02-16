@@ -14,7 +14,18 @@ export function renderPublicHeader({
     <div class="container nav">
       <a class="brand" href="index.html">Toji Studios <small>${escapeHtml(small)}</small></a>
 
-      <nav class="navlinks" aria-label="Primary">
+      <button
+        class="icon-btn nav-toggle"
+        type="button"
+        aria-label="Toggle navigation menu"
+        aria-expanded="false"
+        aria-controls="sitePrimaryNav"
+        data-nav-toggle
+      >
+        <span aria-hidden="true">☰</span>
+      </button>
+
+      <nav class="navlinks" id="sitePrimaryNav" aria-label="Primary">
         <a href="index.html" data-nav="home">Home</a>
         <a href="gallery.html" data-nav="gallery">Gallery</a>
         <a href="series.html" data-nav="series">Series</a>
@@ -39,6 +50,44 @@ export function renderPublicHeader({
   headerHost.querySelectorAll("[data-nav]").forEach(a => {
     a.classList.toggle("active", a.getAttribute("data-nav") === active);
   });
+
+  const navRoot = headerHost.querySelector(".nav");
+  const navLinks = headerHost.querySelector(".navlinks");
+  const navToggle = headerHost.querySelector("[data-nav-toggle]");
+  const mobileQuery = window.matchMedia("(max-width: 760px)");
+
+  const setMenuOpen = (open) => {
+    if (!navRoot || !navToggle || !navLinks) return;
+    navRoot.classList.toggle("nav-open", !!open);
+    navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+    navToggle.firstElementChild.textContent = open ? "✕" : "☰";
+    navLinks.setAttribute("aria-hidden", open ? "false" : "true");
+  };
+
+  navToggle?.addEventListener("click", () => {
+    const open = navToggle.getAttribute("aria-expanded") === "true";
+    setMenuOpen(!open);
+  });
+
+  navLinks?.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      if (mobileQuery.matches) setMenuOpen(false);
+    });
+  });
+
+  mobileQuery.addEventListener("change", (e) => {
+    if (!e.matches) {
+      navRoot?.classList.remove("nav-open");
+      navToggle?.setAttribute("aria-expanded", "false");
+      if (navToggle?.firstElementChild) navToggle.firstElementChild.textContent = "☰";
+      navLinks?.removeAttribute("aria-hidden");
+      return;
+    }
+    setMenuOpen(false);
+  });
+
+  if (mobileQuery.matches) setMenuOpen(false);
+  else navLinks?.removeAttribute("aria-hidden");
 
   initThemeSystem();
 }

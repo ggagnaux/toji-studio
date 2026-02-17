@@ -56,6 +56,14 @@
           <span class="pill" id="countDraft">Draft</span>
           <span class="pill" id="countHidden">Hidden</span>
         </div>
+
+        <hr class="sep" />
+        <div class="sub">Homepage sections</div>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
+          <input id="homeLatestToggle" type="checkbox" />
+          <span class="sub">Show Latest section</span>
+        </label>
+        <span class="sub" id="homeLatestStatus" aria-live="polite"></span>
       </aside>
 
       <section>
@@ -187,10 +195,13 @@
 
   let tab = "all";
   let q = "";
+  const HOME_LATEST_VISIBLE_KEY = "toji_home_latest_visible_v1";
 
   const chips = Array.from(document.querySelectorAll("[data-tab]"));
   const qInput = document.getElementById("q");
   const rows = document.getElementById("rows");
+  const homeLatestToggle = document.getElementById("homeLatestToggle");
+  const homeLatestStatus = document.getElementById("homeLatestStatus");
 
   // Bulk selection
   const selected = new Set();
@@ -226,6 +237,19 @@
     toggleOrderBtn.textContent = `Manual order: ${manualOrderMode ? "On" : "Off"}`;
     render();
   });
+
+  if (homeLatestToggle) {
+    homeLatestToggle.checked = localStorage.getItem(HOME_LATEST_VISIBLE_KEY) === "1";
+    homeLatestToggle.addEventListener("change", () => {
+      localStorage.setItem(HOME_LATEST_VISIBLE_KEY, homeLatestToggle.checked ? "1" : "0");
+      if (homeLatestStatus) {
+        homeLatestStatus.textContent = "Saved.";
+        setTimeout(() => {
+          if (homeLatestStatus.textContent === "Saved.") homeLatestStatus.textContent = "";
+        }, 1000);
+      }
+    });
+  }
 
   let dragId = null;
 

@@ -11,20 +11,22 @@
     #galleryGrid{
       gap: 12px;
       align-items: start;
-      justify-content: center;
+      justify-content: start;
     }
     #featuredGrid{
-      grid-template-columns: repeat(auto-fit, minmax(500px, 500px));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 300px));
     }
     #galleryGrid{
       grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 200px));
     }
     #featuredGrid .card{
       width: 100%;
-      min-width: 500px;
-      max-width: 500px;
-      justify-self: center;
+      max-width: 300px;
+      justify-self: start;
       box-shadow: none;
+    }
+    #featuredGrid .thumb{
+      aspect-ratio: 16/10;
     }
     #galleryGrid .card{
       width: 100%;
@@ -38,6 +40,9 @@
       height: 100%;
       object-fit: contain;
       object-position: center;
+    }
+    #featuredGrid .thumb img{
+      background: var(--bg);
     }
   </style>
 </head>

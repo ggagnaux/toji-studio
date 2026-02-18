@@ -228,6 +228,9 @@
     height:14px;
     margin:0;
   }
+  .table tbody tr.selected-row{
+    background: color-mix(in srgb, var(--accent) 22%, var(--panel)) !important;
+  }
 </style>
 
 
@@ -366,6 +369,11 @@
         card.classList.toggle("selected", !!id && selected.has(id));
       });
     }
+
+    rows.querySelectorAll("tr[data-artwork-id]").forEach((row) => {
+      const id = row.getAttribute("data-artwork-id");
+      row.classList.toggle("selected-row", !!id && selected.has(id));
+    });
   }
 
   selectAll?.addEventListener("change", () => {
@@ -912,6 +920,8 @@
       const tags = (a.tags||[]).slice(0,3).join(" · ") || "—";
 
       const tr = el("tr", {
+        "data-artwork-id": a.id,
+        class: selected.has(a.id) ? "selected-row" : "",
         draggable: manualOrderMode ? "true" : null,
         style: manualOrderMode ? "cursor:grab" : "",
         ondragstart: () => { dragId = a.id; },

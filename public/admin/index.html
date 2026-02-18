@@ -80,6 +80,11 @@
           <div class="chip" data-tab="hidden">Hidden</div>
           <div class="chip" data-tab="featured">Featured</div>
 
+          <div class="segmented" role="group" aria-label="Dashboard view mode">
+            <button type="button" data-view-mode="rows" class="active">Rows</button>
+            <button type="button" data-view-mode="thumbs">Thumbnails</button>
+          </div>
+
           <div class="search">
             <span>Search</span>
             <input id="q" placeholder="title, tag, series…" />
@@ -146,7 +151,7 @@
 
         </div>
 
-        <table class="table" aria-label="Artwork table">
+        <table class="table" id="rowTable" aria-label="Artwork table">
           <thead>
             <tr>
               <th style="width:36px">
@@ -162,6 +167,7 @@
           </thead>
           <tbody id="rows"></tbody>
         </table>
+        <div id="thumbGrid" class="admin-thumb-grid" style="display:none" aria-label="Artwork thumbnails"></div>
 
         <footer class="footer">
           <div class="row">
@@ -171,7 +177,58 @@
         </footer>
       </section>
     </div>
-  </main>
+</main>
+
+<style>
+  .admin-thumb-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap:12px;
+    margin-top:4px;
+  }
+  .admin-thumb-card{
+    position:relative;
+    border:5px solid transparent;
+    border-radius:12px;
+    overflow:hidden;
+    background: color-mix(in srgb, var(--panel) 86%, transparent);
+    transition: border-color .16s ease, box-shadow .16s ease;
+  }
+  .admin-thumb-card.selected{
+    border-color: color-mix(in srgb, var(--accent) 72%, transparent);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 52%, transparent) inset;
+  }
+  .admin-thumb-media{
+    display:block;
+    aspect-ratio:4/3;
+    background: rgba(255,255,255,.03);
+  }
+  .admin-thumb-media img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  .admin-thumb-select{
+    position:absolute;
+    top:8px;
+    left:8px;
+    z-index:2;
+    width:28px;
+    height:28px;
+    display:grid;
+    place-items:center;
+    border-radius:999px;
+    border:1px solid var(--line);
+    background: color-mix(in srgb, var(--panel) 84%, transparent);
+    backdrop-filter: blur(6px);
+    cursor:pointer;
+  }
+  .admin-thumb-select input{
+    width:14px;
+    height:14px;
+    margin:0;
+  }
+</style>
 
 
 
@@ -196,10 +253,15 @@
   let tab = "all";
   let q = "";
   const HOME_LATEST_VISIBLE_KEY = "toji_home_latest_visible_v1";
+  const DASHBOARD_VIEW_KEY = "toji_dashboard_view_mode_v1";
+  let viewMode = localStorage.getItem(DASHBOARD_VIEW_KEY) || "rows";
 
   const chips = Array.from(document.querySelectorAll("[data-tab]"));
   const qInput = document.getElementById("q");
   const rows = document.getElementById("rows");
+  const rowTable = document.getElementById("rowTable");
+  const thumbGrid = document.getElementById("thumbGrid");
+  const viewModeButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
   const homeLatestToggle = document.getElementById("homeLatestToggle");
   const homeLatestStatus = document.getElementById("homeLatestStatus");
 
@@ -296,6 +358,13 @@
 
       selectAll.checked = allVisibleSelected;
       selectAll.indeterminate = !allVisibleSelected && !noneVisibleSelected;
+    }
+
+    if (thumbGrid){
+      thumbGrid.querySelectorAll(".admin-thumb-card").forEach((card) => {
+        const id = card.getAttribute("data-artwork-id");
+        card.classList.toggle("selected", !!id && selected.has(id));
+      });
     }
   }
 
@@ -835,6 +904,7 @@
   function render(){
     counts();
     rows.innerHTML = "";
+    if (thumbGrid) thumbGrid.innerHTML = "";
 
     const items = visibleItems();
 
@@ -897,6 +967,36 @@
       );
 
       rows.appendChild(tr);
+
+      if (thumbGrid){
+        const card = el("article", {
+          class: `admin-thumb-card${selected.has(a.id) ? " selected" : ""}`,
+          "data-artwork-id": a.id
+        },
+          el("label", { class: "admin-thumb-select" },
+            el("input", {
+              type: "checkbox",
+              checked: selected.has(a.id) ? "" : null,
+              "aria-label": `Select ${a.title || a.id}`,
+              onchange: (e) => {
+                if (e.target.checked) selected.add(a.id);
+                else selected.delete(a.id);
+                updateBulkUI();
+                render();
+              }
+            })
+          ),
+          el("a", {
+            class: "admin-thumb-media",
+            href: `edit.html?id=${encodeURIComponent(a.id)}`,
+            title: a.title || "Untitled"
+          },
+            el("img", { src: a.thumb || a.image, alt: a.title || "Artwork thumbnail", loading: "lazy" })
+          )
+        );
+
+        thumbGrid.appendChild(card);
+      }
     }
 
     if (!items.length){
@@ -909,6 +1009,12 @@
       );
     }
 
+    if (thumbGrid && !items.length){
+      thumbGrid.appendChild(
+        el("div", { class:"sub", style:"padding:14px" }, "No items match your filter.")
+      );
+    }
+
     // Keep tag editor visibility sane if selection goes to 0
     if (!selected.size){
       setTagBoxVisible(false);
@@ -917,7 +1023,29 @@
     }
 
     updateBulkUI();
+    applyViewModeUI();
   }
+
+  function applyViewModeUI(){
+    const thumbs = viewMode === "thumbs";
+    if (rowTable) rowTable.style.display = thumbs ? "none" : "";
+    if (thumbGrid) thumbGrid.style.display = thumbs ? "grid" : "none";
+
+    viewModeButtons.forEach((btn) => {
+      const active = btn.getAttribute("data-view-mode") === viewMode;
+      btn.classList.toggle("active", active);
+    });
+  }
+
+  viewModeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const next = btn.getAttribute("data-view-mode");
+      if (!next || next === viewMode) return;
+      viewMode = next;
+      localStorage.setItem(DASHBOARD_VIEW_KEY, viewMode);
+      applyViewModeUI();
+    });
+  });
 
 
 

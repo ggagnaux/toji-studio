@@ -155,10 +155,10 @@
     <section class="hero" id="homeHeroSection">
       <h1>Toji Studios</h1>
       <p>Abstract, cosmic-leaning digital artwork—geometry, atmosphere, and controlled chaos.</p>
-      <div class="cta">
+      <!-- <div class="cta">
         <a class="btn primary" href="gallery.html">Explore the Gallery</a>
         <a class="btn" href="contact.html">Inquire</a>
-      </div>
+      </div> -->
     </section>
 
     <section id="featuredSlideshowSection" style="display:none">
@@ -177,7 +177,7 @@
       </div>
 
       <div id="featuredStrip"
-        style="display:flex; gap:14px; overflow:auto; padding-bottom:10px; scroll-snap-type:x mandatory;"
+        style="display:flex; gap:14px; flex-wrap:wrap; overflow:visible; padding-bottom:10px;"
         aria-label="Featured artworks"></div>
     </section>
 
@@ -199,10 +199,11 @@
     <section class="grid" id="latestGrid" aria-label="Latest artworks"></section>
     </section>
 
-    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:18px">
+
+    <!-- <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:18px">
       <a class="btn primary" href="gallery.html">View all works</a>
       <a class="btn" href="contact.html">Licensing / commissions</a>
-    </div>
+    </div> -->
   </main>
 
   <footer id="siteFooter"></footer>
@@ -607,8 +608,7 @@
                 el("p", { class: "title" }, s.name),
                 el("p", { class: "sub" }, `${s.count} piece${s.count === 1 ? "" : "s"}`)
               )
-            ),
-            el("p", { class: "sub" }, s.description || "No description yet.")
+            )
           )
         );
       }
@@ -632,7 +632,6 @@
           style: `
             min-width: 220px;
             max-width: 300px;
-            scroll-snap-align:start;
             box-shadow:none;
           `,
           //onclick: null // (e)=>{ e.preventDefault(); openLightbox(items, idx); }

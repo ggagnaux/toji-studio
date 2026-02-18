@@ -58,30 +58,30 @@
         </div>
 
         <hr class="sep" />
-        <div class="sub">Homepage sections</div>
-        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
+        <div class="sub">Homepage section visibility</div>
+        <label class="home-toggle">
           <input id="homeHeroToggle" type="checkbox" />
-          <span class="sub">Show Home Intro</span>
+          <span class="sub">Home Intro</span>
         </label>
         <span class="sub" id="homeHeroStatus" aria-live="polite"></span>
-        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
+        <label class="home-toggle">
           <input id="homeLatestToggle" type="checkbox" />
-          <span class="sub">Show Latest section</span>
+          <span class="sub">Latest section</span>
         </label>
         <span class="sub" id="homeLatestStatus" aria-live="polite"></span>
-        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
+        <label class="home-toggle">
           <input id="homeFeaturedToggle" type="checkbox" />
-          <span class="sub">Show Featured section</span>
+          <span class="sub">Featured section</span>
         </label>
         <span class="sub" id="homeFeaturedStatus" aria-live="polite"></span>
-        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
+        <label class="home-toggle">
           <input id="homeSeriesToggle" type="checkbox" />
-          <span class="sub">Show Series section</span>
+          <span class="sub">Series section</span>
         </label>
         <span class="sub" id="homeSeriesStatus" aria-live="polite"></span>
-        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
+        <label class="home-toggle">
           <input id="homeFeaturedSlideshowToggle" type="checkbox" />
-          <span class="sub">Show Featured Slideshow</span>
+          <span class="sub">Featured Slideshow</span>
         </label>
         <span class="sub" id="homeFeaturedSlideshowStatus" aria-live="polite"></span>
       </aside>
@@ -250,6 +250,23 @@
   }
   .table tbody tr.selected-row{
     background: color-mix(in srgb, var(--accent) 22%, var(--panel)) !important;
+  }
+  .home-toggle{
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:8px;
+    margin-top:10px;
+    cursor:pointer;
+  }
+  .home-toggle input[type="checkbox"]{
+    width:auto;
+    min-width:0;
+    flex:0 0 auto;
+    margin:0;
+  }
+  .home-toggle .sub{
+    margin:0;
   }
 </style>
 

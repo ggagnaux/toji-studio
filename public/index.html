@@ -41,6 +41,33 @@
     #latestGrid{
       gap: 12px;
     }
+    #homeSeriesGrid{
+      gap: 12px;
+      align-items: start;
+      justify-content: start;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 300px));
+    }
+    #homeSeriesGrid .card{
+      width: 100%;
+      max-width: 300px;
+      justify-self: start;
+      box-shadow: none;
+    }
+    #homeSeriesGrid .thumb{
+      aspect-ratio: 16/10;
+    }
+    #homeSeriesGrid .thumb img{
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      background: var(--bg);
+    }
+    .home-series-item .sub{
+      max-width: 300px;
+      margin-top: 8px;
+      line-height: 1.55;
+    }
     #featuredStrip .card{
       width: 100%;
       max-width: 300px;
@@ -57,6 +84,67 @@
       min-width: 0;
       max-width: none;
     }
+    #featuredSlideshowSection{
+      margin-top: 8px;
+    }
+    .home-slideshow{
+      position: relative;
+      width: 100%;
+      min-height: 340px;
+      height: min(76vh, 860px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: color-mix(in srgb, var(--panel) 86%, var(--bg));
+      box-shadow: none;
+    }
+    .home-slideshow a,
+    .home-slideshow img{
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .home-slideshow-slide{
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transform: scale(1.03);
+      transition: opacity .85s cubic-bezier(.22,.61,.36,1), transform 4.2s ease;
+      will-change: opacity, transform;
+    }
+    .home-slideshow-slide.live{
+      opacity: 1;
+      transform: scale(1);
+      z-index: 2;
+    }
+    .home-slideshow-slide.leaving{
+      opacity: 0;
+      transform: scale(1.06);
+      z-index: 1;
+    }
+    .home-slideshow img{
+      object-fit: contain;
+      object-position: center;
+      background: var(--bg);
+    }
+    .home-slideshow-caption{
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      background: color-mix(in srgb, var(--panel) 78%, transparent);
+      transform: translateY(6px);
+      opacity: 0;
+      transition: transform .55s ease, opacity .55s ease;
+    }
+    .home-slideshow-slide.live .home-slideshow-caption{
+      transform: translateY(0);
+      opacity: 1;
+    }
   </style>
 </head>
 
@@ -64,13 +152,21 @@
   <header id="siteHeader"></header>
 
   <main class="container">
-    <section class="hero">
+    <section class="hero" id="homeHeroSection">
       <h1>Toji Studios</h1>
       <p>Abstract, cosmic-leaning digital artwork—geometry, atmosphere, and controlled chaos.</p>
       <div class="cta">
         <a class="btn primary" href="gallery.html">Explore the Gallery</a>
         <a class="btn" href="contact.html">Inquire</a>
       </div>
+    </section>
+
+    <section id="featuredSlideshowSection" style="display:none">
+      <div class="section-title" style="margin-top:28px">
+        <h2>Featured Slideshow</h2>
+          <span id="featuredSlideshowHint">—</span>
+      </div>
+      <div id="featuredSlideshow" class="home-slideshow" aria-label="Featured slideshow"></div>
     </section>
 
     <!-- Featured strip -->
@@ -83,6 +179,14 @@
       <div id="featuredStrip"
         style="display:flex; gap:14px; overflow:auto; padding-bottom:10px; scroll-snap-type:x mandatory;"
         aria-label="Featured artworks"></div>
+    </section>
+
+    <section id="homeSeriesSection" style="display:none">
+      <div class="section-title" style="margin-top:28px">
+        <h2>Series</h2>
+        <span id="homeSeriesHint">â€”</span>
+      </div>
+      <section class="grid" id="homeSeriesGrid" aria-label="Series collection"></section>
     </section>
 
     <!-- Latest works -->
@@ -114,22 +218,24 @@
 
     // ---- Data source: Admin localStorage first, fallback JSON ----
     const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
+    const HOME_HERO_VISIBLE_KEY = "toji_home_hero_visible_v1";
     const HOME_LATEST_VISIBLE_KEY = "toji_home_latest_visible_v1";
+    const HOME_FEATURED_VISIBLE_KEY = "toji_home_featured_visible_v1";
+    const HOME_SERIES_VISIBLE_KEY = "toji_home_series_visible_v1";
+    const HOME_FEATURED_SLIDESHOW_VISIBLE_KEY = "toji_home_featured_slideshow_visible_v1";
     const FALLBACK_URL = "assets/data/admin.sample.json";
 
-    async function loadPublished() {
+    async function loadHomeState() {
       const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
       if (saved) {
         try {
-          const state = JSON.parse(saved);
-          return (state.artworks || []).filter(a => a.status === "published");
+          return JSON.parse(saved);
         } catch {
           // fall through
         }
       }
       const res = await fetch(FALLBACK_URL, { cache: "no-store" });
-      const json = await res.json();
-      return (json.artworks || []).filter(a => a.status === "published");
+      return res.json();
     }
 
     function sortGallery(items) {
@@ -144,6 +250,15 @@
         const da = (a.publishedAt || a.createdAt || ""), db = (b.publishedAt || b.createdAt || "");
         return String(db).localeCompare(String(da));
       });
+    }
+
+    function slugifySeries(name) {
+      return String(name || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 80);
     }
 
     function el(tag, attrs = {}, ...children) {
@@ -320,22 +435,183 @@
     const featuredSection = document.getElementById("featuredSection");
     const featuredStrip = document.getElementById("featuredStrip");
     const featuredHint = document.getElementById("featuredHint");
+    const homeSeriesSection = document.getElementById("homeSeriesSection");
+    const homeSeriesGrid = document.getElementById("homeSeriesGrid");
+    const homeSeriesHint = document.getElementById("homeSeriesHint");
+    const homeHeroSection = document.getElementById("homeHeroSection");
+    const featuredSlideshowSection = document.getElementById("featuredSlideshowSection");
+    const featuredSlideshow = document.getElementById("featuredSlideshow");
+    const featuredSlideshowHint = document.getElementById("featuredSlideshowHint");
 
     const latestSection = document.getElementById("latestSection");
     const latestGrid = document.getElementById("latestGrid");
     const latestHint = document.getElementById("latestHint");
+    const heroRaw = localStorage.getItem(HOME_HERO_VISIBLE_KEY);
+    const isHeroVisible = heroRaw == null ? true : heroRaw === "1";
+    const featuredRaw = localStorage.getItem(HOME_FEATURED_VISIBLE_KEY);
+    const isFeaturedVisible = featuredRaw == null ? true : featuredRaw === "1";
+    const seriesRaw = localStorage.getItem(HOME_SERIES_VISIBLE_KEY);
+    const isSeriesVisible = seriesRaw == null ? true : seriesRaw === "1";
+    const slideshowRaw = localStorage.getItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY);
+    const isSlideshowVisible = slideshowRaw == null ? true : slideshowRaw === "1";
     const isLatestVisible = localStorage.getItem(HOME_LATEST_VISIBLE_KEY) === "1";
+    if (homeHeroSection) homeHeroSection.style.display = isHeroVisible ? "" : "none";
     latestSection.style.display = isLatestVisible ? "" : "none";
 
-    const all = sortGallery(await loadPublished());
-
+    const state = await loadHomeState();
+    const all = sortGallery((state.artworks || []).filter(a => a.status === "published"));
+    const seriesMetaRows = Object.values(state.seriesMeta || {});
+    const seriesMetaByName = new Map(
+      seriesMetaRows
+        .filter(m => m && m.name)
+        .map(m => [String(m.name).trim().toLowerCase(), m])
+    );
+    const seriesMetaBySlug = new Map(
+      seriesMetaRows
+        .filter(m => m && m.slug)
+        .map(m => [String(m.slug).trim().toLowerCase(), m])
+    );
     const featured = sortGallery(all.filter(a => a.featured));
-    renderFeatured(featured);
+
+    if (isFeaturedVisible) {
+      renderFeatured(featured);
+    } else {
+      featuredSection.style.display = "none";
+    }
 
     // Latest (excluding featured duplicates)
     if (isLatestVisible) {
       const latest = sortGallery(all.filter(a => !a.featured)).slice(0, 9);
       renderLatest(latest);
+    }
+
+    if (isSeriesVisible) {
+      renderSeries(all);
+    } else if (homeSeriesSection) {
+      homeSeriesSection.style.display = "none";
+    }
+
+    let slideshowTimer = null;
+    function clearSlideshowTimer() {
+      if (slideshowTimer) {
+        clearInterval(slideshowTimer);
+        slideshowTimer = null;
+      }
+    }
+
+    function renderFeaturedSlideshow(items) {
+      clearSlideshowTimer();
+      if (!featuredSlideshowSection || !featuredSlideshow || !featuredSlideshowHint) return;
+
+      if (!items.length || !isSlideshowVisible) {
+        featuredSlideshowSection.style.display = "none";
+        featuredSlideshow.innerHTML = "";
+        return;
+      }
+
+      featuredSlideshowSection.style.display = "";
+      featuredSlideshowHint.textContent = `${items.length} image${items.length === 1 ? "" : "s"}`;
+      featuredSlideshow.innerHTML = "";
+
+      let i = 0;
+      let activeSlide = null;
+      const draw = () => {
+        const a = items[i];
+        const slide = el("a", {
+          class: "home-slideshow-slide",
+          href: `artwork.html?id=${encodeURIComponent(a.id)}`,
+          onclick: (e) => { e.preventDefault(); openLightbox(items, i); }
+        },
+          el("img", { src: a.image || a.thumb, alt: a.alt || a.title || "Featured artwork", loading: "eager" }),
+          el("div", { class: "home-slideshow-caption" },
+            el("div", { style: "font-weight:650" }, a.title || "Untitled"),
+            el("div", { class: "sub" }, [a.series || null, a.year || null].filter(Boolean).join(" • ") || " ")
+          )
+        );
+
+        featuredSlideshow.appendChild(slide);
+        requestAnimationFrame(() => slide.classList.add("live"));
+
+        if (activeSlide && activeSlide !== slide) {
+          const prevSlide = activeSlide;
+          prevSlide.classList.remove("live");
+          prevSlide.classList.add("leaving");
+          setTimeout(() => {
+            if (prevSlide.parentNode) prevSlide.remove();
+          }, 900);
+        }
+
+        activeSlide = slide;
+      };
+
+      draw();
+
+      if (items.length > 1) {
+        slideshowTimer = setInterval(() => {
+          i = (i + 1) % items.length;
+          draw();
+        }, 4200);
+      }
+    }
+
+    renderFeaturedSlideshow(featured);
+
+    function renderSeries(items) {
+      if (!homeSeriesSection || !homeSeriesGrid || !homeSeriesHint) return;
+
+      const withSeries = sortGallery(items.filter(a => a.series));
+      const bySeries = new Map();
+      for (const a of withSeries) {
+        const key = String(a.series || "").trim();
+        if (!key) continue;
+        if (!bySeries.has(key)) bySeries.set(key, []);
+        bySeries.get(key).push(a);
+      }
+
+      const entries = Array.from(bySeries.entries())
+        .map(([name, list]) => {
+          const slug = slugifySeries(name);
+          const meta = seriesMetaByName.get(name.toLowerCase()) || seriesMetaBySlug.get(slug) || null;
+          const cover = (meta && meta.coverThumb) || list[0]?.thumb || list[0]?.image || "assets/img/placeholders/p1.jpg";
+          const description = (meta && meta.description) || "";
+          const sortOrder = Number((meta && meta.sortOrder) || 0);
+          const items = sortGallery(list);
+          return { name, slug, cover, description, count: items.length, sortOrder, items };
+        })
+        .sort((a, b) => (a.sortOrder - b.sortOrder) || a.name.localeCompare(b.name));
+
+      homeSeriesGrid.innerHTML = "";
+      if (!entries.length) {
+        homeSeriesSection.style.display = "none";
+        return;
+      }
+
+      homeSeriesSection.style.display = "";
+      homeSeriesHint.textContent = `${entries.length} series`;
+
+      for (const s of entries) {
+        homeSeriesGrid.appendChild(
+          el("article", { class: "home-series-item" },
+            el("a", {
+              class: "card",
+              href: "#",
+              onclick: (e) => {
+                e.preventDefault();
+                openLightbox(s.items, 0);
+              }
+            },
+              el("div", { class: "thumb" },
+                el("img", { src: s.cover, alt: `${s.name} series`, loading: "lazy" })
+              ),
+              el("div", { class: "meta" },
+                el("p", { class: "title" }, s.name),
+                el("p", { class: "sub" }, `${s.count} piece${s.count === 1 ? "" : "s"}`)
+              )
+            ),
+            el("p", { class: "sub" }, s.description || "No description yet.")
+          )
+        );
+      }
     }
 
     function renderFeatured(items) {

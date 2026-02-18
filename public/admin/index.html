@@ -60,10 +60,30 @@
         <hr class="sep" />
         <div class="sub">Homepage sections</div>
         <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
+          <input id="homeHeroToggle" type="checkbox" />
+          <span class="sub">Show Home Intro</span>
+        </label>
+        <span class="sub" id="homeHeroStatus" aria-live="polite"></span>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
           <input id="homeLatestToggle" type="checkbox" />
           <span class="sub">Show Latest section</span>
         </label>
         <span class="sub" id="homeLatestStatus" aria-live="polite"></span>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
+          <input id="homeFeaturedToggle" type="checkbox" />
+          <span class="sub">Show Featured section</span>
+        </label>
+        <span class="sub" id="homeFeaturedStatus" aria-live="polite"></span>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
+          <input id="homeSeriesToggle" type="checkbox" />
+          <span class="sub">Show Series section</span>
+        </label>
+        <span class="sub" id="homeSeriesStatus" aria-live="polite"></span>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:10px; cursor:pointer">
+          <input id="homeFeaturedSlideshowToggle" type="checkbox" />
+          <span class="sub">Show Featured Slideshow</span>
+        </label>
+        <span class="sub" id="homeFeaturedSlideshowStatus" aria-live="polite"></span>
       </aside>
 
       <section>
@@ -255,7 +275,11 @@
 
   let tab = "all";
   let q = "";
+  const HOME_HERO_VISIBLE_KEY = "toji_home_hero_visible_v1";
   const HOME_LATEST_VISIBLE_KEY = "toji_home_latest_visible_v1";
+  const HOME_FEATURED_VISIBLE_KEY = "toji_home_featured_visible_v1";
+  const HOME_SERIES_VISIBLE_KEY = "toji_home_series_visible_v1";
+  const HOME_FEATURED_SLIDESHOW_VISIBLE_KEY = "toji_home_featured_slideshow_visible_v1";
   const DASHBOARD_VIEW_KEY = "toji_dashboard_view_mode_v1";
   let viewMode = localStorage.getItem(DASHBOARD_VIEW_KEY) || "rows";
 
@@ -265,8 +289,16 @@
   const rowTable = document.getElementById("rowTable");
   const thumbGrid = document.getElementById("thumbGrid");
   const viewModeButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
+  const homeHeroToggle = document.getElementById("homeHeroToggle");
+  const homeHeroStatus = document.getElementById("homeHeroStatus");
   const homeLatestToggle = document.getElementById("homeLatestToggle");
   const homeLatestStatus = document.getElementById("homeLatestStatus");
+  const homeFeaturedToggle = document.getElementById("homeFeaturedToggle");
+  const homeFeaturedStatus = document.getElementById("homeFeaturedStatus");
+  const homeSeriesToggle = document.getElementById("homeSeriesToggle");
+  const homeSeriesStatus = document.getElementById("homeSeriesStatus");
+  const homeFeaturedSlideshowToggle = document.getElementById("homeFeaturedSlideshowToggle");
+  const homeFeaturedSlideshowStatus = document.getElementById("homeFeaturedSlideshowStatus");
 
   // Bulk selection
   const selected = new Set();
@@ -303,6 +335,20 @@
     render();
   });
 
+  if (homeHeroToggle) {
+    const raw = localStorage.getItem(HOME_HERO_VISIBLE_KEY);
+    homeHeroToggle.checked = raw == null ? true : raw === "1";
+    homeHeroToggle.addEventListener("change", () => {
+      localStorage.setItem(HOME_HERO_VISIBLE_KEY, homeHeroToggle.checked ? "1" : "0");
+      if (homeHeroStatus) {
+        homeHeroStatus.textContent = "Saved.";
+        setTimeout(() => {
+          if (homeHeroStatus.textContent === "Saved.") homeHeroStatus.textContent = "";
+        }, 1000);
+      }
+    });
+  }
+
   if (homeLatestToggle) {
     homeLatestToggle.checked = localStorage.getItem(HOME_LATEST_VISIBLE_KEY) === "1";
     homeLatestToggle.addEventListener("change", () => {
@@ -311,6 +357,48 @@
         homeLatestStatus.textContent = "Saved.";
         setTimeout(() => {
           if (homeLatestStatus.textContent === "Saved.") homeLatestStatus.textContent = "";
+        }, 1000);
+      }
+    });
+  }
+
+  if (homeFeaturedToggle) {
+    const raw = localStorage.getItem(HOME_FEATURED_VISIBLE_KEY);
+    homeFeaturedToggle.checked = raw == null ? true : raw === "1";
+    homeFeaturedToggle.addEventListener("change", () => {
+      localStorage.setItem(HOME_FEATURED_VISIBLE_KEY, homeFeaturedToggle.checked ? "1" : "0");
+      if (homeFeaturedStatus) {
+        homeFeaturedStatus.textContent = "Saved.";
+        setTimeout(() => {
+          if (homeFeaturedStatus.textContent === "Saved.") homeFeaturedStatus.textContent = "";
+        }, 1000);
+      }
+    });
+  }
+
+  if (homeSeriesToggle) {
+    const raw = localStorage.getItem(HOME_SERIES_VISIBLE_KEY);
+    homeSeriesToggle.checked = raw == null ? true : raw === "1";
+    homeSeriesToggle.addEventListener("change", () => {
+      localStorage.setItem(HOME_SERIES_VISIBLE_KEY, homeSeriesToggle.checked ? "1" : "0");
+      if (homeSeriesStatus) {
+        homeSeriesStatus.textContent = "Saved.";
+        setTimeout(() => {
+          if (homeSeriesStatus.textContent === "Saved.") homeSeriesStatus.textContent = "";
+        }, 1000);
+      }
+    });
+  }
+
+  if (homeFeaturedSlideshowToggle) {
+    const raw = localStorage.getItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY);
+    homeFeaturedSlideshowToggle.checked = raw == null ? true : raw === "1";
+    homeFeaturedSlideshowToggle.addEventListener("change", () => {
+      localStorage.setItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY, homeFeaturedSlideshowToggle.checked ? "1" : "0");
+      if (homeFeaturedSlideshowStatus) {
+        homeFeaturedSlideshowStatus.textContent = "Saved.";
+        setTimeout(() => {
+          if (homeFeaturedSlideshowStatus.textContent === "Saved.") homeFeaturedSlideshowStatus.textContent = "";
         }, 1000);
       }
     });

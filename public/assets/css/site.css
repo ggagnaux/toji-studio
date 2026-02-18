@@ -6,7 +6,7 @@
 
 /* Default theme: dark */
 :root, [data-theme="dark"]{
-  --bg:#0b0c10;
+  --bg:#18171a;
   /* --panel:#10121a; */
   --panel:#222222;
   --text:#e9eef5;

@@ -5,6 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Series — Toji Studios</title>
   <link rel="stylesheet" href="assets/css/site.css" />
+  <style>
+    .series-pieces-grid .card{
+      width: 100%;
+      min-width: 220px;
+      max-width: 300px;
+      justify-self: start;
+      box-shadow: none;
+    }
+    .series-pieces-grid .thumb{
+      aspect-ratio: 16/10;
+    }
+    .series-pieces-grid .thumb img{
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      object-position: center;
+      background: var(--bg);
+    }
+  </style>
 </head>
 <body class="home-animated">
   <header id="siteHeader"></header>
@@ -455,7 +474,7 @@
 
       detail.appendChild(el("hr", { class:"sep" }));
 
-      const grid = el("div", { class:"grid", style:"margin-top:8px" });
+      const grid = el("div", { class:"grid series-pieces-grid", style:"margin-top:8px" });
       detail.appendChild(grid);
 
       if (!pieces.length){
@@ -472,7 +491,7 @@
             style:"grid-column: span 4",
             onclick:(e)=>{ e.preventDefault(); openLightbox(pieces, idx); }
           },
-            el("div", { class:"thumb" },
+            el("div", { class:"thumb", style:"aspect-ratio: 16/10" },
               el("img", { src:a.thumb || a.image, alt:a.alt || a.title || "Artwork", loading:"lazy" })
             ),
             el("div", { class:"meta" },

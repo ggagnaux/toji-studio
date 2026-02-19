@@ -145,10 +145,66 @@
       transform: translateY(0);
       opacity: 1;
     }
+    .splash-active{
+      overflow:hidden;
+    }
+    .splash-screen{
+      position:fixed;
+      inset:0;
+      z-index:2000;
+      display:grid;
+      place-items:center;
+      background:
+        radial-gradient(1200px 700px at 12% 18%, rgba(96, 130, 255, .22), transparent 62%),
+        radial-gradient(900px 560px at 84% 12%, rgba(92, 255, 214, .16), transparent 58%),
+        radial-gradient(1000px 640px at 70% 82%, rgba(255, 140, 86, .12), transparent 62%),
+        radial-gradient(900px 560px at 22% 88%, rgba(150, 110, 255, .14), transparent 60%),
+        var(--bg);
+      transition: opacity .35s ease, visibility .35s ease;
+    }
+    .splash-screen.hidden{
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+    }
+    .splash-logo{
+      border:1px solid var(--line);
+      border-radius:20px;
+      background: color-mix(in srgb, var(--panel) 84%, transparent);
+      color:var(--text);
+      padding:28px 36px;
+      cursor:pointer;
+      text-align:center;
+      box-shadow: var(--shadow);
+    }
+    .splash-logo-title{
+      margin:0;
+      font-size: clamp(26px, 5vw, 56px);
+      letter-spacing:.14em;
+      line-height:1;
+      font-weight:700;
+    }
+    .splash-logo-sub{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:13px;
+      letter-spacing:.2em;
+      text-transform:uppercase;
+    }
+    .splash-logo-image{
+      display:block;
+      width:min(78vw, 520px);
+      height:auto;
+    }
   </style>
 </head>
 
 <body class="home-animated">
+  <div id="splashScreen" class="splash-screen hidden" aria-label="Splash screen">
+    <button id="splashLogo" class="splash-logo" type="button" aria-label="Enter site">
+      <img class="splash-logo-image" src="assets/img/TojiStudios_Logo_v5.png" alt="Toji Studios logo" />
+    </button>
+  </div>
   <header id="siteHeader"></header>
 
   <main class="container">
@@ -212,9 +268,38 @@
     import { renderPublicHeader } from "./assets/js/header.js";
     import { renderPublicFooter } from "./assets/js/footer.js";
 
-    renderPublicHeader({ active: "home", small: "home", ctaText: "Explore", ctaHref: "gallery.html" });
+    renderPublicHeader({
+      active: "home",
+      small: "home",
+      ctaText: "Explore",
+      ctaHref: "gallery.html",
+      brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
+    });
     renderPublicFooter({
       rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
+    });
+
+    const splashScreen = document.getElementById("splashScreen");
+    const splashLogo = document.getElementById("splashLogo");
+    let showSplash = true;
+    try {
+      const ref = document.referrer ? new URL(document.referrer) : null;
+      showSplash = !(ref && ref.origin === location.origin);
+    } catch {
+      showSplash = true;
+    }
+
+    if (showSplash) {
+      splashScreen?.classList.remove("hidden");
+      document.body.classList.add("splash-active");
+    } else {
+      splashScreen?.classList.add("hidden");
+      document.body.classList.remove("splash-active");
+    }
+
+    splashLogo?.addEventListener("click", () => {
+      splashScreen?.classList.add("hidden");
+      document.body.classList.remove("splash-active");
     });
 
     // ---- Data source: Admin localStorage first, fallback JSON ----

@@ -5,14 +5,19 @@ export function renderPublicHeader({
   small = "",
   ctaText = "Explore",
   ctaHref = "gallery.html",
+  brandLogoSrc = "",
 } = {}) {
   const headerHost = document.getElementById("siteHeader");
   if (!headerHost) throw new Error('Missing <header id="siteHeader"></header>');
 
+  const brandInner = brandLogoSrc
+    ? `<img class="brand-logo-image" src="${escapeAttr(brandLogoSrc)}" alt="Toji Studios" />`
+    : `Toji Studios <small>${escapeHtml(small)}</small>`;
+
   headerHost.className = "header";
   headerHost.innerHTML = `
     <div class="container nav">
-      <a class="brand" href="index.html">Toji Studios <small>${escapeHtml(small)}</small></a>
+      <a class="brand" href="index.html">${brandInner}</a>
 
       <button
         class="icon-btn nav-toggle"

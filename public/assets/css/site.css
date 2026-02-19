@@ -70,6 +70,28 @@ html[data-theme="light"] body.home-animated{
   body.home-animated{ animation: none; }
 }
 
+/* Shared media-fit rules across public pages */
+#featuredGrid .thumb img,
+#seriesGrid .thumb img,
+#galleryGrid .thumb img,
+#homeSeriesGrid .thumb img,
+#featuredStrip .thumb img,
+.series-pieces-grid .thumb img,
+.artwork-media img,
+#moreGrid .thumb img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+#featuredGrid .thumb img,
+#seriesGrid .thumb img,
+#homeSeriesGrid .thumb img,
+#featuredStrip .thumb img,
+.series-pieces-grid .thumb img{
+  background: var(--bg);
+}
+
 a{color:inherit;text-decoration:none}
 a:hover{color:var(--selectedmenu)}
 img{max-width:100%;display:block}

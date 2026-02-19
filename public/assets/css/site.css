@@ -8,7 +8,8 @@
 :root, [data-theme="dark"]{
   --bg:#18171a;
   /* --panel:#10121a; */
-  --panel:#222222;
+  /* --panel:#222222; */
+  --panel:#2c2c2c;
   --text:#e9eef5;
   --muted:#aab4c0;
   --selectedmenu: #ff0000;
@@ -20,7 +21,8 @@
 
 /* Light theme */
 [data-theme="light"]{
-  --bg:#f6f7fb;
+  /* --bg:#f6f7fb; */
+  --bg:#f1f1f1;
   --panel:#ffffff;
   --text:#10131a;
   --muted:#5b6572;

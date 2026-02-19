@@ -47,8 +47,6 @@ export function renderPublicHeader({
         </div>
         <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
       </div>
-
-      <a class="btn" href="${escapeAttr(ctaHref)}">${escapeHtml(ctaText)}</a>
     </div>
   `;
 
@@ -106,3 +104,4 @@ function escapeHtml(s) {
 function escapeAttr(s) {
   return String(s ?? "").replace(/"/g, "&quot;");
 }
+

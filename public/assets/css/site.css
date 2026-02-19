@@ -78,7 +78,7 @@ img{max-width:100%;display:block}
   width:100%;
   max-width:var(--max);
   margin:0 auto;
-  padding:24px clamp(14px, 2.5vw, 32px);
+  padding:12px clamp(14px, 2.5vw, 32px);
 }
 
 /* Smooth theme transitions (respects reduced motion) */
@@ -130,7 +130,7 @@ img{max-width:100%;display:block}
 
 .btn{
   display:inline-flex; align-items:center; justify-content:center;
-  padding:10px 14px;
+  padding:7px 11px;
   border:1px solid var(--line);
   border-radius:999px;
   background:transparent;
@@ -254,7 +254,7 @@ img{max-width:100%;display:block}
 }
 
 .icon-btn{
-  width:40px; height:40px;
+  width:34px; height:34px;
   display:inline-flex; align-items:center; justify-content:center;
   border:1px solid var(--line);
   border-radius:999px;
@@ -281,9 +281,9 @@ img{max-width:100%;display:block}
   border:0;
   background:transparent;
   color:var(--muted);
-  padding:8px 10px;
+  padding:5px 8px;
   cursor:pointer;
-  font-size:13px;
+  font-size:12px;
 }
 .segmented button:hover{ color:var(--text); }
 .segmented button.active{

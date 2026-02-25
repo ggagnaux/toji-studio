@@ -1,11 +1,26 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 
-const dataDir = path.resolve("storage");
-fs.mkdirSync(dataDir, { recursive: true });
+const defaultStorageDir = path.join(os.homedir(), ".toji-studios", "storage");
+export const STORAGE_DIR = path.resolve(process.env.TOJI_STORAGE_DIR || defaultStorageDir);
+export const ORIGINALS_DIR = path.join(STORAGE_DIR, "originals");
+export const VARIANTS_DIR = path.join(STORAGE_DIR, "variants");
 
-export const db = new Database(path.join(dataDir, "toji.sqlite"));
+const legacyStorageDir = path.resolve("storage");
+const legacyDbFile = path.join(legacyStorageDir, "toji.sqlite");
+const targetDbFile = path.join(STORAGE_DIR, "toji.sqlite");
+if (!process.env.TOJI_STORAGE_DIR && fs.existsSync(legacyDbFile) && !fs.existsSync(targetDbFile)) {
+  fs.mkdirSync(STORAGE_DIR, { recursive: true });
+  fs.cpSync(legacyStorageDir, STORAGE_DIR, { recursive: true });
+}
+
+fs.mkdirSync(STORAGE_DIR, { recursive: true });
+fs.mkdirSync(ORIGINALS_DIR, { recursive: true });
+fs.mkdirSync(VARIANTS_DIR, { recursive: true });
+
+export const db = new Database(path.join(STORAGE_DIR, "toji.sqlite"));
 db.pragma("journal_mode = WAL");
 
 db.exec(`

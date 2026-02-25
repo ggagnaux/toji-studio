@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { Router } from "express";
-import { db, nowIso, jsonArray, toJson } from "../db.js";
+import { db, nowIso, jsonArray, toJson, ORIGINALS_DIR, VARIANTS_DIR } from "../db.js";
 
 export const adminRouter = Router();
 
@@ -60,8 +60,8 @@ adminRouter.patch("/admin/artworks/:id", (req, res) => {
 });
 
 // Helpers
-const originalsDir = path.resolve("storage/originals");
-const variantsDir  = path.resolve("storage/variants");
+const originalsDir = ORIGINALS_DIR;
+const variantsDir  = VARIANTS_DIR;
 
 function safeUnlink(p) {
   try {

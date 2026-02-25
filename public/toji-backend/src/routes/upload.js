@@ -4,12 +4,12 @@ import sharp from "sharp";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { db, nowIso, jsonArray, toJson } from "../db.js";
+import { db, nowIso, jsonArray, toJson, ORIGINALS_DIR, VARIANTS_DIR } from "../db.js";
 
 export const uploadRouter = Router();
 
-const originalsDir = path.resolve("storage/originals");
-const variantsDir = path.resolve("storage/variants");
+const originalsDir = ORIGINALS_DIR;
+const variantsDir = VARIANTS_DIR;
 fs.mkdirSync(originalsDir, { recursive: true });
 fs.mkdirSync(variantsDir, { recursive: true });
 

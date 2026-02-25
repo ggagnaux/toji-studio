@@ -112,6 +112,8 @@ Roadmap for that later:
 - [ ] Print / licensing info page
 - [ ] Simple analytics (privacy-friendly)
 - [ ] Mouse-over effects in studio image grid
+- [ ] Admin Tool - Tag Manager
+
 
 
 ---

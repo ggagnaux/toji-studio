@@ -145,6 +145,9 @@
     setYearFooter();
 
     const state = await loadState();
+    state.artworks ||= [];
+    state.tags ||= [];
+    state.series ||= [];
 
     const files = document.getElementById("files");
     const statusEl = document.getElementById("status");
@@ -305,8 +308,8 @@
         rendered++;
 
         list.appendChild(
-          el("a", { class:"card", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"box-shadow:none" },
-            el("div", { class:"thumb" }, el("img", { src:a.thumb, alt:a.title, loading:"lazy" })),
+          el("a", { class:"card", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"box-shadow:none; display:flex; align-items:center; gap:12px; padding:10px;" },
+            el("div", { class:"thumbSm" }, el("img", { src:a.thumb, alt:a.title, loading:"lazy" })),
             el("div", { class:"meta" },
               el("p", { class:"title" }, a.title || "Untitled"),
               el("p", { class:"sub" }, `ID: ${a.id} • Open to edit →`)
@@ -360,7 +363,7 @@
       const hasWork = tags.length || Object.keys(basePatch).length;
       if (!hasWork) return { total: targets.length, ok: targets.length, failed: 0, skipped: true };
 
-      setStatus(`Applying batch metadata to ${ids.length} item(s)…`);
+      setStatus(`Applying batch metadata to ${targets.length} item(s)...`);
 
       try{
         const jobs = targets.map(async (id) => {
@@ -461,6 +464,7 @@
             continue;
           }
           a.id = normId;
+          if (!Array.isArray(a.tags)) a.tags = [];
 
           // Ensure URLs are usable
           a.thumb = normalizeMediaUrl(a.thumb);
@@ -476,6 +480,13 @@
           if (nidx >= 0) newIds.splice(nidx, 1);
           newIds.unshift(a.id);
           createdIds.push(a.id);
+        }
+
+        if (!createdIds.length){
+          setStatus("Upload succeeded, but no valid artwork IDs were returned.");
+          saveState(state);
+          renderNew();
+          return;
         }
 
         saveState(state);
@@ -501,4 +512,5 @@
   </script>
 </body>
 </html>
+
 

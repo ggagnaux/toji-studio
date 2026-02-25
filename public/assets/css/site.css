@@ -14,7 +14,8 @@
   --muted:#aab4c0;
   --selectedmenu: #ff0000;
   --selecteditem: #ffffff;
-  --line:rgba(100, 100, 100, .20);
+  /* --line:rgba(100, 100, 100, .20); */
+  --line:rgba(200, 200, 200, .30);
   --accent:#f3ae01;
   --alternateaccent:#f3ae01;
   --shadow: 0 12px 30px rgba(0,0,0,.35);
@@ -29,7 +30,8 @@
   --muted:#5b6572;
   --selectedmenu: #ff0000;
   --selecteditem: #10131a;
-  --line:rgba(16,19,26,.10);
+  /* --line:rgba(16,19,26,.10); */
+  --line:rgba(10,10,26,.40);
   --accent:#2f5bff;
   --alternateaccent:#f3ae01;  
   --shadow: 0 10px 24px rgba(16,19,26,.10);

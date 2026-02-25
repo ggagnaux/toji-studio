@@ -113,6 +113,8 @@ Roadmap for that later:
 - [ ] Simple analytics (privacy-friendly)
 - [ ] Mouse-over effects in studio image grid
 - [ ] Admin Tool - Tag Manager
+- [ ] Add a blog page
+- [ ] Add the ability to upload to social media (images to Instagram and Threads, textual blog posts to Medium and Substack?)
 
 
 

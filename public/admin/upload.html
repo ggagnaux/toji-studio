@@ -5,6 +5,20 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Studio — Upload</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
+  <style>
+    .upload-section{
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px;
+    }
+    .upload-section + .upload-section{ margin-top:12px; }
+    .upload-section-backend{ background: rgba(138,167,255,.08); }
+    .upload-section-originals{ background: rgba(92,255,214,.08); }
+    .upload-section-batch{ background: rgba(255,173,92,.08); }
+    [data-theme="light"] .upload-section-backend{ background: rgba(47,91,255,.08); }
+    [data-theme="light"] .upload-section-originals{ background: rgba(17,166,139,.08); }
+    [data-theme="light"] .upload-section-batch{ background: rgba(217,120,31,.10); }
+  </style>
 </head>
 <body>
   <header class="header">
@@ -43,6 +57,7 @@
     <section class="grid">
       <div class="card" style="grid-column: span 7">
         <div class="meta">
+          <div class="upload-section upload-section-backend">
           <p class="title">Backend connection</p>
           <p class="sub">Set your admin token (from <code>.env</code> → <code>ADMIN_TOKEN</code>).</p>
 
@@ -55,11 +70,12 @@
             <button class="btn" id="saveToken" type="button">Save token</button>
             <span class="sub" id="tokenStatus" aria-live="polite"></span>
           </div>
+          </div>
 
-          <hr class="sep" />
+          <div class="upload-section upload-section-originals">
 
           <p class="title">Upload originals</p>
-          <p class="sub">Select image files — they’ll be uploaded and converted into thumb + web variants.</p>
+          <!-- <p class="sub">Select image files — they’ll be uploaded and converted into thumb + web variants.</p> -->
 
           <div class="field" style="margin-top:14px">
             <div class="sub">Select files</div>
@@ -67,7 +83,6 @@
           </div>
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center">
-            <button class="btn primary" id="uploadBtn" type="button">Upload to backend</button>
             <span class="sub" id="status" aria-live="polite"></span>
           </div>
           <div id="uploadProgressWrap" style="display:none; margin-top:10px">
@@ -76,8 +91,9 @@
               <div id="uploadProgressBar" style="height:100%; width:0%; background:var(--accent); transition:width .15s ease;"></div>
             </div>
           </div>
+          </div>
 
-          <hr class="sep" />
+          <div class="upload-section upload-section-batch">
 
           <p class="title">Batch metadata</p>
           <p class="sub">Apply to the newly uploaded items:</p>
@@ -104,18 +120,21 @@
               <input id="year" placeholder="2026" />
             </div>
 
-            <div class="field">
-              <div class="sub">Status</div>
-              <select id="statusSelect">
-                <option value="draft" selected>Draft</option>
-                <option value="published">Published</option>
-                <option value="hidden">Hidden</option>
-              </select>
+              <div class="field">
+                <div class="sub">Status</div>
+                <select id="statusSelect">
+                  <option value="draft" selected>Draft</option>
+                  <option value="published">Published</option>
+                  <option value="hidden">Hidden</option>
+                </select>
+              </div>
             </div>
+          </div>
 
+          <div class="upload-section">
             <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
-              <button class="btn" id="applyBatch" type="button">Apply to new items</button>
-              <a class="btn" id="goDash" href="index.html">Back to dashboard</a>
+              <button class="btn primary" id="uploadBtn" type="button">Upload</button>
+              <button class="btn" id="goDash" type="button">Back to dashboard</button>
             </div>
           </div>
         </div>
@@ -580,9 +599,8 @@
       }
     });
 
-    document.getElementById("applyBatch").addEventListener("click", async () => {
-      if (!newIds.length) return setStatus("Upload first.");
-      await applyBatchToIds([...newIds]);
+    document.getElementById("goDash").addEventListener("click", () => {
+      location.href = "index.html";
     });
 
     renderTagPills();

@@ -137,6 +137,16 @@
       </div>
     </footer>
   </main>
+  <div id="uiBlocker" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.55); backdrop-filter: blur(2px);">
+    <div style="position:absolute; inset:0; display:grid; place-items:center; padding:20px;">
+      <div class="card" style="max-width:420px; width:100%; box-shadow:none;">
+        <div class="meta" style="text-align:center;">
+          <p class="title" id="uiBlockerTitle">Uploading and processing...</p>
+          <p class="sub" id="uiBlockerSub">Please wait. Interaction is temporarily disabled.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script type="module">
     import {
@@ -161,11 +171,26 @@
 
     const tokenInput = document.getElementById("token");
     const tokenStatus = document.getElementById("tokenStatus");
+    const uiBlocker = document.getElementById("uiBlocker");
+    const uiBlockerTitle = document.getElementById("uiBlockerTitle");
+    const uiBlockerSub = document.getElementById("uiBlockerSub");
 
     const newIds = [];
+    let uiLocked = false;
 
     function setStatus(msg){ statusEl.textContent = msg || ""; }
     function setTokenStatus(msg){ tokenStatus.textContent = msg || ""; }
+    function setUiLocked(on, title = "Uploading and processing...", sub = "Please wait. Interaction is temporarily disabled."){
+      uiLocked = !!on;
+      if (uiBlocker) uiBlocker.style.display = on ? "block" : "none";
+      if (uiBlockerTitle) uiBlockerTitle.textContent = title;
+      if (uiBlockerSub) uiBlockerSub.textContent = sub;
+    }
+    window.addEventListener("keydown", (e) => {
+      if (!uiLocked) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
     function setUploadProgress(pct){
       const wrap = document.getElementById("uploadProgressWrap");
       const bar = document.getElementById("uploadProgressBar");
@@ -479,6 +504,7 @@
 
       setStatus(`Uploading ${arr.length} file(s)…`);
 
+      setUiLocked(true);
       setUploadProgress(0);
 
       try{
@@ -549,6 +575,7 @@
       }catch(err){
         setStatus(`Upload failed: ${err?.message || err}`);
       } finally {
+        setUiLocked(false);
         setTimeout(() => hideUploadProgress(), 800);
       }
     });

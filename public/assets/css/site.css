@@ -13,6 +13,7 @@
   --text:#e9eef5;
   --muted:#aab4c0;
   --selectedmenu: #ff0000;
+  --selecteditem: #ffffff;
   --line:rgba(100, 100, 100, .20);
   --accent:#f3ae01;
   --alternateaccent:#f3ae01;
@@ -27,6 +28,7 @@
   --text:#10131a;
   --muted:#5b6572;
   --selectedmenu: #ff0000;
+  --selecteditem: #10131a;
   --line:rgba(16,19,26,.10);
   --accent:#2f5bff;
   --alternateaccent:#f3ae01;  
@@ -93,7 +95,7 @@ html[data-theme="light"] body.home-animated{
 }
 
 a{color:inherit;text-decoration:none}
-a:hover{color:var(--selectedmenu)}
+a:hover{color:var(--selecteditem)}
 img{max-width:100%;display:block}
 
 .container{

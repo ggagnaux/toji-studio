@@ -111,6 +111,8 @@ Roadmap for that later:
 - [ ] Performance pass (lazy loading, responsive `srcset`, prefetch)
 - [ ] Print / licensing info page
 - [ ] Simple analytics (privacy-friendly)
+- [ ] Mouse-over effects in studio image grid
+
 
 ---
 
@@ -156,20 +158,6 @@ Roadmap for that later:
 - `public/admin/series.html` — Series management
 - `public/admin/admin.js` — Admin state + helpers (localStorage key: `toji_admin_state_v1`)
 
-### Shared public JS
-- `public/assets/js/header.js` — Injected header/nav + theme controls
-- `public/assets/js/footer.js` — Injected footer + dynamic year
-- `public/assets/js/site.js` — Theme system (used by header)
-
-### Data
-- `public/assets/data/admin.sample.json` — Fallback sample data for published artworks
-
-### Studio / Admin (front-end)
-- `public/admin/index.html` — Studio dashboard
-- `public/admin/upload.html` — Upload mock (creates draft records in localStorage)
-- `public/admin/edit.html` — Artwork editor (draft/publish/metadata)
-- `public/admin/series.html` — Series management (if present in your admin set)
-- `public/admin/admin.js` — Admin state store + helpers (`toji_admin_state_v1`)
 
 ---
 
@@ -177,11 +165,4 @@ Roadmap for that later:
 - Originals should stay private long-term; public should serve resized variants only (backend phase).
 - Multi-user is planned later (backend + auth).
 - No WordPress / third-party CMS; plain HTML/JS front-end, with Node planned for backend when needed.
-
-### Studio / Admin (front-end)
-- `public/admin/index.html` — Studio dashboard
-- `public/admin/upload.html` — Upload mock (creates draft records in localStorage)
-- `public/admin/series.html` — Series management (assumed present based on nav)
-- `public/admin/edit.html` — Artwork editor (assumed present based on links)
-- `public/admin/admin.js` — Admin state helpers (load/save, IDs, tags, etc.)
 

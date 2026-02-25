@@ -422,7 +422,6 @@
     }
 
     document.getElementById("uploadBtn").addEventListener("click", async () => {
-      debugger;
       const arr = Array.from(files.files || []);
       if (!arr.length) return setStatus("Pick at least one image.");
 
@@ -433,10 +432,18 @@
       try{
         const fd = new FormData();
         for (const f of arr) fd.append("files", f);
+        const uploadTags = getSelectedBatchTags();
+        const uploadSeries = document.getElementById("series").value.trim();
+        const uploadYear = document.getElementById("year").value.trim();
+        const uploadStatus = document.getElementById("statusSelect").value;
+
+        if (uploadTags.length) fd.append("tags", JSON.stringify(uploadTags));
+        if (uploadSeries) fd.append("series", uploadSeries);
+        if (uploadYear) fd.append("year", uploadYear);
+        if (uploadStatus) fd.append("status", uploadStatus);
 
         const result = await apiFetch("/api/admin/upload", { method:"POST", body: fd });
 
-        debugger;
         const created = result?.created || [];
 
         if (!created.length){
@@ -474,8 +481,9 @@
         saveState(state);
         renderNew();
 
-        // Auto-apply batch metadata to the newly created items (if any batch fields are filled)
-        await applyBatchToIds(createdIds);
+        // Safety pass: if anything is still missing after upload write-through, patch it.
+        const needsPatchPass = uploadTags.length || uploadSeries || uploadYear;
+        if (needsPatchPass) await applyBatchToIds(createdIds);
 
       }catch(err){
         setStatus(`Upload failed: ${err?.message || err}`);

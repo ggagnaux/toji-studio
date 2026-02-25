@@ -23,6 +23,40 @@ function safeBase(name) {
   return String(name || "image").replace(/[^a-z0-9._-]+/gi, "_").slice(0, 80);
 }
 
+function normTag(t) {
+  return String(t || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/^[#]+/, "");
+}
+
+function parseTags(raw) {
+  if (Array.isArray(raw)) return Array.from(new Set(raw.map(normTag).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const text = String(raw || "").trim();
+  if (!text) return [];
+  if (text.startsWith("[")) {
+    try {
+      const arr = JSON.parse(text);
+      if (Array.isArray(arr)) return Array.from(new Set(arr.map(normTag).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    } catch {}
+  }
+  return Array.from(new Set(text.split(/[,;\n]+/g).map(normTag).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+}
+
+function cleanSeries(s) {
+  return String(s || "").trim().replace(/\s+/g, " ");
+}
+
+function cleanYear(y) {
+  return String(y || "").trim();
+}
+
+function cleanStatus(s) {
+  const v = String(s || "").trim().toLowerCase();
+  return v === "published" || v === "hidden" || v === "draft" ? v : "draft";
+}
+
 function originalsPathFor(artworkId, originalname) {
   const base = safeBase(originalname);
   const origName = `${artworkId}__${base}`;
@@ -139,12 +173,16 @@ uploadRouter.post("/admin/artworks/:id/regenerate-variants", async (req, res) =>
 
 
 uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) => {
-  debugger;
   const files = req.files || [];
   if (!files.length) return res.status(400).json({ error: "No files" });
 
   const created = [];
   const createdAt = nowIso();
+  const batchTags = parseTags(req.body?.tags);
+  const batchSeries = cleanSeries(req.body?.series);
+  const batchYear = cleanYear(req.body?.year);
+  const batchStatus = cleanStatus(req.body?.status);
+  const batchPublishedAt = batchStatus === "published" ? createdAt : null;
 
   for (const f of files) {
     const artworkId = uid("a");
@@ -164,15 +202,19 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
         id, title, year, series, description, alt, status, featured, sortOrder, tags,
         createdAt, updatedAt, publishedAt, originalPath, width, height
       ) VALUES (
-        @id, @title, '', '', '', '', 'draft', 0, 0, @tags,
-        @createdAt, @updatedAt, NULL, @originalPath, @width, @height
+        @id, @title, @year, @series, '', '', @status, 0, 0, @tags,
+        @createdAt, @updatedAt, @publishedAt, @originalPath, @width, @height
       )
     `).run({
       id: artworkId,
       title: base.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim() || "Untitled",
-      tags: toJson([]),
+      year: batchYear,
+      series: batchSeries,
+      status: batchStatus,
+      tags: toJson(batchTags),
       createdAt,
       updatedAt: createdAt,
+      publishedAt: batchPublishedAt,
       originalPath: origPath,
       width: meta.width || null,
       height: meta.height || null

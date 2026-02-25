@@ -70,6 +70,12 @@
             <button class="btn primary" id="uploadBtn" type="button">Upload to backend</button>
             <span class="sub" id="status" aria-live="polite"></span>
           </div>
+          <div id="uploadProgressWrap" style="display:none; margin-top:10px">
+            <div class="sub" id="uploadProgressLabel">Uploading: 0%</div>
+            <div style="height:10px; border:1px solid var(--line); border-radius:999px; overflow:hidden; margin-top:6px;">
+              <div id="uploadProgressBar" style="height:100%; width:0%; background:var(--accent); transition:width .15s ease;"></div>
+            </div>
+          </div>
 
           <hr class="sep" />
 
@@ -160,6 +166,19 @@
 
     function setStatus(msg){ statusEl.textContent = msg || ""; }
     function setTokenStatus(msg){ tokenStatus.textContent = msg || ""; }
+    function setUploadProgress(pct){
+      const wrap = document.getElementById("uploadProgressWrap");
+      const bar = document.getElementById("uploadProgressBar");
+      const label = document.getElementById("uploadProgressLabel");
+      const p = Math.max(0, Math.min(100, Number(pct) || 0));
+      if (wrap) wrap.style.display = "block";
+      if (bar) bar.style.width = `${p}%`;
+      if (label) label.textContent = `Uploading: ${Math.round(p)}%`;
+    }
+    function hideUploadProgress(){
+      const wrap = document.getElementById("uploadProgressWrap");
+      if (wrap) wrap.style.display = "none";
+    }
 
     // ---- tag helpers ----
     function normTag(t){
@@ -338,6 +357,34 @@
       const v = a?.id || a?.artworkId || a?._id || a?.uuid;
       return v == null ? "" : String(v).trim();
     }
+    function uploadWithProgress(path, formData, onProgress){
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${API_BASE}${path}`, true);
+        const token = getAdminToken();
+        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+        xhr.upload.onprogress = (ev) => {
+          if (!ev.lengthComputable) return;
+          onProgress?.((ev.loaded / ev.total) * 100);
+        };
+
+        xhr.onerror = () => reject(new Error("Network error"));
+        xhr.onabort = () => reject(new Error("Upload aborted"));
+        xhr.onload = () => {
+          const text = xhr.responseText || "";
+          let payload = null;
+          try { payload = text ? JSON.parse(text) : null; } catch {}
+          if (xhr.status < 200 || xhr.status >= 300) {
+            reject(new Error(payload?.error || `${xhr.status} ${xhr.statusText}`));
+            return;
+          }
+          resolve(payload);
+        };
+
+        xhr.send(formData);
+      });
+    }
 
     async function applyBatchToIds(ids){
       const targets = Array.from(new Set((ids || []).map(x => String(x || "").trim()).filter(Boolean)));
@@ -432,6 +479,8 @@
 
       setStatus(`Uploading ${arr.length} file(s)…`);
 
+      setUploadProgress(0);
+
       try{
         const fd = new FormData();
         for (const f of arr) fd.append("files", f);
@@ -445,7 +494,8 @@
         if (uploadYear) fd.append("year", uploadYear);
         if (uploadStatus) fd.append("status", uploadStatus);
 
-        const result = await apiFetch("/api/admin/upload", { method:"POST", body: fd });
+        const result = await uploadWithProgress("/api/admin/upload", fd, setUploadProgress);
+        setUploadProgress(100);
 
         const created = result?.created || [];
 
@@ -498,6 +548,8 @@
 
       }catch(err){
         setStatus(`Upload failed: ${err?.message || err}`);
+      } finally {
+        setTimeout(() => hideUploadProgress(), 800);
       }
     });
 

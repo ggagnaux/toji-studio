@@ -28,10 +28,14 @@
       justify-content: start;
     }
     #featuredGrid{
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 300px));
+      display: block;
+      column-gap: 12px;
+      columns: 4 220px;
     }
     #seriesGrid{
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 300px));
+      display: block;
+      column-gap: 12px;
+      columns: 4 220px;
     }
     #galleryGrid{
       display: block;
@@ -39,22 +43,39 @@
       columns: 8 110px;
     }
     #featuredGrid .card{
+      display: inline-block;
       width: 100%;
-      max-width: 300px;
-      justify-self: start;
+      max-width: none;
+      margin: 0 0 12px 0;
+      break-inside: avoid;
+      vertical-align: top;
       box-shadow: none;
     }
     #seriesGrid .card{
+      display: inline-block;
       width: 100%;
-      max-width: 300px;
-      justify-self: start;
+      max-width: none;
+      margin: 0 0 12px 0;
+      break-inside: avoid;
+      vertical-align: top;
       box-shadow: none;
     }
     #featuredGrid .thumb{
-      aspect-ratio: 16/10;
+      aspect-ratio: auto;
+      background: transparent;
     }
     #seriesGrid .thumb{
-      aspect-ratio: 16/10;
+      aspect-ratio: auto;
+      background: transparent;
+    }
+    #featuredGrid .thumb img,
+    #seriesGrid .thumb img{
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      object-position: center;
+      background: transparent;
+      display: block;
     }
     #galleryGrid .card{
       display: inline-block;

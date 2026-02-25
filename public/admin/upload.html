@@ -88,7 +88,9 @@
 
             <div class="field">
               <div class="sub">Series</div>
-              <input id="series" placeholder="e.g., Dark Fields" />
+              <select id="series">
+                <option value="">No change</option>
+              </select>
             </div>
 
             <div class="field">
@@ -164,6 +166,9 @@
         .replace(/\s+/g, " ")
         .replace(/^[#]+/, "");
     }
+    function normSeries(s){
+      return String(s || "").trim().replace(/\s+/g, " ");
+    }
     function parseTags(raw){
       return Array.from(new Set(
         String(raw || "")
@@ -190,6 +195,18 @@
         if (nt) set.add(nt);
       });
 
+      return Array.from(set).sort((a,b)=>a.localeCompare(b));
+    }
+    function allKnownSeries(){
+      const set = new Set();
+      (state.series || []).forEach(s => {
+        const ns = normSeries(s);
+        if (ns) set.add(ns);
+      });
+      (state.artworks || []).forEach(a => {
+        const ns = normSeries(a.series);
+        if (ns) set.add(ns);
+      });
       return Array.from(set).sort((a,b)=>a.localeCompare(b));
     }
 
@@ -240,6 +257,19 @@
       for (const t of tags) selectedBatchTags.add(t);
       input.value = "";
       renderTagPills();
+    }
+    function renderSeriesOptions(){
+      const seriesSelect = document.getElementById("series");
+      if (!seriesSelect) return;
+      const current = seriesSelect.value || "";
+      seriesSelect.innerHTML = "";
+      seriesSelect.appendChild(new Option("No change", ""));
+      for (const s of allKnownSeries()){
+        seriesSelect.appendChild(new Option(s, s));
+      }
+      if ([...seriesSelect.options].some(o => o.value === current)) {
+        seriesSelect.value = current;
+      }
     }
 
     // Seed token input
@@ -301,12 +331,18 @@
       return p;
     }
 
+    function normalizeArtworkId(a){
+      const v = a?.id || a?.artworkId || a?._id || a?.uuid;
+      return v == null ? "" : String(v).trim();
+    }
+
     async function applyBatchToIds(ids){
-      if (!ids?.length) return;
+      const targets = Array.from(new Set((ids || []).map(x => String(x || "").trim()).filter(Boolean)));
+      if (!targets.length) return { total: 0, ok: 0, failed: 0, skipped: true };
 
       if (!getAdminToken()) {
         setStatus("Uploaded, but batch metadata not applied (missing admin token).");
-        return;
+        return { total: targets.length, ok: 0, failed: targets.length, skipped: true };
       }
 
       const tags = getSelectedBatchTags();
@@ -322,14 +358,14 @@
       const now = new Date().toISOString();
 
       const hasWork = tags.length || Object.keys(basePatch).length;
-      if (!hasWork) return;
+      if (!hasWork) return { total: targets.length, ok: targets.length, failed: 0, skipped: true };
 
       setStatus(`Applying batch metadata to ${ids.length} item(s)…`);
 
       try{
-        const jobs = ids.map(async (id) => {
+        const jobs = targets.map(async (id) => {
           const a = state.artworks.find(x => x.id === id);
-          if (!a) return;
+          if (!a) throw new Error("Artwork not found in local state");
 
           const patch = { ...basePatch };
 
@@ -355,23 +391,38 @@
           }
         });
 
-        await Promise.all(jobs);
+        const settled = await Promise.allSettled(jobs);
+        const failedIds = settled
+          .map((result, i) => ({ result, id: targets[i] }))
+          .filter(x => x.result.status === "rejected")
+          .map(x => x.id);
+        const okCount = targets.length - failedIds.length;
 
         // Maintain global tag/series pools locally
         for (const t of tags) upsertTag(state, t);
-        if (series && !state.series.includes(series)) state.series.push(series);
+        if (series && !(state.series || []).includes(series)) state.series.push(series);
 
         saveState(state);
         renderNew();
-        setStatus("Upload + batch metadata applied.");
+        renderTagPills();
+        renderSeriesOptions();
+        if (!failedIds.length) {
+          setStatus(`Upload + batch metadata applied to ${okCount}/${targets.length} item(s).`);
+        } else {
+          const preview = failedIds.slice(0, 4).join(", ");
+          const more = failedIds.length > 4 ? ` +${failedIds.length - 4} more` : "";
+          setStatus(`Batch metadata applied to ${okCount}/${targets.length}. Failed IDs: ${preview}${more}`);
+        }
+        return { total: targets.length, ok: okCount, failed: failedIds.length };
       }catch(err){
         saveState(state);
         setStatus(`Batch apply failed: ${err?.message || err}`);
+        return { total: targets.length, ok: 0, failed: targets.length };
       }
     }
 
     document.getElementById("uploadBtn").addEventListener("click", async () => {
-      //debugger;
+      debugger;
       const arr = Array.from(files.files || []);
       if (!arr.length) return setStatus("Pick at least one image.");
 
@@ -383,28 +434,9 @@
         const fd = new FormData();
         for (const f of arr) fd.append("files", f);
 
-        console.log("about to upload", fd, Array.from(fd.entries()));
-        debugger;
-
         const result = await apiFetch("/api/admin/upload", { method:"POST", body: fd });
-        // const ac = new AbortController();
-        // const t = setTimeout(() => ac.abort(), 20000);
 
-        // try {
-        //   const result = await apiFetch("/api/admin/upload", { method:"POST", body: fd, signal: ac.signal });
-        //   console.log("upload result", result);
-        // } catch (e) {
-        //   console.error("upload failed/timeout", e);
-        //   setStatus(`Upload error: ${e?.name === "AbortError" ? "Timed out" : (e?.message || e)}`);
-        // } finally {
-        //   clearTimeout(t);
-        // }
-
-
-
-
-
-
+        debugger;
         const created = result?.created || [];
 
         if (!created.length){
@@ -413,14 +445,15 @@
         }
 
         // Merge returned records into local admin state
+        const createdIds = [];
         for (const a of created){
           // --- normalize id coming from backend ---
-          const normId = a.id || a.artworkId || a._id || a.uuid;
+          const normId = normalizeArtworkId(a);
           if (!normId) {
             console.warn("Upload returned item without id:", a);
             continue;
           }
-          a.id = String(normId);
+          a.id = normId;
 
           // Ensure URLs are usable
           a.thumb = normalizeMediaUrl(a.thumb);
@@ -435,13 +468,14 @@
           const nidx = newIds.indexOf(a.id);
           if (nidx >= 0) newIds.splice(nidx, 1);
           newIds.unshift(a.id);
+          createdIds.push(a.id);
         }
 
         saveState(state);
         renderNew();
 
         // Auto-apply batch metadata to the newly created items (if any batch fields are filled)
-        await applyBatchToIds(created.map(x => String(x.id || x.artworkId || x._id || x.uuid)).filter(Boolean));
+        await applyBatchToIds(createdIds);
 
       }catch(err){
         setStatus(`Upload failed: ${err?.message || err}`);
@@ -454,6 +488,7 @@
     });
 
     renderTagPills();
+    renderSeriesOptions();
     renderNew();
   </script>
 </body>

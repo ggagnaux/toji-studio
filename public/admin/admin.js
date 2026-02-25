@@ -82,7 +82,17 @@ export function ensureBaseStyles() {
     .field textarea{ min-height: 120px; resize: vertical; }
     .field .sub{ margin-bottom:6px; }
     .pillrow{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .pill{ border:1px solid var(--line); border-radius:999px; padding:7px 10px; color:var(--muted); }
+    .pill{
+      border:1px solid rgba(255,255,255,.38);
+      border-radius:999px;
+      padding:7px 10px;
+      color:var(--text);
+      background: rgba(255,255,255,.16);
+    }
+    [data-theme="light"] .pill{
+      border-color: rgba(16,19,26,.34);
+      background: rgba(16,19,26,.11);
+    }
     .sep{ border:0; border-top:1px solid var(--line); margin:14px 0; }
     @media (max-width: 920px){ .admin-layout{ grid-template-columns: 1fr; } .sidebar{ position:relative; top:auto; } .kpi{ grid-template-columns: 1fr; } }
   `;

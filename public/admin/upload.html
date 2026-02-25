@@ -78,8 +78,12 @@
 
           <div style="display:grid; gap:12px; margin-top:12px">
             <div class="field">
-              <div class="sub">Tags (comma/semicolon/newline-separated)</div>
-              <input id="tags" placeholder="abstract, cosmic, geometry" />
+              <div class="sub">Available Tags</div>
+              <div id="tagPills" class="pillrow" style="min-height:40px"></div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center">
+                <input id="newTagInput" placeholder="Add tag(s): abstract, cosmic" />
+                <button class="btn" id="addTagBtn" type="button">Add tag</button>
+              </div>
             </div>
 
             <div class="field">
@@ -152,7 +156,7 @@
     function setStatus(msg){ statusEl.textContent = msg || ""; }
     function setTokenStatus(msg){ tokenStatus.textContent = msg || ""; }
 
-    // ---- tag parsing (multi-tag safe) ----
+    // ---- tag helpers ----
     function normTag(t){
       return String(t || "")
         .trim()
@@ -168,6 +172,75 @@
           .filter(Boolean)
       )).sort((a,b)=>a.localeCompare(b));
     }
+    function allKnownTags(){
+      const set = new Set();
+
+      (state.tags || []).forEach(t => {
+        const nt = normTag(t);
+        if (nt) set.add(nt);
+      });
+
+      (state.artworks || []).forEach(a => (a.tags || []).forEach(t => {
+        const nt = normTag(t);
+        if (nt) set.add(nt);
+      }));
+
+      selectedBatchTags.forEach(t => {
+        const nt = normTag(t);
+        if (nt) set.add(nt);
+      });
+
+      return Array.from(set).sort((a,b)=>a.localeCompare(b));
+    }
+
+    const selectedBatchTags = new Set();
+
+    function getSelectedBatchTags(){
+      return Array.from(selectedBatchTags).sort((a,b)=>a.localeCompare(b));
+    }
+
+    function renderTagPills(){
+      const host = document.getElementById("tagPills");
+      if (!host) return;
+      host.innerHTML = "";
+
+      const tags = allKnownTags();
+      if (!tags.length){
+        host.appendChild(el("span", { class:"sub" }, "No tags available yet."));
+        return;
+      }
+
+      for (const tag of tags){
+        const active = selectedBatchTags.has(tag);
+        const btn = el(
+          "button",
+          {
+            type: "button",
+            class: `chip${active ? " active" : ""}`,
+            "aria-pressed": active ? "true" : "false"
+          },
+          tag
+        );
+
+        btn.addEventListener("click", () => {
+          if (selectedBatchTags.has(tag)) selectedBatchTags.delete(tag);
+          else selectedBatchTags.add(tag);
+          renderTagPills();
+        });
+
+        host.appendChild(btn);
+      }
+    }
+
+    function addTagsFromInput(){
+      const input = document.getElementById("newTagInput");
+      if (!input) return;
+      const tags = parseTags(input.value);
+      if (!tags.length) return;
+      for (const t of tags) selectedBatchTags.add(t);
+      input.value = "";
+      renderTagPills();
+    }
 
     // Seed token input
     tokenInput.value = getAdminToken();
@@ -176,6 +249,13 @@
       setAdminToken(tokenInput.value);
       setTokenStatus("Saved.");
       setTimeout(() => setTokenStatus(""), 900);
+    });
+
+    document.getElementById("addTagBtn").addEventListener("click", addTagsFromInput);
+    document.getElementById("newTagInput").addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      addTagsFromInput();
     });
 
     function renderNew(){
@@ -229,7 +309,7 @@
         return;
       }
 
-      const tags = parseTags(document.getElementById("tags").value);
+      const tags = getSelectedBatchTags();
       const series = document.getElementById("series").value.trim();
       const year = document.getElementById("year").value.trim();
       const status = document.getElementById("statusSelect").value;
@@ -373,6 +453,7 @@
       await applyBatchToIds([...newIds]);
     });
 
+    renderTagPills();
     renderNew();
   </script>
 </body>

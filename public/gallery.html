@@ -1,12 +1,25 @@
-<!doctype html>
+﻿<!doctype html>
 <html>
 
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gallery — Toji Studios</title>
+  <title>Gallery - Toji Studios</title>
   <link rel="stylesheet" href="assets/css/site.css" />
   <style>
+    .gallery-section{
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 18px;
+    }
+    .gallery-section-featured{ background: rgba(138,167,255,.08); }
+    .gallery-section-series{ background: rgba(92,255,214,.08); }
+    .gallery-section-all{ background: rgba(255,173,92,.08); }
+    [data-theme="light"] .gallery-section-featured{ background: rgba(47,91,255,.08); }
+    [data-theme="light"] .gallery-section-series{ background: rgba(17,166,139,.08); }
+    [data-theme="light"] .gallery-section-all{ background: rgba(217,120,31,.10); }
+
     #featuredGrid,
     #seriesGrid,
     #galleryGrid{
@@ -23,7 +36,7 @@
     #galleryGrid{
       display: block;
       column-gap: 12px;
-      columns: 4 220px;
+      columns: 8 110px;
     }
     #featuredGrid .card{
       width: 100%;
@@ -55,6 +68,8 @@
     #galleryGrid .thumb{
       aspect-ratio: auto;
       background: transparent;
+      position: relative;
+      overflow: hidden;
     }
     #galleryGrid .thumb img{
       width: 100%;
@@ -62,6 +77,33 @@
       object-fit: contain;
       object-position: center;
       background: transparent;
+      display: block;
+    }
+    #galleryGrid .gallery-overlay{
+      position: absolute;
+      inset: auto 0 0 0;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.72) 55%, rgba(0,0,0,.86) 100%);
+      color: #fff;
+      opacity: 0;
+      transition: opacity .18s ease;
+      pointer-events: none;
+    }
+    #galleryGrid .gallery-overlay .title{
+      margin: 0 0 2px 0;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    #galleryGrid .gallery-overlay .sub{
+      margin: 0;
+      color: rgba(255,255,255,.9);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+    #galleryGrid .card:hover .gallery-overlay,
+    #galleryGrid .card:focus-visible .gallery-overlay,
+    #galleryGrid .card:focus-within .gallery-overlay{
+      opacity: 1;
     }
   </style>
 </head>
@@ -76,16 +118,16 @@
     </section>
 
     <!-- Featured section -->
-    <section id="featuredWrap" style="display:none">
+    <section id="featuredWrap" class="gallery-section gallery-section-featured" style="display:none">
       <div class="section-title">
         <h2>Featured</h2>
-        <span id="featuredCount">—</span>
+        <span id="featuredCount">â€”</span>
       </div>
 
       <section class="grid" id="featuredGrid" aria-label="Featured artworks"></section>
     </section>
 
-    <section id="seriesWrap" style="display:none">
+    <section id="seriesWrap" class="gallery-section gallery-section-series" style="display:none">
       <div class="section-title" style="margin-top:28px">
         <h2>Series</h2>
         <span id="seriesCount">-</span>
@@ -94,21 +136,24 @@
       <section class="grid" id="seriesGrid" aria-label="Series collection"></section>
     </section>
 
-    <div class="section-title" style="margin-top:28px">
-      <h2>All works</h2>
-      <span id="allCount">—</span>
-    </div>
-
-    <section class="filters" aria-label="Gallery filters">
-      <div id="tagChips" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center"></div>
-
-      <div class="search" style="margin-left:auto">
-        <span>Search</span>
-        <input id="q" placeholder="title, tag, series…" />
+    <section id="allWorksWrap" class="gallery-section gallery-section-all">
+      <div class="section-title" style="margin-top:0">
+        <h2>All works</h2>
+        <span id="allCount">â€”</span>
       </div>
-    </section>
 
-    <section class="grid" id="galleryGrid" aria-label="Gallery grid"></section>
+      <section class="filters" aria-label="Gallery filters">
+        <div id="tagChips" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center"></div>
+
+        <div class="search" style="margin-left:auto">
+          <span>Search</span>
+          <input id="q" placeholder="title, tag, series" />
+          <button id="qClear" class="icon-btn" type="button" aria-label="Clear search" style="display:none; width:28px; height:28px; padding:0;">x</button>
+        </div>
+      </section>
+
+      <section class="grid" id="galleryGrid" aria-label="Gallery grid"></section>
+    </section>
   </main>
 
   <footer id="siteFooter"></footer>
@@ -125,7 +170,7 @@
       brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
     });
     renderPublicFooter({
-      rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
+      rightHtml: `<a href="index.html">Home</a> â€¢ <a href="gallery.html">Gallery</a> â€¢ <a href="series.html">Series</a> â€¢ <a href="contact.html">Contact</a> â€¢ <a href="admin/index.html">Studio</a>`
     });
 
     // ---- Gallery data source: Admin localStorage first, fallback to sample JSON ----
@@ -199,6 +244,7 @@
     const grid = document.getElementById("galleryGrid");
     const chipHost = document.getElementById("tagChips");
     const qInput = document.getElementById("q");
+    const qClear = document.getElementById("qClear");
 
     const allCount = document.getElementById("allCount");
 
@@ -217,6 +263,11 @@
     );
     let activeTag = "all";
     let q = "";
+
+    function refreshSearchClear(){
+      if (!qClear || !qInput) return;
+      qClear.style.display = qInput.value.trim() ? "inline-flex" : "none";
+    }
 
     // ---- Render chips ----
     const tags = uniqTags(allItems);
@@ -296,21 +347,34 @@
       }
 
       items.forEach((a, idx) => {
+        const metaBits = [
+          a.series ? a.series : null,
+          a.year ? a.year : null,
+          a.featured ? "Featured" : null
+        ].filter(Boolean).join(" • ") || " ";
+        const isAllWorks = host === grid;
+
         const card = el("a", {
           class: "card",
           href: `artwork.html?id=${encodeURIComponent(a.id)}`,
           style: "",
           onclick:(e)=>{ e.preventDefault(); openLightbox(items, idx); }
         },
-          el("div", { class: "thumb" }, el("img", { src: a.thumb || a.image, alt: a.alt || a.title || "Artwork", loading: "lazy" })),
-          el("div", { class: "meta" },
-            el("p", { class: "title" }, a.title || "Untitled"),
-            el("p", { class: "sub" }, [
-              a.series ? a.series : null,
-              a.year ? a.year : null,
-              a.featured ? "Featured" : null
-            ].filter(Boolean).join(" • ") || " ")
-          )
+          isAllWorks
+            ? el("div", { class: "thumb" },
+                el("img", { src: a.thumb || a.image, alt: a.alt || a.title || "Artwork", loading: "lazy" }),
+                el("div", { class: "gallery-overlay" },
+                  el("p", { class: "title" }, a.title || "Untitled"),
+                  el("p", { class: "sub" }, metaBits)
+                )
+              )
+            : [
+                el("div", { class: "thumb" }, el("img", { src: a.thumb || a.image, alt: a.alt || a.title || "Artwork", loading: "lazy" })),
+                el("div", { class: "meta" },
+                  el("p", { class: "title" }, a.title || "Untitled"),
+                  el("p", { class: "sub" }, metaBits)
+                )
+              ]
         );
 
         host.appendChild(card);
@@ -415,6 +479,17 @@
       renderFeatured();
       renderSeries();
       renderAll();
+      refreshSearchClear();
+    });
+
+    qClear?.addEventListener("click", () => {
+      qInput.value = "";
+      q = "";
+      renderFeatured();
+      renderSeries();
+      renderAll();
+      refreshSearchClear();
+      qInput.focus();
     });
 
     // ---- Build lightbox element ----
@@ -513,7 +588,7 @@
           item.series ? item.series : null,
           item.year ? item.year : null,
           item.featured ? "Featured" : null
-        ].filter(Boolean).join(" • ");
+        ].filter(Boolean).join(" â€¢ ");
 
         metaSub.textContent = bits || "";
         metaDesc.textContent = item.description || "";
@@ -552,7 +627,12 @@
     renderFeatured();
     renderSeries();
     renderAll();
+    refreshSearchClear();
   </script>
 </body>
 
 </html>
+
+
+
+

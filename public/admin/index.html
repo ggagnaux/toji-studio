@@ -104,10 +104,26 @@
             <button type="button" data-view-mode="rows" class="active">Rows</button>
             <button type="button" data-view-mode="thumbs">Thumbnails</button>
           </div>
+          <button class="btn" id="thumbSelectAllToggle" type="button" style="display:none">Select all thumbs</button>
 
           <div class="search">
             <span>Search</span>
             <input id="q" placeholder="title, tag, series…" />
+          </div>
+
+          <div id="rowSortControls" style="display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <span class="sub">Sort rows</span>
+            <select id="rowSortBy" aria-label="Sort rows by" style="width:auto; min-width:170px">
+              <option value="none">Default order</option>
+              <option value="status">Status</option>
+              <option value="tags">Tags</option>
+              <option value="series">Series</option>
+              <option value="year">Year</option>
+            </select>
+            <select id="rowSortDir" aria-label="Sort direction" style="width:auto; min-width:120px">
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
           </div>
 
           <button class="btn" id="toggleOrder" type="button">Manual order: Off</button>
@@ -298,7 +314,13 @@
   const HOME_SERIES_VISIBLE_KEY = "toji_home_series_visible_v1";
   const HOME_FEATURED_SLIDESHOW_VISIBLE_KEY = "toji_home_featured_slideshow_visible_v1";
   const DASHBOARD_VIEW_KEY = "toji_dashboard_view_mode_v1";
+  const ROW_SORT_BY_KEY = "toji_dashboard_row_sort_by_v1";
+  const ROW_SORT_DIR_KEY = "toji_dashboard_row_sort_dir_v1";
   let viewMode = localStorage.getItem(DASHBOARD_VIEW_KEY) || "rows";
+  let rowSortBy = localStorage.getItem(ROW_SORT_BY_KEY) || "none";
+  let rowSortDir = localStorage.getItem(ROW_SORT_DIR_KEY) || "asc";
+  if (!["none", "status", "tags", "series", "year"].includes(rowSortBy)) rowSortBy = "none";
+  if (!["asc", "desc"].includes(rowSortDir)) rowSortDir = "asc";
 
   const chips = Array.from(document.querySelectorAll("[data-tab]"));
   const qInput = document.getElementById("q");
@@ -306,6 +328,10 @@
   const rowTable = document.getElementById("rowTable");
   const thumbGrid = document.getElementById("thumbGrid");
   const viewModeButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
+  const thumbSelectAllToggle = document.getElementById("thumbSelectAllToggle");
+  const rowSortControls = document.getElementById("rowSortControls");
+  const rowSortBySelect = document.getElementById("rowSortBy");
+  const rowSortDirSelect = document.getElementById("rowSortDir");
   const homeHeroToggle = document.getElementById("homeHeroToggle");
   const homeHeroStatus = document.getElementById("homeHeroStatus");
   const homeLatestToggle = document.getElementById("homeLatestToggle");
@@ -349,6 +375,21 @@
   toggleOrderBtn.addEventListener("click", () => {
     manualOrderMode = !manualOrderMode;
     toggleOrderBtn.textContent = `Manual order: ${manualOrderMode ? "On" : "Off"}`;
+    render();
+  });
+
+  if (rowSortBySelect) rowSortBySelect.value = rowSortBy;
+  if (rowSortDirSelect) rowSortDirSelect.value = rowSortDir;
+
+  rowSortBySelect?.addEventListener("change", () => {
+    rowSortBy = rowSortBySelect.value || "none";
+    localStorage.setItem(ROW_SORT_BY_KEY, rowSortBy);
+    render();
+  });
+
+  rowSortDirSelect?.addEventListener("change", () => {
+    rowSortDir = rowSortDirSelect.value === "desc" ? "desc" : "asc";
+    localStorage.setItem(ROW_SORT_DIR_KEY, rowSortDir);
     render();
   });
 
@@ -449,8 +490,56 @@
     return tabOk && qOk;
   }
 
+  function rowSortValue(a, key){
+    if (key === "status") {
+      const order = { draft: 0, published: 1, hidden: 2 };
+      return order[String(a.status || "").toLowerCase()] ?? 99;
+    }
+    if (key === "tags") return (a.tags || []).map(t => String(t || "").toLowerCase()).sort().join(" ");
+    if (key === "series") return String(a.series || "").toLowerCase();
+    if (key === "year") {
+      const n = Number(String(a.year || "").trim());
+      return Number.isFinite(n) ? n : -Infinity;
+    }
+    return "";
+  }
+
+  function sortForRows(items){
+    if (rowSortBy === "none") return sortArtworksManualFirst(items);
+
+    const fallback = sortArtworksManualFirst(items);
+    const fallbackIndex = new Map(fallback.map((a, i) => [a.id, i]));
+    const dir = rowSortDir === "desc" ? -1 : 1;
+    return items.slice().sort((a, b) => {
+      const av = rowSortValue(a, rowSortBy);
+      const bv = rowSortValue(b, rowSortBy);
+
+      if (typeof av === "number" && typeof bv === "number") {
+        if (av !== bv) return (av - bv) * dir;
+      } else {
+        const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+        if (cmp !== 0) return cmp * dir;
+      }
+
+      return (fallbackIndex.get(a.id) ?? 0) - (fallbackIndex.get(b.id) ?? 0);
+    });
+  }
+
   function visibleItems(){
-    return sortArtworksManualFirst(state.artworks.filter(matches));
+    const filtered = state.artworks.filter(matches);
+    if (viewMode === "rows" && !manualOrderMode) return sortForRows(filtered);
+    return sortArtworksManualFirst(filtered);
+  }
+
+  function refreshThumbSelectAllToggle(){
+    if (!thumbSelectAllToggle) return;
+    const visible = visibleItems();
+    const visibleCount = visible.length;
+    const selectedVisibleCount = visible.filter(a => selected.has(a.id)).length;
+    const allVisibleSelected = visibleCount > 0 && selectedVisibleCount === visibleCount;
+    const label = allVisibleSelected ? "Clear all thumbs" : "Select all thumbs";
+    thumbSelectAllToggle.textContent = label;
+    thumbSelectAllToggle.disabled = visibleCount === 0;
   }
 
   function updateBulkUI(){
@@ -479,12 +568,24 @@
       const id = row.getAttribute("data-artwork-id");
       row.classList.toggle("selected-row", !!id && selected.has(id));
     });
+
+    refreshThumbSelectAllToggle();
   }
 
   selectAll?.addEventListener("change", () => {
     const visible = visibleItems();
     if (selectAll.checked) visible.forEach(a => selected.add(a.id));
     else visible.forEach(a => selected.delete(a.id));
+    updateBulkUI();
+    render();
+  });
+
+  thumbSelectAllToggle?.addEventListener("click", () => {
+    const visible = visibleItems();
+    if (!visible.length) return;
+    const allVisibleSelected = visible.every(a => selected.has(a.id));
+    if (allVisibleSelected) visible.forEach(a => selected.delete(a.id));
+    else visible.forEach(a => selected.add(a.id));
     updateBulkUI();
     render();
   });
@@ -1145,11 +1246,17 @@
     const thumbs = viewMode === "thumbs";
     if (rowTable) rowTable.style.display = thumbs ? "none" : "";
     if (thumbGrid) thumbGrid.style.display = thumbs ? "grid" : "none";
+    if (thumbSelectAllToggle) thumbSelectAllToggle.style.display = thumbs ? "inline-flex" : "none";
+    if (rowSortControls) rowSortControls.style.display = thumbs ? "none" : "inline-flex";
+    if (rowSortBySelect) rowSortBySelect.disabled = thumbs || manualOrderMode;
+    if (rowSortDirSelect) rowSortDirSelect.disabled = thumbs || manualOrderMode;
 
     viewModeButtons.forEach((btn) => {
       const active = btn.getAttribute("data-view-mode") === viewMode;
       btn.classList.toggle("active", active);
     });
+
+    refreshThumbSelectAllToggle();
   }
 
   viewModeButtons.forEach((btn) => {

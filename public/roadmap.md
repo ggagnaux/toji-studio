@@ -115,6 +115,8 @@ Roadmap for that later:
 - [ ] Admin Tool - Tag Manager
 - [ ] Add a blog page
 - [ ] Add the ability to upload to social media (images to Instagram and Threads, textual blog posts to Medium and Substack?)
+- [ ] Investigate why 503 error is produced when uploading too many files at once.
+
 
 
 

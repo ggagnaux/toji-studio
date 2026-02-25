@@ -546,7 +546,7 @@ textarea::placeholder{
 }
 
 .table tbody tr:nth-child(even){
-  background: color-mix(in srgb, var(--panel) 74%, transparent);
+  background: color-mix(in srgb, var(--panel) 44%, transparent);
 }
 
 /* Keep hover readable */

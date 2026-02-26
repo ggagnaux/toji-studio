@@ -58,10 +58,18 @@
           </div>
 
           <div style="display:flex; gap:10px; align-items:center; margin-top:12px">
-            <label class="sub" style="display:flex; align-items:center; gap:8px; cursor:pointer">
+            <label class="sub" style="display:flex; align-items:center; gap:8px; cursor:pointer; white-space:nowrap">
               <input id="showHidden" type="checkbox" />
               Show hidden series
             </label>
+          </div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px">
+            <button class="btn" id="selectAllBtn" type="button">Select all</button>
+            <button class="btn" id="selectVisibleBtn" type="button">Select visible</button>
+            <button class="btn" id="clearSelectionBtn" type="button">Clear selection</button>
+            <button class="btn" id="deleteSelectedBtn" type="button">Delete selected</button>
+            <span class="sub" id="selectionCount" aria-live="polite"></span>
           </div>
 
           <hr class="sep" />
@@ -90,6 +98,7 @@
   <script type="module">
     import {
       loadStateAutoSync, saveState, el, setYearFooter, ensureBaseStyles,
+      ensureSeriesMeta,
       getAdminToken,
       syncSeriesFromBackend,
       apiUpsertSeries,
@@ -101,7 +110,8 @@
     setYearFooter();
 
     const state = await loadStateAutoSync();
-    state.seriesMeta = state.seriesMeta || {};
+    ensureSeriesMeta(state);
+    saveState(state);
 
     const listEl = document.getElementById("list");
     const editor = document.getElementById("editor");
@@ -109,10 +119,16 @@
     const status = document.getElementById("status");
     const newName = document.getElementById("newName");
     const showHiddenToggle = document.getElementById("showHidden");
+    const selectAllBtn = document.getElementById("selectAllBtn");
+    const selectVisibleBtn = document.getElementById("selectVisibleBtn");
+    const clearSelectionBtn = document.getElementById("clearSelectionBtn");
+    const deleteSelectedBtn = document.getElementById("deleteSelectedBtn");
+    const selectionCount = document.getElementById("selectionCount");
     const SHOW_HIDDEN_KEY = "toji_admin_series_show_hidden_v1";
 
     let activeSlug = null;
     let showHidden = localStorage.getItem(SHOW_HIDDEN_KEY) === "1";
+    const selectedSlugs = new Set();
     if (showHiddenToggle) showHiddenToggle.checked = showHidden;
 
     const setStatus = (m, ms=900) => {
@@ -128,9 +144,15 @@
     function renderList(){
       const allRows = seriesArray();
       const rows = showHidden ? allRows : allRows.filter(s => !!s.isPublic);
+      const existingSlugs = new Set(allRows.map(s => s.slug));
+      for (const slug of Array.from(selectedSlugs)) {
+        if (!existingSlugs.has(slug)) selectedSlugs.delete(slug);
+      }
       count.textContent = showHidden
         ? `${rows.length} series`
         : `${rows.length} visible (${allRows.length} total)`;
+      if (selectionCount) selectionCount.textContent = `${selectedSlugs.size} selected`;
+      if (deleteSelectedBtn) deleteSelectedBtn.disabled = selectedSlugs.size === 0;
       listEl.innerHTML = "";
 
       if (!rows.length){
@@ -142,11 +164,24 @@
 
       for (const s of rows){
         const isActive = s.slug === activeSlug;
+        const chk = el("input", { type: "checkbox", "aria-label": `Select series ${s.name || s.slug}` });
+        chk.style.margin = "0";
+        chk.style.width = "16px";
+        chk.style.height = "16px";
+        chk.style.cursor = "pointer";
+        chk.checked = selectedSlugs.has(s.slug);
+        chk.addEventListener("change", (e) => {
+          if (e.target.checked) selectedSlugs.add(s.slug);
+          else selectedSlugs.delete(s.slug);
+          renderList();
+        });
+        chk.addEventListener("click", (e) => e.stopPropagation());
+
         const btn = el("button", {
           class:"btn",
           type:"button",
           style: `
-            justify-content:flex-start; text-align:left; padding:12px; border-radius:14px;
+            justify-content:flex-start; text-align:left; padding:12px 36px 12px 12px; border-radius:14px; width:100%; min-width:0;
             ${isActive ? "border-color: rgba(138,167,255,.35); background: rgba(138,167,255,.10);" : ""}
           `
         },
@@ -165,7 +200,11 @@
           renderEditor(s.slug);
         });
 
-        listEl.appendChild(btn);
+        const chkWrap = el("label", {
+          style: "position:absolute; top:10px; right:10px; z-index:2; display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:8px; background: color-mix(in srgb, var(--panel) 90%, transparent); border:1px solid var(--line);"
+        }, chk);
+        chkWrap.addEventListener("click", (e) => e.stopPropagation());
+        listEl.appendChild(el("div", { style:"position:relative" }, btn, chkWrap));
       }
     }
 
@@ -173,6 +212,49 @@
       showHidden = !!e.target.checked;
       localStorage.setItem(SHOW_HIDDEN_KEY, showHidden ? "1" : "0");
       renderList();
+    });
+
+    selectAllBtn?.addEventListener("click", () => {
+      seriesArray().forEach(s => selectedSlugs.add(s.slug));
+      renderList();
+    });
+
+    selectVisibleBtn?.addEventListener("click", () => {
+      const rows = showHidden ? seriesArray() : seriesArray().filter(s => !!s.isPublic);
+      rows.forEach(s => selectedSlugs.add(s.slug));
+      renderList();
+    });
+
+    clearSelectionBtn?.addEventListener("click", () => {
+      selectedSlugs.clear();
+      renderList();
+    });
+
+    deleteSelectedBtn?.addEventListener("click", async () => {
+      const slugs = Array.from(selectedSlugs);
+      if (!slugs.length) return;
+      if (!confirm(`Delete ${slugs.length} selected series? (Does NOT change artworks)`)) return;
+
+      for (const slug of slugs) delete state.seriesMeta[slug];
+      if (activeSlug && slugs.includes(activeSlug)) activeSlug = null;
+      slugs.forEach(slug => selectedSlugs.delete(slug));
+      saveState(state);
+      renderList();
+
+      if (!activeSlug) {
+        editor.innerHTML = "";
+        editor.appendChild(el("div", { class:"sub" }, "Deleted selected series locally."));
+      }
+
+      if (!getAdminToken()) {
+        setStatus("Deleted locally (no token).", 1400);
+        return;
+      }
+
+      const results = await Promise.allSettled(slugs.map(slug => apiDeleteSeries(slug)));
+      const failed = results.filter(r => r.status === "rejected").length;
+      if (!failed) setStatus(`Deleted ${slugs.length} series.`, 1400);
+      else setStatus(`Deleted locally. Backend failed for ${failed}/${slugs.length}.`, 2600);
     });
 
     function artworkOptions(){

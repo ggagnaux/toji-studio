@@ -192,9 +192,42 @@ export function sortArtworksManualFirst(items){
 
 export function ensureSeriesMeta(state){
   state.seriesMeta ||= {};
-  (state.series || []).forEach(s => {
-    state.seriesMeta[s] ||= { description: "", sortOrder: 0 };
+  const normalized = {};
+
+  const ingest = (key, row, fallbackName = "") => {
+    const slug = slugifySeries((row && row.slug) || (row && row.name) || key || fallbackName);
+    if (!slug) return;
+
+    const prior = normalized[slug] || {};
+    const name =
+      String((row && row.name) || prior.name || fallbackName || key || slug).trim() || slug;
+
+    normalized[slug] = {
+      slug,
+      name,
+      description: String((row && row.description) || prior.description || ""),
+      sortOrder: Number(
+        row?.sortOrder ?? prior.sortOrder ?? 0
+      ),
+      isPublic:
+        row?.isPublic != null
+          ? !!row.isPublic
+          : (prior.isPublic != null ? !!prior.isPublic : true),
+      coverArtworkId: String((row && row.coverArtworkId) || prior.coverArtworkId || ""),
+      coverThumb: (row && row.coverThumb) || prior.coverThumb || ""
+    };
+  };
+
+  for (const [key, row] of Object.entries(state.seriesMeta || {})) {
+    ingest(key, row);
+  }
+
+  (state.series || []).forEach((name) => ingest("", null, name));
+  (state.artworks || []).forEach((a) => {
+    if (a && a.series) ingest("", null, String(a.series));
   });
+
+  state.seriesMeta = normalized;
 }
 
 

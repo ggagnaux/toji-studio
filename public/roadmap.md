@@ -116,6 +116,10 @@ Roadmap for that later:
 - [ ] Add a blog page
 - [ ] Add the ability to upload to social media (images to Instagram and Threads, textual blog posts to Medium and Substack?)
 - [ ] Investigate why 503 error is produced when uploading too many files at once.
+- [ ] Series Manager - Remove hidden entries that keep building up
+- [ ] Series Manager - Add ability to remove multiple series at once.
+
+
 
 
 

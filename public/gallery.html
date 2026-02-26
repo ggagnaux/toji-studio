@@ -266,6 +266,7 @@
     const chipHost = document.getElementById("tagChips");
     const qInput = document.getElementById("q");
     const qClear = document.getElementById("qClear");
+    const allWorksWrap = document.getElementById("allWorksWrap");
 
     const allCount = document.getElementById("allCount");
 
@@ -290,6 +291,17 @@
       qClear.style.display = qInput.value.trim() ? "inline-flex" : "none";
     }
 
+    function rerenderFilteredSectionsPreserveAllWorksScroll() {
+      const prevTop = allWorksWrap ? allWorksWrap.getBoundingClientRect().top : null;
+      renderAll();
+      renderFeatured();
+      renderSeries();
+      if (prevTop == null || !allWorksWrap) return;
+      const nextTop = allWorksWrap.getBoundingClientRect().top;
+      const delta = nextTop - prevTop;
+      if (Math.abs(delta) > 1) window.scrollBy({ top: delta, left: 0, behavior: "auto" });
+    }
+
     // ---- Render chips ----
     const tags = uniqTags(allItems);
 
@@ -300,18 +312,14 @@
         chip.addEventListener("click", () => {
           activeTag = t;
           renderChips();
-          renderAll();
-          renderFeatured(); // featured reacts to filters too
-          renderSeries();
+          rerenderFilteredSectionsPreserveAllWorksScroll();
         });
         chip.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             activeTag = t;
             renderChips();
-            renderAll();
-            renderFeatured();
-            renderSeries();
+            rerenderFilteredSectionsPreserveAllWorksScroll();
           }
         });
         chipHost.appendChild(chip);

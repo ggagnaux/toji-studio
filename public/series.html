@@ -377,7 +377,7 @@
           type:"button",
           style: `
             justify-content:flex-start; border-radius:14px; text-align:left; padding:12px;
-            ${!activeSlug ? "border-color: rgba(138,167,255,.35); background: rgba(138,167,255,.10);" : ""}
+            ${!activeSlug ? "border-color: var(--accent-border); background: var(--accent-soft);" : ""}
           `
         },
           el("div", { style:"display:grid; gap:4px" },
@@ -402,7 +402,7 @@
           type:"button",
           style: `
             justify-content:flex-start; text-align:left; padding:12px; border-radius:14px;
-            ${isActive ? "border-color: rgba(138,167,255,.35); background: rgba(138,167,255,.10);" : ""}
+            ${isActive ? "border-color: var(--accent-border); background: var(--accent-soft);" : ""}
           `
         },
           el("div", { style:"display:flex; gap:12px; align-items:center" },

@@ -377,10 +377,10 @@
         // )
 
         el("div", { class:"pillrow" },
-          el("label", { class:"pill", style:"cursor:pointer" },
+          el("label", { class:"pill", style:"cursor:pointer; display:inline-flex; align-items:center; gap:8px; white-space:nowrap" },
             el("input", {
               type:"checkbox",
-              style:"margin-right:8px",
+              style:"margin:0; width:auto; height:auto;",
               checked: a.featured ? "" : null,
               onchange:(e)=>{ a.featured = e.target.checked; scheduleBackendSave(); }
             }),

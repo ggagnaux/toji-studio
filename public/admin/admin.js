@@ -62,8 +62,7 @@ export function ensureBaseStyles() {
     .admin-layout{ display:grid; grid-template-columns: 240px 1fr; gap:16px; }
     .sidebar{ position:sticky; top:84px; align-self:start; border:1px solid var(--line); border-radius: var(--radius); padding:14px; background: var(--panel); }
     .sidebar a{ display:block; padding:10px 10px; border-radius:12px; color:var(--muted); border:1px solid transparent; }
-    .sidebar a.active{ color:var(--text); border-color: var(--line); background: rgba(138,167,255,.08); }
-    [data-theme="light"] .sidebar a.active{ background: rgba(47,91,255,.08); }
+    .sidebar a.active{ color:var(--text); border-color: var(--accent-border); background: var(--accent-soft); }
     .kpi{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
     .kpi .card{ box-shadow:none; }
     .kpi .meta{ padding:12px; }
@@ -83,15 +82,11 @@ export function ensureBaseStyles() {
     .field .sub{ margin-bottom:6px; }
     .pillrow{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .pill{
-      border:1px solid rgba(255,255,255,.38);
+      border:1px solid var(--chip-border);
       border-radius:999px;
       padding:7px 10px;
       color:var(--text);
-      background: rgba(255,255,255,.16);
-    }
-    [data-theme="light"] .pill{
-      border-color: rgba(16,19,26,.34);
-      background: rgba(16,19,26,.11);
+      background: var(--chip-bg);
     }
     .sep{ border:0; border-top:1px solid var(--line); margin:14px 0; }
     @media (max-width: 920px){ .admin-layout{ grid-template-columns: 1fr; } .sidebar{ position:relative; top:auto; } .kpi{ grid-template-columns: 1fr; } }

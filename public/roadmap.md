@@ -118,6 +118,9 @@ Roadmap for that later:
 - [ ] Investigate why 503 error is produced when uploading too many files at once.
 - [ ] Series Manager - Remove hidden entries that keep building up
 - [ ] Series Manager - Add ability to remove multiple series at once.
+- [ ] Splash Screen - Add moving bezier curves option
+- [ ] Admin - Add the ability to specify different splash screen animations.
+
 
 
 

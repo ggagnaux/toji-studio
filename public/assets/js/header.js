@@ -10,9 +10,13 @@ export function renderPublicHeader({
   const headerHost = document.getElementById("siteHeader");
   if (!headerHost) throw new Error('Missing <header id="siteHeader"></header>');
 
-  const brandInner = brandLogoSrc
-    ? `<img class="brand-logo-image" src="${escapeAttr(brandLogoSrc)}" alt="Toji Studios" />`
-    : `Toji Studios <small>${escapeHtml(small)}</small>`;
+  const brandInner = `
+    <span class="brand-logo-stack" aria-hidden="true">
+      <img class="brand-logo-image brand-logo-image--for-dark" src="assets/img/logo-light.png" alt="" />
+      <img class="brand-logo-image brand-logo-image--for-light" src="assets/img/logo-dark.png" alt="" />
+    </span>
+    <span class="sr-only">Toji Studios</span>
+  `;
 
   headerHost.className = "header";
   headerHost.innerHTML = `

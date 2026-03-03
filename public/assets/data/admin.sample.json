@@ -1,7 +1,8 @@
 {
   "settings": {
     "brand": "Toji Studios",
-    "contactEmail": "you@example.com"
+    "contactEmail": "you@example.com",
+    "externalLinks": []
   },
   "tags": [],
   "series": [],

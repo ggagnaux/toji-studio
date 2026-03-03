@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Contact — Toji Studios</title>
   <link rel="stylesheet" href="assets/css/site.css" />
+  <style>
+    .social-link-btn--icon{
+      width:40px;
+      height:40px;
+      padding:0;
+    }
+    .social-link-btn__icon{
+      width:20px;
+      height:20px;
+      display:block;
+      overflow:visible;
+    }
+    .social-link-btn__glyph{
+      font-size:17px;
+      line-height:1;
+      display:block;
+    }
+  </style>
 </head>
 <body class="home-animated">
   <header id="siteHeader"></header>
@@ -113,13 +131,8 @@
           <hr style="border:0; border-top:1px solid var(--line); margin:16px 0" />
 
           <p class="title">Social</p>
-          <p class="sub" style="margin:10px 0 0">Add your links when ready.</p>
-
-          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px">
-            <a class="btn" href="#" aria-label="Instagram link">Instagram</a>
-            <a class="btn" href="#" aria-label="Threads link">Threads</a>
-            <a class="btn" href="#" aria-label="Portfolio link">Portfolio</a>
-          </div>
+          <p class="sub" style="margin:10px 0 0">Social media and external destinations.</p>
+          <div id="socialLinks" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px"></div>
         </div>
       </div>
 
@@ -141,7 +154,7 @@
 <script type="module">
   import { renderPublicHeader } from "./assets/js/header.js";
   import { renderPublicFooter } from "./assets/js/footer.js";
-  import { qs } from "./assets/js/content-utils.js";
+  import { qs, el } from "./assets/js/content-utils.js";
 
   renderPublicHeader({
     active: "contact",
@@ -155,10 +168,193 @@
     rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="about.html">About</a> • <a href="admin/index.html">Studio</a>`
   });
 
-  // TODO: set this to your real email later
-  const TO_EMAIL = "you@example.com";
+  const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
+  const FALLBACK_URL = "assets/data/admin.sample.json";
+  async function loadSiteSettings() {
+    const defaults = { contactEmail: "you@example.com", externalLinks: [] };
+    const fromState = (data) => {
+      const settings = data && typeof data === "object" ? (data.settings || {}) : {};
+      return {
+        contactEmail: String(settings.contactEmail || defaults.contactEmail),
+        externalLinks: Array.isArray(settings.externalLinks) ? settings.externalLinks : defaults.externalLinks
+      };
+    };
+
+    const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
+    if (saved) {
+      try { return fromState(JSON.parse(saved)); } catch {}
+    }
+
+    try {
+      const res = await fetch(FALLBACK_URL, { cache: "no-store" });
+      if (!res.ok) throw new Error(String(res.status));
+      return fromState(await res.json());
+    } catch {
+      return defaults;
+    }
+  }
+
+  const settings = await loadSiteSettings();
+  const TO_EMAIL = settings.contactEmail;
   const emailEl = document.getElementById("contactEmail");
+  const socialLinksEl = document.getElementById("socialLinks");
   emailEl.textContent = TO_EMAIL;
+
+  function sanitizeLinks(links) {
+    const seen = new Set();
+    return (Array.isArray(links) ? links : [])
+      .map((link) => ({
+        label: String(link?.label || "").trim(),
+        url: String(link?.url || "").trim(),
+        enabled: link?.enabled == null ? true : !!link.enabled
+      }))
+      .filter((link) => {
+        if (!link.enabled || !link.label || !link.url) return false;
+        if (!/^(https?:\/\/|mailto:|tel:)/i.test(link.url)) return false;
+        const key = `${link.label.toLowerCase()}|${link.url.toLowerCase()}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  function renderSocialLinks(links){
+    if (!socialLinksEl) return;
+    socialLinksEl.innerHTML = "";
+
+    const list = sanitizeLinks(links);
+    if (!list.length) {
+      socialLinksEl.appendChild(el("span", { class: "sub" }, "No links published yet."));
+      return;
+    }
+
+    list.forEach((item) => {
+      const iconKey = detectService(item);
+      const attrs = {
+        href: item.url,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        "aria-label": `${item.label} link`,
+        title: item.label
+      };
+
+      if (iconKey) {
+        socialLinksEl.appendChild(el("a", { ...attrs, class: "btn social-link-btn--icon" }, serviceIcon(iconKey)));
+      } else {
+        socialLinksEl.appendChild(el("a", { ...attrs, class: "btn" }, item.label));
+      }
+    });
+  }
+
+  function detectService(item){
+    const label = String(item?.label || "").toLowerCase();
+    const rawUrl = String(item?.url || "").trim().toLowerCase();
+    const text = `${label} ${rawUrl}`;
+    let host = "";
+    try {
+      host = new URL(rawUrl).hostname.toLowerCase().replace(/^www\./, "");
+    } catch {}
+
+    if (
+      host === "instagram.com" ||
+      host.endsWith(".instagram.com") ||
+      host === "instagr.am" ||
+      label.includes("instagram") ||
+      label.includes("insta") ||
+      label === "ig"
+    ) return "instagram";
+    if (host === "threads.net" || host === "threads.com" || label.includes("threads")) return "threads";
+    if (host === "x.com" || host === "twitter.com" || label === "x" || label.includes("twitter")) return "x";
+    if (host === "youtube.com" || host === "youtu.be" || label.includes("youtube")) return "youtube";
+    if (host === "facebook.com" || label.includes("facebook")) return "facebook";
+    if (host === "linkedin.com" || label.includes("linkedin")) return "linkedin";
+    if (host === "tiktok.com" || label.includes("tiktok")) return "tiktok";
+    if (host === "pinterest.com" || label.includes("pinterest")) return "pinterest";
+    if (host === "discord.com" || host === "discord.gg" || label.includes("discord")) return "discord";
+    if (host === "behance.net" || label.includes("behance")) return "behance";
+    if (host === "dribbble.com" || label.includes("dribbble")) return "dribbble";
+    if (host === "medium.com" || label.includes("medium")) return "medium";
+    if (host === "substack.com" || label.includes("substack")) return "substack";
+    if (text.includes("instagram.com")) return "instagram";
+    if (text.includes("threads.net") || text.includes("threads.com")) return "threads";
+    return "";
+  }
+
+  function serviceIcon(key){
+    if (key === "instagram") {
+      return el("span", { class: "social-link-btn__glyph", "aria-hidden": "true" }, "📷");
+    }
+
+    const icon = (children, opts = {}) => el("svg", {
+      class: "social-link-btn__icon",
+      viewBox: opts.viewBox || "0 0 24 24",
+      fill: opts.fill || "none",
+      stroke: opts.stroke || "currentColor",
+      "stroke-width": opts.strokeWidth || "1.8",
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+      "aria-hidden": "true"
+    }, children);
+
+    const icons = {
+      instagram: () => icon([
+        el("rect", { x: "3", y: "3", width: "18", height: "18", rx: "5", "stroke-width": "2.1" }),
+        el("circle", { cx: "12", cy: "12", r: "4.3", "stroke-width": "2.1" }),
+        el("circle", { cx: "17.2", cy: "6.8", r: "1.35", fill: "currentColor", stroke: "none" })
+      ]),
+      threads: () => icon([
+        el("circle", { cx: "12", cy: "12", r: "8.6" }),
+        el("text", {
+          x: "12",
+          y: "15.2",
+          "text-anchor": "middle",
+          "font-size": "10.8",
+          "font-weight": "700",
+          fill: "currentColor",
+          stroke: "none"
+        }, "@")
+      ]),
+      x: () => icon(el("path", { d: "M4 4h3.8l4.4 6L16.9 4H20l-6.2 7.3L20.2 20h-3.8l-4.7-6.3L6.4 20H3.3l6.5-7.6z" })),
+      youtube: () => icon([
+        el("rect", { x: "3.2", y: "6.2", width: "17.6", height: "11.6", rx: "3" }),
+        el("path", { d: "M10 9.4l5.3 2.6L10 14.6z", fill: "currentColor", stroke: "none" })
+      ]),
+      facebook: () => icon(el("path", { d: "M14.2 8.2h2.3V4.8h-2.3c-2.5 0-4.1 1.6-4.1 4.4v2H7.9v3.2h2.2V20h3.3v-5.6h2.6l.5-3.2h-3.1v-1.7c0-.9.4-1.3 1.1-1.3z" })),
+      linkedin: () => icon([
+        el("rect", { x: "4", y: "4", width: "16", height: "16", rx: "2.6" }),
+        el("line", { x1: "8.4", y1: "10.1", x2: "8.4", y2: "16.5" }),
+        el("line", { x1: "8.4", y1: "7.7", x2: "8.4", y2: "7.7" }),
+        el("path", { d: "M12.1 16.5v-3.6c0-1.4.9-2.3 2.1-2.3 1.3 0 1.9.8 1.9 2.3v3.6" })
+      ]),
+      tiktok: () => icon(el("path", { d: "M14.6 4.5v8.2a3.6 3.6 0 1 1-3.6-3.6h.4v2.6h-.4a1 1 0 1 0 1 1V4.5zM14.6 7.1c1 .8 2.2 1.2 3.6 1.2V5.7c-1.4 0-2.6-.4-3.6-1.2z" })),
+      pinterest: () => icon(el("path", { d: "M12 4.2a7.8 7.8 0 0 0-2.8 15.1l1.1-4.2c-.3-.6-.6-1.5-.6-2.4 0-2.1 1.2-3.6 2.9-3.6 1.4 0 2 1 2 2.2 0 1.3-.8 3.4-1.3 5.3-.4 1.6.8 2.9 2.4 2.9 2.9 0 4.9-3.8 4.9-7.9 0-3.2-2.2-5.5-6.2-5.5-4.5 0-7.2 3.4-7.2 7.1 0 1.3.4 2.2 1.1 2.9.2.2.2.3.1.6l-.4 1.5c-.1.5-.6.6-1 .4-1.7-.7-2.5-2.7-2.5-5 0-3.8 3.1-8.4 9.4-8.4 5.1 0 8.5 3.7 8.5 7.7 0 5.3-3 9.3-7.4 9.3-1.5 0-2.9-.8-3.4-1.8l-.9 3.4c-.3 1.1-.9 2.4-1.4 3.2.9.3 1.8.4 2.8.4 4.3 0 7.8-3.5 7.8-7.8s-3.5-7.8-7.8-7.8z" })),
+      discord: () => icon([
+        el("path", { d: "M7 7.5c3.5-1.7 6.5-1.7 10 0 .8 1.5 1.3 3 1.5 4.6-.8.6-1.6 1-2.5 1.4-.2-.4-.4-.9-.7-1.3.3-.1.6-.3.9-.4-.1-.1-.1-.2-.2-.3-2.6 1.2-4.8 1.2-7.6 0 0 .1-.1.2-.2.3.3.1.6.3.9.4-.2.4-.5.9-.7 1.3-.9-.4-1.7-.9-2.5-1.4.2-1.6.7-3.1 1.5-4.6z" }),
+        el("circle", { cx: "9.8", cy: "11.7", r: "1" }),
+        el("circle", { cx: "14.2", cy: "11.7", r: "1" })
+      ]),
+      behance: () => icon([
+        el("rect", { x: "3.5", y: "5.5", width: "17", height: "13", rx: "2.5" }),
+        el("path", { d: "M7.3 9.2h2.7c1.1 0 1.8.5 1.8 1.4 0 .8-.7 1.4-1.8 1.4H7.3zm0 2.8h2.9c1.2 0 2 .5 2 1.5 0 1-.8 1.6-2 1.6H7.3zM13.8 10.3h3.8M14 14.2c.1 1 .8 1.6 1.9 1.6.9 0 1.5-.4 1.8-.9" })
+      ]),
+      dribbble: () => icon([
+        el("circle", { cx: "12", cy: "12", r: "8.5" }),
+        el("path", { d: "M6.1 9.4c3.2.1 6.2.6 8.7 1.5M8 5.5c2.2 2.7 3.9 5.9 4.8 9.7M13.1 19.9c1-2.8 2.8-5.1 5.2-6.9M5.1 13.7c2.5-.5 5.1-.5 7.8.1" })
+      ]),
+      medium: () => icon(
+        el("path", { d: "M4 8.1c0-.3-.1-.5-.4-.7L2.4 6v-.3h6.2l4.8 10.5 4.2-10.5h5.9V6l-1.1 1.1c-.1.1-.2.2-.2.4v8.9c0 .2.1.3.2.4l1.1 1.1v.3h-5.6v-.3l1.1-1.1c.1-.1.1-.1.1-.3V9.2l-5 8.9h-.7L8 9.2v6.2c0 .3.1.7.3.9l1.5 1.8v.3H5.5v-.3L7 16.4c.2-.2.3-.6.3-.9V8.1z", fill: "currentColor", stroke: "none" }),
+        { viewBox: "0 0 26 24", stroke: "none", strokeWidth: "0" }
+      ),
+      substack: () => icon([
+        el("rect", { x: "4", y: "5", width: "16", height: "3", fill: "currentColor", stroke: "none" }),
+        el("rect", { x: "4", y: "10", width: "16", height: "3", fill: "currentColor", stroke: "none" }),
+        el("rect", { x: "4", y: "15", width: "16", height: "4", fill: "currentColor", stroke: "none" })
+      ], { stroke: "none", strokeWidth: "0" })
+    };
+    return (icons[key] || (() => icon(el("circle", { cx: "12", cy: "12", r: "8" }))))();
+  }
+
+  renderSocialLinks(settings.externalLinks);
 
   const form = document.getElementById("contactForm");
   const draftBox = document.getElementById("draftBox");

@@ -10,11 +10,11 @@
   --panel:#20242a;
   --text:#e7ebf0;
   --muted:#a1a8b3;
-  --selectedmenu:#8fb2ff;
+  --selectedmenu:#e5cf0d;
   --selecteditem:#dce7ff;
   --line:rgba(255,255,255,.12);
-  --accent:#7ea2ff;
-  --alternateaccent:#9ab5ff;
+  --accent:#e5cf0d;
+  --alternateaccent:#e5cf0d;
   --accent-soft:rgba(126,162,255,.14);
   --accent-border:rgba(126,162,255,.42);
   --focus-ring:rgba(126,162,255,.22);
@@ -53,7 +53,11 @@ body{
   background:var(--bg);
   color:var(--text);
   line-height:1.45;
+  min-height:100dvh;
+  display:flex;
+  flex-direction:column;
 }
+main{flex:1 0 auto}
 
 body.home-animated{
   background:
@@ -128,6 +132,7 @@ img{max-width:100%;display:block}
   background: rgba(0,0,0,.18);
   backdrop-filter: blur(10px);
   border-bottom:1px solid var(--line);
+  transition: background-color .2s ease, border-color .2s ease;
 }
 @supports (background: color-mix(in srgb, black, white)){
   .header{ background: color-mix(in srgb, var(--bg) 78%, transparent); }
@@ -143,6 +148,11 @@ img{max-width:100%;display:block}
 .nav{
   display:flex; align-items:center; justify-content:space-between;
   gap:16px;
+  transition: gap .2s ease, padding .2s ease;
+}
+.header .container.nav{
+  padding-top:12px;
+  padding-bottom:12px;
 }
 .brand{
   display:flex; align-items:baseline; gap:10px;
@@ -153,6 +163,34 @@ img{max-width:100%;display:block}
   display:block;
   width:min(220px, 44vw);
   height:auto;
+  transition: width .2s ease;
+}
+.brand-logo-stack{
+  display:block;
+  line-height:0;
+}
+.brand-logo-image--for-dark{
+  display:block;
+}
+.brand-logo-image--for-light{
+  display:none;
+}
+[data-theme="light"] .brand-logo-image--for-dark{
+  display:none;
+}
+[data-theme="light"] .brand-logo-image--for-light{
+  display:block;
+}
+.sr-only{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space:nowrap;
+  border:0;
 }
 .brand small{color:var(--muted); font-weight:500}
 .navlinks{display:flex; gap:18px; align-items:center}
@@ -161,6 +199,17 @@ img{max-width:100%;display:block}
 .nav-toggle{display:none}
 @media (min-width: 761px){
   .nav-toggle{display:none !important}
+}
+
+html.nav-compact .header .container.nav{
+  padding-top:7px;
+  padding-bottom:7px;
+}
+html.nav-compact .nav{
+  gap:12px;
+}
+html.nav-compact .brand-logo-image{
+  width:min(184px, 38vw);
 }
 
 .btn{

@@ -91,6 +91,15 @@ export function initThemeSystem(){
     if (mode === "system") applyTheme("system", true);
   });
 
+  if (!window.__tojiNavCompactInit) {
+    window.__tojiNavCompactInit = true;
+    const syncCompactNav = () => {
+      root.classList.toggle("nav-compact", window.scrollY > 24);
+    };
+    syncCompactNav();
+    window.addEventListener("scroll", syncCompactNav, { passive: true });
+  }
+
   function sunSVG(){
     return `
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">

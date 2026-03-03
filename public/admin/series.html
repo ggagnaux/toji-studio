@@ -10,7 +10,11 @@
   <header class="header">
     <div class="container nav">
       <a class="brand" href="../index.html">
-        <img class="brand-logo-image" src="../assets/img/Logo.png" alt="Toji Studios" />
+        <span class="brand-logo-stack" aria-hidden="true">
+          <img class="brand-logo-image brand-logo-image--for-dark" src="../assets/img/logo-light.png" alt="" />
+          <img class="brand-logo-image brand-logo-image--for-light" src="../assets/img/logo-dark.png" alt="" />
+        </span>
+        <span class="sr-only">Toji Studios</span>
       </a>
 
 
@@ -38,6 +42,17 @@
       <p>Manage series metadata: ordering, description, public visibility, and a cover image.</p>
     </section>
 
+    <div class="admin-layout">
+      <aside class="sidebar" aria-label="Studio navigation">
+        <a href="index.html">Image Manager</a>
+        <a href="upload.html">Upload</a>
+        <a class="active" href="series.html">Series Manager</a>
+        <a href="linkmanager.html">Link Manager</a>
+        <a href="HomePageManager.html">Home Page Manager</a>
+        <a href="OtherSettings.html">Other Settings</a>
+        <a href="../gallery.html">View public gallery</a>
+      </aside>
+      <section>
     <section class="grid">
       <!-- Left: list -->
       <div class="card" style="grid-column: span 5">
@@ -93,6 +108,8 @@
         <div>Series</div>
       </div>
     </footer>
+      </section>
+    </div>
   </main>
 
   <script type="module">

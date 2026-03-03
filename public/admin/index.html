@@ -10,7 +10,11 @@
   <header class="header">
     <div class="container nav">
       <a class="brand" href="../index.html">
-        <img class="brand-logo-image" src="../assets/img/Logo.png" alt="Toji Studios" />
+        <span class="brand-logo-stack" aria-hidden="true">
+          <img class="brand-logo-image brand-logo-image--for-dark" src="../assets/img/logo-light.png" alt="" />
+          <img class="brand-logo-image brand-logo-image--for-light" src="../assets/img/logo-dark.png" alt="" />
+        </span>
+        <span class="sr-only">Toji Studios</span>
       </a>
 
       <nav class="navlinks" aria-label="Primary">
@@ -39,51 +43,17 @@
 
     <div class="admin-layout">
       <aside class="sidebar" aria-label="Studio navigation">
-        <a class="active" href="index.html">Dashboard</a>
+        <a class="active" href="index.html">Image Manager</a>
         <a href="upload.html">Upload</a>
-        <a href="series.html">Series</a>
+        <a href="series.html">Series Manager</a>
+        <a href="linkmanager.html">Link Manager</a>
+        <a href="HomePageManager.html">Home Page Manager</a>
+        <a href="OtherSettings.html">Other Settings</a>
         <a href="../gallery.html">View public gallery</a>
         <hr class="sep" />
 
         <button class="btn" id="cleanupBtn" type="button">Cleanup files</button>
         <span class="sub" id="cleanupStatus" aria-live="polite"></span>
-
-        <hr class="sep" />
-        <div class="sub">Quick filters</div>
-        <div class="pillrow" style="margin-top:10px">
-          <span class="pill" id="countAll">All</span>
-          <span class="pill" id="countPub">Published</span>
-          <span class="pill" id="countDraft">Draft</span>
-          <span class="pill" id="countHidden">Hidden</span>
-        </div>
-
-        <hr class="sep" />
-        <div class="sub">Homepage section visibility</div>
-        <label class="home-toggle">
-          <input id="homeHeroToggle" type="checkbox" />
-          <span class="sub">Home Intro</span>
-        </label>
-        <span class="sub" id="homeHeroStatus" aria-live="polite"></span>
-        <label class="home-toggle">
-          <input id="homeLatestToggle" type="checkbox" />
-          <span class="sub">Latest section</span>
-        </label>
-        <span class="sub" id="homeLatestStatus" aria-live="polite"></span>
-        <label class="home-toggle">
-          <input id="homeFeaturedToggle" type="checkbox" />
-          <span class="sub">Featured section</span>
-        </label>
-        <span class="sub" id="homeFeaturedStatus" aria-live="polite"></span>
-        <label class="home-toggle">
-          <input id="homeSeriesToggle" type="checkbox" />
-          <span class="sub">Series section</span>
-        </label>
-        <span class="sub" id="homeSeriesStatus" aria-live="polite"></span>
-        <label class="home-toggle">
-          <input id="homeFeaturedSlideshowToggle" type="checkbox" />
-          <span class="sub">Featured Slideshow</span>
-        </label>
-        <span class="sub" id="homeFeaturedSlideshowStatus" aria-live="polite"></span>
       </aside>
 
       <section>
@@ -309,11 +279,6 @@
 
   let tab = "all";
   let q = "";
-  const HOME_HERO_VISIBLE_KEY = "toji_home_hero_visible_v1";
-  const HOME_LATEST_VISIBLE_KEY = "toji_home_latest_visible_v1";
-  const HOME_FEATURED_VISIBLE_KEY = "toji_home_featured_visible_v1";
-  const HOME_SERIES_VISIBLE_KEY = "toji_home_series_visible_v1";
-  const HOME_FEATURED_SLIDESHOW_VISIBLE_KEY = "toji_home_featured_slideshow_visible_v1";
   const DASHBOARD_VIEW_KEY = "toji_dashboard_view_mode_v1";
   const ROW_SORT_BY_KEY = "toji_dashboard_row_sort_by_v1";
   const ROW_SORT_DIR_KEY = "toji_dashboard_row_sort_dir_v1";
@@ -333,12 +298,6 @@
   const rowSortControls = document.getElementById("rowSortControls");
   const rowSortBySelect = document.getElementById("rowSortBy");
   const rowSortDirSelect = document.getElementById("rowSortDir");
-  const homeHeroToggle = document.getElementById("homeHeroToggle");
-  const homeLatestToggle = document.getElementById("homeLatestToggle");
-  const homeFeaturedToggle = document.getElementById("homeFeaturedToggle");
-  const homeSeriesToggle = document.getElementById("homeSeriesToggle");
-  const homeFeaturedSlideshowToggle = document.getElementById("homeFeaturedSlideshowToggle");
-
   // Bulk selection
   const selected = new Set();
 
@@ -389,54 +348,9 @@
     render();
   });
 
-  if (homeHeroToggle) {
-    const raw = localStorage.getItem(HOME_HERO_VISIBLE_KEY);
-    homeHeroToggle.checked = raw == null ? true : raw === "1";
-    homeHeroToggle.addEventListener("change", () => {
-      localStorage.setItem(HOME_HERO_VISIBLE_KEY, homeHeroToggle.checked ? "1" : "0");
-      showToast("Home Intro visibility saved.", { tone: "success" });
-    });
-  }
-
-  if (homeLatestToggle) {
-    homeLatestToggle.checked = localStorage.getItem(HOME_LATEST_VISIBLE_KEY) === "1";
-    homeLatestToggle.addEventListener("change", () => {
-      localStorage.setItem(HOME_LATEST_VISIBLE_KEY, homeLatestToggle.checked ? "1" : "0");
-      showToast("Latest section visibility saved.", { tone: "success" });
-    });
-  }
-
-  if (homeFeaturedToggle) {
-    const raw = localStorage.getItem(HOME_FEATURED_VISIBLE_KEY);
-    homeFeaturedToggle.checked = raw == null ? true : raw === "1";
-    homeFeaturedToggle.addEventListener("change", () => {
-      localStorage.setItem(HOME_FEATURED_VISIBLE_KEY, homeFeaturedToggle.checked ? "1" : "0");
-      showToast("Featured section visibility saved.", { tone: "success" });
-    });
-  }
-
-  if (homeSeriesToggle) {
-    const raw = localStorage.getItem(HOME_SERIES_VISIBLE_KEY);
-    homeSeriesToggle.checked = raw == null ? true : raw === "1";
-    homeSeriesToggle.addEventListener("change", () => {
-      localStorage.setItem(HOME_SERIES_VISIBLE_KEY, homeSeriesToggle.checked ? "1" : "0");
-      showToast("Series section visibility saved.", { tone: "success" });
-    });
-  }
-
-  if (homeFeaturedSlideshowToggle) {
-    const raw = localStorage.getItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY);
-    homeFeaturedSlideshowToggle.checked = raw == null ? true : raw === "1";
-    homeFeaturedSlideshowToggle.addEventListener("change", () => {
-      localStorage.setItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY, homeFeaturedSlideshowToggle.checked ? "1" : "0");
-      showToast("Featured slideshow visibility saved.", { tone: "success" });
-    });
-  }
-
   let dragId = null;
 
   const counts = () => {
-    const all = state.artworks.length;
     const pub = state.artworks.filter(a => a.status === "published").length;
     const draft = state.artworks.filter(a => a.status === "draft").length;
     const hidden = state.artworks.filter(a => a.status === "hidden").length;
@@ -444,11 +358,6 @@
     document.getElementById("kPub").textContent = pub;
     document.getElementById("kDraft").textContent = draft;
     document.getElementById("kHidden").textContent = hidden;
-
-    document.getElementById("countAll").textContent = `All ${all}`;
-    document.getElementById("countPub").textContent = `Published ${pub}`;
-    document.getElementById("countDraft").textContent = `Draft ${draft}`;
-    document.getElementById("countHidden").textContent = `Hidden ${hidden}`;
   };
 
   function matches(a){

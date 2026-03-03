@@ -74,62 +74,56 @@
       position: relative;
       width: 100%;
       min-height: 340px;
-      height: min(76vh, 860px);
+      height: clamp(240px, 38vh, 420px);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       overflow: hidden;
       background: color-mix(in srgb, var(--panel) 86%, var(--bg));
       box-shadow: none;
     }
-    .home-slideshow a,
-    .home-slideshow img{
+    .home-slideshow-carousel{
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      mask-image: linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%);
+    }
+    .home-slideshow-track{
+      display: flex;
+      width: max-content;
+      height: 100%;
+      gap: 14px;
+      padding: 10px 0;
+      animation: homeCarouselMove var(--carousel-duration, 56s) linear infinite;
+      will-change: transform;
+    }
+    .home-slideshow-item{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: min(66vw, 420px);
+      min-width: 260px;
+      height: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--panel) 90%, transparent);
+      padding: 10px;
+    }
+    .home-slideshow-item img{
       display: block;
       width: 100%;
       height: 100%;
-    }
-    .home-slideshow-slide{
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      transform: translateX(10%) scale(1.02);
-      filter: blur(2px);
-      transition: opacity 1.1s cubic-bezier(.22,.61,.36,1), transform 1.1s cubic-bezier(.22,.61,.36,1), filter .9s ease;
-      will-change: opacity, transform, filter;
-    }
-    .home-slideshow-slide.live{
-      opacity: 1;
-      transform: translateX(0) scale(1);
-      filter: blur(0);
-      z-index: 2;
-    }
-    .home-slideshow-slide.leaving{
-      opacity: 0;
-      transform: translateX(-10%) scale(1.02);
-      filter: blur(3px);
-      z-index: 1;
-    }
-    .home-slideshow img{
       object-fit: contain;
       object-position: center;
       background: var(--bg);
     }
-    .home-slideshow-caption{
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      bottom: 12px;
-      padding: 10px 12px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      backdrop-filter: blur(8px);
-      background: color-mix(in srgb, var(--panel) 78%, transparent);
-      transform: translateY(6px);
-      opacity: 0;
-      transition: transform .55s ease, opacity .55s ease;
+    @keyframes homeCarouselMove{
+      from{ transform: translateX(0); }
+      to{ transform: translateX(calc(-50% - 7px)); }
     }
-    .home-slideshow-slide.live .home-slideshow-caption{
-      transform: translateY(0);
-      opacity: 1;
+    @media (prefers-reduced-motion: reduce){
+      .home-slideshow-track{ animation: none; }
     }
     .splash-active{
       overflow:hidden;
@@ -279,6 +273,14 @@
     const splashLogo = document.getElementById("splashLogo");
     const topLeftBrand = document.querySelector("#siteHeader .brand");
     let splashP5Instance = null;
+    const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "nodes" | "bezier" | "flock"
+
+    function getSplashAnimationMode() {
+      const mode = String(localStorage.getItem(SPLASH_ANIMATION_MODE_KEY) || "").toLowerCase();
+      if (mode === "bezier") return "bezier";
+      if (mode === "flock") return "flock";
+      return "nodes";
+    }
 
     async function ensureP5() {
       if (window.p5) return;
@@ -367,14 +369,23 @@
 
     async function initSplashAnimation() {
       if (!splashScreen || !splashP5Host || splashP5Instance || splashScreen.classList.contains("hidden")) return;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduceMotion) {
+        splashP5Host.innerHTML = "";
+        return;
+      }
+
       await ensureP5();
       if (!window.p5) return;
 
-      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const splashMode = getSplashAnimationMode();
 
       splashP5Instance = new window.p5((p) => {
         const nodes = [];
         const edges = [];
+        const curves = [];
+        const flock = [];
+        let mouseTarget = null;
 
         const wrapNode = (n) => {
           if (n.x < -n.r) n.x = p.width + n.r;
@@ -395,9 +406,8 @@
         const buildGraph = () => {
           edges.length = 0;
           const seen = new Set();
-
           for (let i = 0; i < nodes.length; i += 1) {
-            const targetCount = p.floor(p.random(1, 4)); // 1..3
+            const targetCount = p.floor(p.random(1, 4));
             const near = nearestIndices(i, 6);
             for (let k = 0; k < targetCount && k < near.length; k += 1) {
               const j = near[k];
@@ -419,6 +429,10 @@
               x: p.random(p.width),
               y: p.random(p.height),
               r: p.random(8, 24),
+              rMin: p.random(6, 14),
+              rMax: p.random(18, 30),
+              pulse: p.random(0, Math.PI * 2),
+              pulseSpeed: p.random(0.012, 0.03),
               dx: p.random(-0.45, 0.45),
               dy: p.random(-0.35, 0.35),
               red: p.random() < 0.35,
@@ -427,27 +441,193 @@
           buildGraph();
         };
 
+        const movePoint = (pt) => {
+          pt.x += pt.dx;
+          pt.y += pt.dy;
+          if (pt.x < 0 || pt.x > p.width) {
+            pt.dx *= -1;
+            pt.x = p.constrain(pt.x, 0, p.width);
+          }
+          if (pt.y < 0 || pt.y > p.height) {
+            pt.dy *= -1;
+            pt.y = p.constrain(pt.y, 0, p.height);
+          }
+        };
+
+        const makePoint = () => ({
+          x: p.random(p.width),
+          y: p.random(p.height),
+          dx: p.random(-0.9, 0.9),
+          dy: p.random(-0.9, 0.9)
+        });
+
+        const seedBezierCurves = () => {
+          curves.length = 0;
+          const count = 34; // dense
+          const palette = [
+            [255, 255, 255, 90],
+            [255, 255, 255, 70],
+            [255, 24, 24, 88],
+            [96, 130, 255, 74]
+          ];
+          for (let i = 0; i < count; i += 1) {
+            curves.push({
+              p0: makePoint(),
+              p1: makePoint(),
+              p2: makePoint(),
+              p3: makePoint(),
+              color: palette[i % palette.length],
+              weight: p.random(0.8, 2.4)
+            });
+          }
+        };
+
+        const seedFlock = () => {
+          flock.length = 0;
+          const count = 150; // large flock
+          mouseTarget = p.createVector(p.width * 0.5, p.height * 0.5);
+          for (let i = 0; i < count; i += 1) {
+            flock.push({
+              pos: p.createVector(p.random(p.width), p.random(p.height)),
+              vel: p.createVector(p.random(-2, 2), p.random(-2, 2)),
+              acc: p.createVector(0, 0),
+              maxSpeed: p.random(1.8, 2.8),
+              maxForce: p.random(0.045, 0.085),
+              size: p.random(3.6, 6.8),
+              purple: p.random() < 0.3
+            });
+          }
+        };
+
+        const steerTowards = (boid, target) => {
+          const desired = p5.Vector.sub(target, boid.pos);
+          const d = desired.mag();
+          if (d < 0.001) return p.createVector(0, 0);
+          desired.setMag(boid.maxSpeed);
+          const steer = desired.sub(boid.vel);
+          steer.limit(boid.maxForce);
+          return steer;
+        };
+
+        const updateFlock = () => {
+          const sensing = 74;
+          const avoid = 28;
+
+          const hasMouse = p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height;
+          const target = hasMouse
+            ? p.createVector(p.mouseX, p.mouseY)
+            : p.createVector(p.width * 0.5, p.height * 0.5);
+          mouseTarget.lerp(target, 0.16);
+
+          for (const b of flock) {
+            let total = 0;
+            const align = p.createVector(0, 0);
+            const cohesion = p.createVector(0, 0);
+            const separation = p.createVector(0, 0);
+
+            for (const other of flock) {
+              if (other === b) continue;
+              const d = p.dist(b.pos.x, b.pos.y, other.pos.x, other.pos.y);
+              if (d <= 0 || d > sensing) continue;
+
+              align.add(other.vel);
+              cohesion.add(other.pos);
+              total += 1;
+
+              if (d < avoid) {
+                const diff = p5.Vector.sub(b.pos, other.pos);
+                diff.div(Math.max(d * d, 1));
+                separation.add(diff);
+              }
+            }
+
+            b.acc.mult(0);
+
+            if (total > 0) {
+              align.div(total).setMag(b.maxSpeed).sub(b.vel).limit(b.maxForce);
+              cohesion.div(total);
+              const cohForce = steerTowards(b, cohesion).mult(0.72);
+              const sepForce = separation.setMag(b.maxSpeed).sub(b.vel).limit(b.maxForce * 1.4).mult(1.08);
+              b.acc.add(align.mult(0.85));
+              b.acc.add(cohForce);
+              b.acc.add(sepForce);
+            }
+
+            const seek = steerTowards(b, mouseTarget).mult(1.25);
+            b.acc.add(seek);
+          }
+
+          for (const b of flock) {
+            b.vel.add(b.acc);
+            b.vel.limit(b.maxSpeed);
+            b.pos.add(b.vel);
+
+            if (b.pos.x < -10) b.pos.x = p.width + 10;
+            if (b.pos.x > p.width + 10) b.pos.x = -10;
+            if (b.pos.y < -10) b.pos.y = p.height + 10;
+            if (b.pos.y > p.height + 10) b.pos.y = -10;
+          }
+        };
+
+        const drawFlock = () => {
+          p.noStroke();
+          for (const b of flock) {
+            const theta = b.vel.heading() + p.HALF_PI;
+            p.push();
+            p.translate(b.pos.x, b.pos.y);
+            p.rotate(theta);
+            if (b.purple) p.fill(170, 98, 255, 210);
+            else p.fill(245, 245, 245, 205);
+            p.triangle(0, -b.size * 1.45, -b.size * 0.9, b.size, b.size * 0.9, b.size);
+            p.pop();
+          }
+        };
+
         p.setup = () => {
           const canvas = p.createCanvas(splashP5Host.clientWidth, splashP5Host.clientHeight);
           canvas.parent(splashP5Host);
           p.pixelDensity(1);
-          seedNodes();
-          if (reduceMotion) p.noLoop();
+          if (splashMode === "bezier") seedBezierCurves();
+          else if (splashMode === "flock") seedFlock();
+          else seedNodes();
         };
 
         p.windowResized = () => {
           p.resizeCanvas(splashP5Host.clientWidth, splashP5Host.clientHeight);
-          seedNodes();
-          p.redraw();
+          if (splashMode === "bezier") seedBezierCurves();
+          else if (splashMode === "flock") seedFlock();
+          else seedNodes();
         };
 
         p.draw = () => {
           p.clear();
           p.background(24, 23, 26, 245);
 
+          if (splashMode === "bezier") {
+            p.noFill();
+            for (const c of curves) {
+              movePoint(c.p0);
+              movePoint(c.p1);
+              movePoint(c.p2);
+              movePoint(c.p3);
+              p.stroke(c.color[0], c.color[1], c.color[2], c.color[3]);
+              p.strokeWeight(c.weight);
+              p.bezier(c.p0.x, c.p0.y, c.p1.x, c.p1.y, c.p2.x, c.p2.y, c.p3.x, c.p3.y);
+            }
+            return;
+          }
+
+          if (splashMode === "flock") {
+            updateFlock();
+            drawFlock();
+            return;
+          }
+
           for (const n of nodes) {
             n.x += n.dx;
             n.y += n.dy;
+            n.pulse += n.pulseSpeed;
+            n.r = p.map(Math.sin(n.pulse), -1, 1, n.rMin, n.rMax);
             wrapNode(n);
           }
 
@@ -461,10 +641,7 @@
 
           p.noStroke();
           for (const n of nodes) {
-            if (n.red) {
-              //p.fill(255, 72, 72, 220);
-              p.fill(255, 10, 10, 220);
-            }
+            if (n.red) p.fill(170, 98, 255, 220);
             else p.fill(255, 255, 255, 205);
             p.circle(n.x, n.y, n.r);
           }
@@ -477,6 +654,7 @@
       if (!splashP5Instance) return;
       splashP5Instance.remove();
       splashP5Instance = null;
+      splashP5Host && (splashP5Host.innerHTML = "");
     }
     let showSplash = true;
     try {
@@ -599,16 +777,7 @@
       homeSeriesSection.style.display = "none";
     }
 
-    let slideshowTimer = null;
-    function clearSlideshowTimer() {
-      if (slideshowTimer) {
-        clearInterval(slideshowTimer);
-        slideshowTimer = null;
-      }
-    }
-
-    function renderFeaturedSlideshow(items) {
-      clearSlideshowTimer();
+        function renderFeaturedSlideshow(items) {
       if (!featuredSlideshowSection || !featuredSlideshow || !featuredSlideshowHint) return;
 
       if (!items.length || !isSlideshowVisible) {
@@ -621,47 +790,28 @@
       featuredSlideshowHint.textContent = `${items.length} image${items.length === 1 ? "" : "s"}`;
       featuredSlideshow.innerHTML = "";
 
-      let i = 0;
-      let activeSlide = null;
-      const draw = () => {
-        const a = items[i];
-        const slide = el("a", {
-          class: "home-slideshow-slide",
-          href: `artwork.html?id=${encodeURIComponent(a.id)}`,
-          onclick: (e) => { e.preventDefault(); openLightbox(items, i); }
-        },
-          el("img", { src: a.image || a.thumb, alt: a.alt || a.title || "Featured artwork", loading: "eager" }),
-          el("div", { class: "home-slideshow-caption" },
-            el("div", { style: "font-weight:650" }, a.title || "Untitled"),
-            el("div", { class: "sub" }, [a.series || null, a.year || null].filter(Boolean).join(" • ") || " ")
+      const carousel = el("div", { class: "home-slideshow-carousel" });
+      const track = el("div", { class: "home-slideshow-track" });
+      const loops = [...items, ...items];
+      const speedPerItem = 5.5;
+      const duration = Math.max(24, loops.length * speedPerItem);
+      track.style.setProperty("--carousel-duration", `${duration}s`);
+
+      loops.forEach((a) => {
+        const realIndex = items.findIndex(x => x.id === a.id);
+        track.appendChild(
+          el("a", {
+            class: "home-slideshow-item",
+            href: `artwork.html?id=${encodeURIComponent(a.id)}`,
+            onclick: (e) => { e.preventDefault(); openLightbox(items, Math.max(0, realIndex)); }
+          },
+            el("img", { src: a.image || a.thumb, alt: a.alt || a.title || "Featured artwork", loading: "lazy" })
           )
         );
+      });
 
-        featuredSlideshow.appendChild(slide);
-        // Force a layout pass so opacity/transform transitions always animate.
-        void slide.offsetWidth;
-        slide.classList.add("live");
-
-        if (activeSlide && activeSlide !== slide) {
-          const prevSlide = activeSlide;
-          prevSlide.classList.remove("live");
-          prevSlide.classList.add("leaving");
-          setTimeout(() => {
-            if (prevSlide.parentNode) prevSlide.remove();
-          }, 900);
-        }
-
-        activeSlide = slide;
-      };
-
-      draw();
-
-      if (items.length > 1) {
-        slideshowTimer = setInterval(() => {
-          i = (i + 1) % items.length;
-          draw();
-        }, 4200);
-      }
+      carousel.appendChild(track);
+      featuredSlideshow.appendChild(carousel);
     }
 
     renderFeaturedSlideshow(featured);
@@ -808,6 +958,8 @@
 </body>
 
 </html>
+
+
 
 
 

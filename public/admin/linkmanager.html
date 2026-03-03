@@ -1,0 +1,357 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Studio - Link Manager</title>
+  <link rel="stylesheet" href="../assets/css/site.css" />
+  <style>
+    .external-links-card{
+      box-shadow: none;
+    }
+    .external-links-toolbar{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .external-links-grid{
+      display:grid;
+      gap:10px;
+      margin-top:12px;
+    }
+    .external-link-row{
+      display:grid;
+      grid-template-columns: minmax(130px, 1.05fr) minmax(180px, 2fr) minmax(120px, .9fr) auto auto;
+      gap:8px;
+      align-items:center;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      background:color-mix(in srgb, var(--panel) 90%, transparent);
+    }
+    .external-link-toggle{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      white-space:nowrap;
+    }
+    .external-link-toggle input{
+      width:auto;
+      min-width:0;
+      margin:0;
+    }
+    .external-link-empty{
+      border:1px dashed var(--line);
+      border-radius:12px;
+      padding:12px;
+    }
+    .external-link-confirm[popover]{
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:var(--panel);
+      color:var(--text);
+      box-shadow: var(--shadow);
+      width:min(92vw, 320px);
+      padding:12px;
+    }
+    .external-link-confirm p{
+      margin:0;
+      line-height:1.45;
+    }
+    .external-link-confirm-actions{
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+      margin-top:10px;
+    }
+    .external-link-confirm::backdrop{
+      background: rgba(0,0,0,.5);
+      backdrop-filter: blur(1px);
+    }
+    body:has(.external-link-confirm:popover-open) main,
+    body:has(.external-link-confirm:popover-open) header{
+      pointer-events:none;
+      user-select:none;
+    }
+    body:has(.external-link-confirm:popover-open) .external-link-confirm{
+      pointer-events:auto;
+      user-select:auto;
+    }
+    @media (max-width: 980px){
+      .external-link-row{
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container nav">
+      <a class="brand" href="../index.html">
+        <span class="brand-logo-stack" aria-hidden="true">
+          <img class="brand-logo-image brand-logo-image--for-dark" src="../assets/img/logo-light.png" alt="" />
+          <img class="brand-logo-image brand-logo-image--for-light" src="../assets/img/logo-dark.png" alt="" />
+        </span>
+        <span class="sr-only">Toji Studios</span>
+      </a>
+
+      <nav class="navlinks" aria-label="Primary">
+        <a href="../index.html">Public</a>
+        <a class="active" href="index.html">Studio</a>
+        <a href="upload.html">Upload</a>
+        <a href="series.html">Series</a>
+      </nav>
+
+      <div class="theme-controls">
+        <div class="segmented" role="group" aria-label="Theme mode">
+          <button type="button" data-theme-mode="system">System</button>
+          <button type="button" data-theme-mode="light">Light</button>
+          <button type="button" data-theme-mode="dark">Dark</button>
+        </div>
+        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" style="padding-bottom:10px">
+      <h1>Link Manager</h1>
+      <p>Manage social media and other external links shown on public pages.</p>
+    </section>
+
+    <div class="admin-layout">
+      <aside class="sidebar" aria-label="Studio navigation">
+        <a href="index.html">Image Manager</a>
+        <a href="upload.html">Upload</a>
+        <a href="series.html">Series Manager</a>
+        <a class="active" href="linkmanager.html">Link Manager</a>
+        <a href="HomePageManager.html">Home Page Manager</a>
+        <a href="OtherSettings.html">Other Settings</a>
+        <a href="../gallery.html">View public gallery</a>
+      </aside>
+
+      <section>
+        <section class="card external-links-card" aria-label="External links manager">
+          <div class="meta">
+            <div class="section-title">
+              <h2>External Links</h2>
+              <span id="externalLinksHint">0 links</span>
+            </div>
+            <p class="sub">These links are used on the Contact page and other public sections.</p>
+            <div class="external-links-toolbar">
+              <button class="btn" id="externalLinksAdd" type="button">Add link</button>
+              <button class="btn primary" id="externalLinksSave" type="button">Save links</button>
+            </div>
+            <div id="externalLinksRows" class="external-links-grid"></div>
+          </div>
+        </section>
+
+        <footer class="footer">
+          <div class="row">
+            <div>© <span id="y"></span> Toji Studios</div>
+            <div>Link Manager</div>
+          </div>
+        </footer>
+      </section>
+    </div>
+  </main>
+
+  <script type="module">
+    import {
+      loadStateAutoSync, saveState, el,
+      setYearFooter, ensureBaseStyles,
+      showToast
+    } from "./admin.js";
+
+    ensureBaseStyles();
+    setYearFooter();
+
+    const state = await loadStateAutoSync();
+    state.settings ||= {};
+
+    const externalLinksRows = document.getElementById("externalLinksRows");
+    const externalLinksHint = document.getElementById("externalLinksHint");
+    const externalLinksAddBtn = document.getElementById("externalLinksAdd");
+    const externalLinksSaveBtn = document.getElementById("externalLinksSave");
+
+    const EXTERNAL_LINK_CATEGORIES = ["social", "portfolio", "shop", "video", "newsletter", "other"];
+    state.settings.externalLinks = normalizeExternalLinks(state.settings.externalLinks);
+    let externalLinksDraft = cloneExternalLinks(state.settings.externalLinks);
+
+    function uniqueLinkId(){
+      return `lnk_${Math.random().toString(16).slice(2, 10)}`;
+    }
+
+    function emptyExternalLink(){
+      return {
+        id: uniqueLinkId(),
+        label: "",
+        url: "",
+        category: "social",
+        enabled: true
+      };
+    }
+
+    function cloneExternalLinks(links){
+      if (!Array.isArray(links)) return [];
+      return links.map((row) => ({
+        id: String(row?.id || uniqueLinkId()),
+        label: String(row?.label || ""),
+        url: String(row?.url || ""),
+        category: EXTERNAL_LINK_CATEGORIES.includes(String(row?.category || "").toLowerCase())
+          ? String(row.category).toLowerCase()
+          : "other",
+        enabled: row?.enabled == null ? true : !!row.enabled
+      }));
+    }
+
+    function normalizeExternalLinks(links){
+      const used = new Set();
+      return cloneExternalLinks(links)
+        .filter((row) => row.label.trim() || row.url.trim())
+        .map((row) => {
+          let id = row.id;
+          while (!id || used.has(id)) id = uniqueLinkId();
+          used.add(id);
+          return {
+            id,
+            label: row.label.trim(),
+            url: row.url.trim(),
+            category: row.category,
+            enabled: !!row.enabled
+          };
+        });
+    }
+
+    function renderExternalLinksEditor(){
+      if (!externalLinksRows || !externalLinksHint) return;
+      externalLinksRows.innerHTML = "";
+      externalLinksHint.textContent = `${externalLinksDraft.length} link${externalLinksDraft.length === 1 ? "" : "s"}`;
+
+      if (!externalLinksDraft.length) {
+        externalLinksRows.appendChild(
+          el("div", { class: "sub external-link-empty" }, "No links yet. Add one to get started.")
+        );
+        return;
+      }
+
+      externalLinksDraft.forEach((row, idx) => {
+        const popId = `removeLinkConfirm_${row.id || idx}`;
+        const categorySelect = el("select", {
+          "aria-label": `Category for link ${idx + 1}`,
+          onchange: (e) => {
+            const value = String(e.target.value || "").toLowerCase();
+            row.category = EXTERNAL_LINK_CATEGORIES.includes(value) ? value : "other";
+          }
+        });
+
+        EXTERNAL_LINK_CATEGORIES.forEach((name) => {
+          const option = new Option(name[0].toUpperCase() + name.slice(1), name, false, row.category === name);
+          categorySelect.appendChild(option);
+        });
+
+        externalLinksRows.appendChild(
+          el("div", { class: "external-link-row" },
+            el("input", {
+              type: "text",
+              placeholder: "Label (e.g., Instagram)",
+              value: row.label,
+              "aria-label": `Label for link ${idx + 1}`,
+              oninput: (e) => { row.label = e.target.value; }
+            }),
+            el("input", {
+              type: "url",
+              placeholder: "https://...",
+              value: row.url,
+              "aria-label": `URL for link ${idx + 1}`,
+              oninput: (e) => { row.url = e.target.value; }
+            }),
+            categorySelect,
+            el("label", { class: "external-link-toggle" },
+              el("input", {
+                type: "checkbox",
+                checked: row.enabled ? "" : null,
+                onchange: (e) => { row.enabled = !!e.target.checked; }
+              }),
+              el("span", { class: "sub" }, "Enabled")
+            ),
+            el("div", {},
+              el("button", {
+                class: "btn danger",
+                type: "button",
+                popovertarget: popId,
+                "aria-haspopup": "dialog",
+                "aria-label": `Remove link ${row.label || idx + 1}`
+              }, "Remove"),
+              el("div", {
+                id: popId,
+                class: "external-link-confirm",
+                popover: "auto",
+                role: "dialog",
+                "aria-label": "Confirm remove link"
+              },
+                el("p", {}, `Remove "${row.label || "this link"}"?`),
+                el("div", { class: "external-link-confirm-actions" },
+                  el("button", {
+                    class: "btn",
+                    type: "button",
+                    popovertarget: popId,
+                    popovertargetaction: "hide"
+                  }, "Cancel"),
+                  el("button", {
+                    class: "btn danger",
+                    type: "button",
+                    onclick: () => {
+                      externalLinksDraft.splice(idx, 1);
+                      renderExternalLinksEditor();
+                    }
+                  }, "Remove")
+                )
+              )
+            )
+          )
+        );
+      });
+    }
+
+    function validateExternalLink(link, index){
+      const label = String(link.label || "").trim();
+      const url = String(link.url || "").trim();
+      const rowLabel = `Link ${index + 1}`;
+
+      if (!label || !url) return `${rowLabel} must include both a label and a URL.`;
+      if (!/^(https?:\/\/|mailto:|tel:)/i.test(url)) {
+        return `${rowLabel} URL must start with https://, http://, mailto:, or tel:.`;
+      }
+      if (/^https?:\/\//i.test(url)) {
+        try { new URL(url); } catch { return `${rowLabel} has an invalid URL.`; }
+      }
+      return "";
+    }
+
+    function saveExternalLinks(){
+      const next = normalizeExternalLinks(externalLinksDraft);
+      for (let i = 0; i < next.length; i += 1) {
+        const err = validateExternalLink(next[i], i);
+        if (err) return showToast(err, { tone: "error" });
+      }
+
+      state.settings.externalLinks = next;
+      saveState(state);
+      externalLinksDraft = cloneExternalLinks(next);
+      renderExternalLinksEditor();
+      showToast(`Saved ${next.length} external link${next.length === 1 ? "" : "s"}.`, { tone: "success" });
+    }
+
+    externalLinksAddBtn?.addEventListener("click", () => {
+      externalLinksDraft.push(emptyExternalLink());
+      renderExternalLinksEditor();
+    });
+
+    externalLinksSaveBtn?.addEventListener("click", saveExternalLinks);
+
+    renderExternalLinksEditor();
+  </script>
+</body>
+</html>

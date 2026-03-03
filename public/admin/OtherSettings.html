@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Studio - Other Settings</title>
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="container nav">
+      <a class="brand" href="../index.html">
+        <span class="brand-logo-stack" aria-hidden="true">
+          <img class="brand-logo-image brand-logo-image--for-dark" src="../assets/img/logo-light.png" alt="" />
+          <img class="brand-logo-image brand-logo-image--for-light" src="../assets/img/logo-dark.png" alt="" />
+        </span>
+        <span class="sr-only">Toji Studios</span>
+      </a>
+
+      <nav class="navlinks" aria-label="Primary">
+        <a href="../index.html">Public</a>
+        <a class="active" href="index.html">Studio</a>
+        <a href="upload.html">Upload</a>
+        <a href="series.html">Series</a>
+      </nav>
+
+      <div class="theme-controls">
+        <div class="segmented" role="group" aria-label="Theme mode">
+          <button type="button" data-theme-mode="system">System</button>
+          <button type="button" data-theme-mode="light">Light</button>
+          <button type="button" data-theme-mode="dark">Dark</button>
+        </div>
+        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" style="padding-bottom:10px">
+      <h1>Other Settings</h1>
+      <p>Miscellaneous controls. Additional settings will be added here over time.</p>
+    </section>
+
+    <div class="admin-layout">
+      <aside class="sidebar" aria-label="Studio navigation">
+        <a href="index.html">Image Manager</a>
+        <a href="upload.html">Upload</a>
+        <a href="series.html">Series Manager</a>
+        <a href="linkmanager.html">Link Manager</a>
+        <a href="HomePageManager.html">Home Page Manager</a>
+        <a class="active" href="OtherSettings.html">Other Settings</a>
+        <a href="../gallery.html">View public gallery</a>
+      </aside>
+
+      <section>
+        <article class="card">
+          <div class="meta">
+            <p class="title" style="margin:0">Splash Screen Animation</p>
+            <p class="sub" style="margin-top:8px">Controls the background animation on the splash screen.</p>
+
+            <div class="field" style="margin-top:12px">
+              <div class="sub">Active animation</div>
+              <select id="splashMode">
+                <option value="nodes">Nodes and edges (existing)</option>
+                <option value="bezier">Bezier curves (dense)</option>
+                <option value="flock">Flocking triangles (mouse follow)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px">
+              <button class="btn primary" id="saveSplashMode" type="button">Save</button>
+              <span class="sub" id="splashModeCurrent" aria-live="polite"></span>
+            </div>
+          </div>
+        </article>
+
+        <footer class="footer">
+          <div class="row">
+            <div>© <span id="y"></span> Toji Studios</div>
+            <div>Other Settings</div>
+          </div>
+        </footer>
+      </section>
+    </div>
+  </main>
+
+  <script type="module">
+    import { ensureBaseStyles, setYearFooter, showToast } from "./admin.js";
+
+    ensureBaseStyles();
+    setYearFooter();
+
+    const SPLASH_MODE_KEY = "toji_splash_animation_mode_v1";
+    const splashMode = document.getElementById("splashMode");
+    const saveSplashMode = document.getElementById("saveSplashMode");
+    const splashModeCurrent = document.getElementById("splashModeCurrent");
+
+    function normalizeSplashMode(value){
+      const mode = String(value || "").toLowerCase();
+      if (mode === "bezier") return "bezier";
+      if (mode === "flock") return "flock";
+      return "nodes";
+    }
+
+    function describeSplashMode(mode){
+      if (mode === "bezier") return "Bezier curves (dense)";
+      if (mode === "flock") return "Flocking triangles (mouse follow)";
+      return "Nodes and edges (existing)";
+    }
+
+    function syncSplashModeUI(){
+      const mode = normalizeSplashMode(localStorage.getItem(SPLASH_MODE_KEY));
+      if (splashMode) splashMode.value = mode;
+      if (splashModeCurrent) splashModeCurrent.textContent = `Current: ${describeSplashMode(mode)}`;
+    }
+
+    syncSplashModeUI();
+
+    saveSplashMode?.addEventListener("click", () => {
+      const mode = normalizeSplashMode(splashMode?.value);
+      localStorage.setItem(SPLASH_MODE_KEY, mode);
+      syncSplashModeUI();
+      showToast("Splash animation setting saved.", { tone: "success" });
+    });
+  </script>
+</body>
+</html>

@@ -141,13 +141,15 @@
 <script type="module">
   import { renderPublicHeader } from "./assets/js/header.js";
   import { renderPublicFooter } from "./assets/js/footer.js";
+  import { qs } from "./assets/js/content-utils.js";
 
   renderPublicHeader({
     active: "contact",
     small: "contact",
     ctaText: "View Gallery",
     ctaHref: "gallery.html",
-    brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
+      //brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
+      brandLogoSrc: "assets/img/logo.png"
   });
   renderPublicFooter({
     rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="about.html">About</a> • <a href="admin/index.html">Studio</a>`
@@ -159,7 +161,6 @@
   emailEl.textContent = TO_EMAIL;
 
   const form = document.getElementById("contactForm");
-  const status = document.getElementById("status");
   const draftBox = document.getElementById("draftBox");
   const draftPre = document.getElementById("draft");
 
@@ -169,10 +170,82 @@
   const linksEl = document.getElementById("links");
   const msgEl = document.getElementById("message");
 
-  function setStatus(msg){ status.textContent = msg || ""; }
+  function ensureToastHost(){
+    let host = document.querySelector(".contact-toast-stack");
+    if (host) return host;
 
-  function qs(name){
-    return new URLSearchParams(location.search).get(name);
+    const style = document.createElement("style");
+    style.textContent = `
+      .contact-toast-stack{
+        position:fixed;
+        right:16px;
+        bottom:16px;
+        display:grid;
+        gap:10px;
+        width:min(92vw,420px);
+        z-index:9999;
+        pointer-events:none;
+      }
+      .contact-toast{
+        pointer-events:auto;
+        border:1px solid color-mix(in srgb, var(--line, rgba(255,255,255,.22)) 75%, #ffffff 25%);
+        border-radius:14px;
+        background:color-mix(in srgb, var(--panel, rgba(14,18,28,.94)) 96%, transparent);
+        color:var(--text, #f8f7f4);
+        box-shadow:0 14px 36px rgba(0,0,0,.2);
+        padding:12px;
+        line-height:1.4;
+        white-space:pre-line;
+      }
+      .contact-toast__msg{
+        margin:0;
+      }
+      .contact-toast__countdown{
+        margin-top:8px;
+        font-size:11px;
+        line-height:1.2;
+        letter-spacing:.01em;
+        color:color-mix(in srgb, var(--muted, #bcc4d6) 80%, transparent);
+        text-align:right;
+        font-variant-numeric:tabular-nums;
+      }
+    `;
+    document.head.appendChild(style);
+
+    host = document.createElement("div");
+    host.className = "contact-toast-stack";
+    host.setAttribute("aria-live", "polite");
+    document.body.appendChild(host);
+    return host;
+  }
+
+  function setStatus(msg){
+    if (!msg) return;
+    const host = ensureToastHost();
+    const toast = document.createElement("article");
+    toast.className = "contact-toast";
+    const body = document.createElement("p");
+    body.className = "contact-toast__msg";
+    body.textContent = msg;
+
+    const countdown = document.createElement("div");
+    countdown.className = "contact-toast__countdown";
+    toast.append(body, countdown);
+    host.appendChild(toast);
+
+    const duration = 10000;
+    const startedAt = Date.now();
+    const updateCountdown = () => {
+      const remaining = Math.max(0, duration - (Date.now() - startedAt));
+      countdown.textContent = `Auto close in ${Math.ceil(remaining / 1000)}s`;
+    };
+    updateCountdown();
+    const intervalId = setInterval(updateCountdown, 200);
+
+    setTimeout(() => {
+      clearInterval(intervalId);
+      toast.remove();
+    }, duration);
   }
 
   function prefillFromQuery(){

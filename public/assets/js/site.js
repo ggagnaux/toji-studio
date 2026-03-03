@@ -1,24 +1,8 @@
+export { qs, el } from "./content-utils.js";
+
 export async function loadGallery() {
   const res = await fetch("assets/data/gallery.sample.json");
   return res.json();
-}
-
-export function qs(name){
-  return new URLSearchParams(location.search).get(name);
-}
-
-export function el(tag, attrs={}, ...children){
-  const n = document.createElement(tag);
-  Object.entries(attrs).forEach(([k,v]) => {
-    if(k === "class") n.className = v;
-    else if(k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
-    else n.setAttribute(k, v);
-  });
-  children.flat().forEach(c => {
-    if(c == null) return;
-    n.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
-  });
-  return n;
 }
 
 export function uniqTags(items){
@@ -52,6 +36,8 @@ export function initThemeSystem(){
   const syncUI = (mode, theme) => {
     const iconBtn = document.querySelector("[data-theme-icon]");
     if (iconBtn) {
+      iconBtn.dataset.themeMode = mode;
+      iconBtn.dataset.theme = theme;
       iconBtn.setAttribute(
         "aria-label",
         theme === "dark" ? "Switch to light theme" : "Switch to dark theme"
@@ -108,7 +94,17 @@ export function initThemeSystem(){
   function sunSVG(){
     return `
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12Zm0-16h0Zm0 20h0ZM4.22 5.64l1.42 1.42L4.22 5.64Zm14.14 14.14 1.42 1.42-1.42-1.42ZM2 12h2H2Zm18 0h2-2ZM4.22 18.36l1.42-1.42-1.42 1.42Zm14.14-14.14 1.42-1.42-1.42 1.42ZM12 2v2-2Zm0 18v2-2Z"/>
+        <circle cx="12" cy="12" r="4.2" fill="currentColor"></circle>
+        <g stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+          <line x1="12" y1="1.8" x2="12" y2="4.5"></line>
+          <line x1="12" y1="19.5" x2="12" y2="22.2"></line>
+          <line x1="1.8" y1="12" x2="4.5" y2="12"></line>
+          <line x1="19.5" y1="12" x2="22.2" y2="12"></line>
+          <line x1="4.1" y1="4.1" x2="6.1" y2="6.1"></line>
+          <line x1="17.9" y1="17.9" x2="19.9" y2="19.9"></line>
+          <line x1="4.1" y1="19.9" x2="6.1" y2="17.9"></line>
+          <line x1="17.9" y1="6.1" x2="19.9" y2="4.1"></line>
+        </g>
       </svg>
     `;
   }
@@ -116,7 +112,7 @@ export function initThemeSystem(){
   function moonSVG(){
     return `
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M21 14.7A8.1 8.1 0 0 1 9.3 3a7 7 0 1 0 11.7 11.7Z"/>
+        <path fill="currentColor" d="M15.9 2.1a9.95 9.95 0 0 0 0 19.8c3.14 0 5.96-1.45 7.8-3.7-5.46.6-10.36-3.3-10.96-8.76-.4-3.55 1.14-6.88 3.16-9.34Z"></path>
       </svg>
     `;
   }

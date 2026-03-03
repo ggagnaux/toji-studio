@@ -21,7 +21,7 @@
   <header class="header">
     <div class="container nav">
       <a class="brand" href="../index.html">
-        <img class="brand-logo-image" src="../assets/img/TojiStudios_LogoAndName_ForWebsite.png" alt="Toji Studios" />
+        <img class="brand-logo-image" src="../assets/img/Logo.png" alt="Toji Studios" />
       </a>
 
       <nav class="navlinks" aria-label="Primary">
@@ -170,7 +170,7 @@
       upsertTag,
       patchArtworkToBackend,
       getAdminToken, setAdminToken,
-      apiFetch, API_BASE
+      apiFetch, API_BASE, showToast
     } from "./admin.js";
 
     ensureBaseStyles();
@@ -182,11 +182,9 @@
     state.series ||= [];
 
     const files = document.getElementById("files");
-    const statusEl = document.getElementById("status");
     const list = document.getElementById("list");
 
     const tokenInput = document.getElementById("token");
-    const tokenStatus = document.getElementById("tokenStatus");
     const uiBlocker = document.getElementById("uiBlocker");
     const uiBlockerTitle = document.getElementById("uiBlockerTitle");
     const uiBlockerSub = document.getElementById("uiBlockerSub");
@@ -194,8 +192,14 @@
     const newIds = [];
     let uiLocked = false;
 
-    function setStatus(msg){ statusEl.textContent = msg || ""; }
-    function setTokenStatus(msg){ tokenStatus.textContent = msg || ""; }
+    function setStatus(msg, tone = "info"){
+      if (!msg) return;
+      showToast(msg, { tone, duration: 10000 });
+    }
+    function setTokenStatus(msg, tone = "success"){
+      if (!msg) return;
+      showToast(msg, { tone, duration: 10000 });
+    }
     function setUiLocked(on, title = "Uploading and processing...", sub = "Please wait. Interaction is temporarily disabled."){
       uiLocked = !!on;
       if (uiBlocker) uiBlocker.style.display = on ? "block" : "none";
@@ -341,7 +345,6 @@
     document.getElementById("saveToken").addEventListener("click", () => {
       setAdminToken(tokenInput.value);
       setTokenStatus("Saved.");
-      setTimeout(() => setTokenStatus(""), 900);
     });
 
     document.getElementById("addTagBtn").addEventListener("click", addTagsFromInput);

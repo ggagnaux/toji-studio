@@ -10,7 +10,7 @@
   <header class="header">
     <div class="container nav">
       <a class="brand" href="../index.html">
-        <img class="brand-logo-image" src="../assets/img/TojiStudios_LogoAndName_ForWebsite.png" alt="Toji Studios" />
+        <img class="brand-logo-image" src="../assets/img/Logo.png" alt="Toji Studios" />
       </a>
 
       <nav class="navlinks" aria-label="Primary">
@@ -49,7 +49,7 @@
 
   <script type="module">
     import {
-      loadState, saveState, qs, el, setYearFooter, ensureBaseStyles, upsertTag
+      loadState, saveState, qs, el, setYearFooter, ensureBaseStyles, upsertTag, confirmToast, showToast
     } from "./admin.js";
 
     import {
@@ -78,9 +78,9 @@
     // -----------------------
     const status = el("span", { class:"sub", id:"status", "aria-live":"polite" }, "");
 
-    function setStatusText(msg, ms=900){
-      status.textContent = msg || "";
-      if (msg && ms) setTimeout(()=> { if (status.textContent === msg) status.textContent = ""; }, ms);
+    function setStatusText(msg, ms=10000, tone="info"){
+      if (!msg) return;
+      showToast(msg, { tone, duration: Math.max(10000, Number(ms) || 0) });
     }
 
     function localSave(quiet=false){
@@ -116,7 +116,7 @@
     async function flushBackendSave(force=false){
       const token = getAdminToken();
       if (!token) {
-        if (force) setStatusText("No admin token — saved locally only.", 1400);
+        if (force) setStatusText("No admin token - saved locally only.", 10000, "warn");
         return;
       }
 
@@ -127,7 +127,7 @@
       if (!force && patchJson === lastPatchJson) return;
 
       saving = true;
-      setStatusText("Saving…", 0);
+      setStatusText("Saving...", 10000, "info");
 
       try {
         const updated = await patchArtworkToBackend(a.id, patch);
@@ -141,9 +141,9 @@
 
         lastPatchJson = patchJson;
         localSave(true);
-        setStatusText("Saved to backend.");
+        setStatusText("Saved to backend.", 10000, "success");
       } catch (err) {
-        setStatusText(`Backend save failed — local only. (${err?.message || err})`, 2500);
+        setStatusText(`Backend save failed - local only. (${err?.message || err})`, 10000, "error");
       } finally {
         saving = false;
       }
@@ -153,14 +153,13 @@
 
     async function replaceImage(){
       const token = getAdminToken();
-      if (!token) return setStatusText("No admin token — set it in Upload page.", 1600);
+      if (!token) return setStatusText("No admin token - set it in Upload page.", 10000, "warn");
 
       const inp = document.getElementById("replaceFile");
       const f = inp?.files?.[0];
-      if (!f) return setStatusText("Pick an image first.", 1200);
+      if (!f) return setStatusText("Pick an image first.", 10000, "warn");
 
-      const mediaStatus = document.getElementById("mediaStatus");
-      const setMedia = (m) => { if (mediaStatus) mediaStatus.textContent = m || ""; };
+      const setMedia = (m, tone="info") => { if (m) showToast(m, { tone, duration: 10000 }); };
 
       setMedia("Replacing…");
 
@@ -194,20 +193,18 @@
         const img = document.getElementById("previewImg");
         if (img) img.src = `${a.image}?v=${Date.now()}`;
 
-        setMedia("Replaced.");
-        setTimeout(()=> setMedia(""), 900);
+        setMedia("Replaced.", "success");
         inp.value = "";
       }catch(err){
-        setMedia(`Replace failed: ${err?.message || err}`);
+        setMedia(`Replace failed: ${err?.message || err}`, "error");
       }
     }
 
     async function regenVariants(){
       const token = getAdminToken();
-      if (!token) return setStatusText("No admin token — set it in Upload page.", 1600);
+      if (!token) return setStatusText("No admin token - set it in Upload page.", 10000, "warn");
 
-      const mediaStatus = document.getElementById("mediaStatus");
-      const setMedia = (m) => { if (mediaStatus) mediaStatus.textContent = m || ""; };
+      const setMedia = (m, tone="info") => { if (m) showToast(m, { tone, duration: 10000 }); };
 
       setMedia("Regenerating…");
 
@@ -235,20 +232,23 @@
         const img = document.getElementById("previewImg");
         if (img) img.src = `${a.image}?v=${Date.now()}`;
 
-        setMedia("Done.");
-        setTimeout(()=> setMedia(""), 900);
+        setMedia("Done.", "success");
       }catch(err){
-        setMedia(`Regen failed: ${err?.message || err}`);
+        setMedia(`Regen failed: ${err?.message || err}`, "error");
       }
     }
 
     async function deleteArtwork(){
-      if (!confirm("Delete this artwork? This removes the original + variants on the server and cannot be undone.")) return;
+      const ok = await confirmToast(
+        "Delete this artwork? This removes the original + variants on the server and cannot be undone.",
+        { confirmLabel: "Delete", cancelLabel: "Cancel", tone: "warn" }
+      );
+      if (!ok) return;
 
       const token = getAdminToken();
-      if (!token) return setStatusText("No admin token — set it in Upload page.", 1600);
+      if (!token) return setStatusText("No admin token - set it in Upload page.", 10000, "warn");
 
-      setStatusText("Deleting…", 0);
+      setStatusText("Deleting...", 10000, "warn");
 
       try{
         const { API_BASE } = await import("./admin.js");
@@ -268,7 +268,7 @@
         // Go back to dashboard
         location.href = "index.html";
       }catch(err){
-        setStatusText(`Delete failed: ${err?.message || err}`, 2500);
+        setStatusText(`Delete failed: ${err?.message || err}`, 10000, "error");
       }
     }
 

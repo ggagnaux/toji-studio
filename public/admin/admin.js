@@ -1,6 +1,9 @@
 import { initThemeSystem } from "../assets/js/site.js";
+import { qs, el, slugifySeries } from "../assets/js/content-utils.js";
 
 initThemeSystem();
+
+export { qs, el, slugifySeries };
 
 const STORAGE_KEY = "toji_admin_state_v1";
 const DATA_URL = "../assets/data/admin.sample.json";
@@ -19,24 +22,6 @@ export function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-export function qs(name) {
-  return new URLSearchParams(location.search).get(name);
-}
-
-export function el(tag, attrs = {}, ...children) {
-  const n = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (k === "class") n.className = v;
-    else if (k === "style") n.setAttribute("style", v);
-    else if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
-    else if (v !== undefined && v !== null) n.setAttribute(k, v);
-  }
-  for (const c of children.flat()) {
-    if (c == null) continue;
-    n.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
-  }
-  return n;
-}
 
 export function formatStatus(s) {
   if (s === "published") return "Published";
@@ -88,11 +73,306 @@ export function ensureBaseStyles() {
       color:var(--text);
       background: var(--chip-bg);
     }
+    .admin-toast-stack{
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      display: grid;
+      gap: 10px;
+      width: min(92vw, 420px);
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .admin-toast{
+      pointer-events: auto;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--panel) 96%, transparent);
+      color: var(--text);
+      box-shadow: 0 14px 36px rgba(0,0,0,.18);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+      opacity: 0;
+      transform: translateY(8px);
+      animation: adminToastIn .18s ease-out forwards;
+      backdrop-filter: blur(10px);
+    }
+    .admin-toast--success{ border-color: color-mix(in srgb, #2ea97d 45%, var(--line)); }
+    .admin-toast--warn{ border-color: color-mix(in srgb, #e0aa3c 55%, var(--line)); }
+    .admin-toast--error{ border-color: color-mix(in srgb, #d15353 60%, var(--line)); }
+    .admin-toast__msg{
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: pre-line;
+    }
+    .admin-toast__actions{
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .admin-toast__countdown{
+      margin-right: auto;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      align-self: center;
+    }
+    .admin-toast__btn{
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+    .admin-toast__btn:hover{
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+    }
+    .admin-toast__btn--primary{
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+    }
+    .admin-toast.is-closing{
+      animation: adminToastOut .14s ease-in forwards;
+    }
+    .admin-confirm-backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.42);
+      z-index: 10000;
+      display: grid;
+      place-items: center;
+      padding: 16px;
+    }
+    .admin-confirm{
+      width: min(92vw, 480px);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+      color: var(--text);
+      box-shadow: 0 20px 46px rgba(0,0,0,.28);
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+    .admin-confirm--warn{ border-color: color-mix(in srgb, #e0aa3c 55%, var(--line)); }
+    .admin-confirm--error{ border-color: color-mix(in srgb, #d15353 60%, var(--line)); }
+    .admin-confirm__msg{
+      margin: 0;
+      white-space: pre-line;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+    .admin-confirm__actions{
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .admin-confirm__btn{
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      padding: 7px 11px;
+      cursor: pointer;
+    }
+    .admin-confirm__btn:hover{
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+    }
+    .admin-confirm__btn--primary{
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+    }
+    @keyframes adminToastIn{
+      from{ opacity:0; transform:translateY(8px); }
+      to{ opacity:1; transform:translateY(0); }
+    }
+    @keyframes adminToastOut{
+      from{ opacity:1; transform:translateY(0); }
+      to{ opacity:0; transform:translateY(8px); }
+    }
     .sep{ border:0; border-top:1px solid var(--line); margin:14px 0; }
     @media (max-width: 920px){ .admin-layout{ grid-template-columns: 1fr; } .sidebar{ position:relative; top:auto; } .kpi{ grid-template-columns: 1fr; } }
   `;
   document.head.appendChild(style);
   initAdminNavMenu();
+}
+
+let toastHost = null;
+
+function ensureToastHost() {
+  if (toastHost && document.body.contains(toastHost)) return toastHost;
+  toastHost = document.querySelector(".admin-toast-stack");
+  if (toastHost) return toastHost;
+
+  toastHost = document.createElement("div");
+  toastHost.className = "admin-toast-stack";
+  toastHost.setAttribute("aria-live", "polite");
+  toastHost.setAttribute("aria-atomic", "false");
+  document.body.appendChild(toastHost);
+  return toastHost;
+}
+
+export function showToast(message, opts = {}) {
+  const {
+    tone = "info",
+    duration = 2600,
+    dismissible = true,
+    actions = [],
+    onClose
+  } = opts;
+  const resolvedDuration = duration === 0 ? 0 : Math.max(10000, Number(duration) || 0);
+
+  const host = ensureToastHost();
+  const toast = document.createElement("article");
+  toast.className = `admin-toast admin-toast--${tone}`;
+  toast.setAttribute("role", "status");
+
+  const msg = document.createElement("p");
+  msg.className = "admin-toast__msg";
+  msg.textContent = String(message || "");
+  toast.appendChild(msg);
+
+  let bar = null;
+  if (actions.length || dismissible || resolvedDuration > 0) {
+    bar = document.createElement("div");
+    bar.className = "admin-toast__actions";
+
+    const allActions = [...actions];
+    if (dismissible) {
+      allActions.push({ label: "Close", variant: "ghost", value: null });
+    }
+
+    for (const action of allActions) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `admin-toast__btn${action.variant === "primary" ? " admin-toast__btn--primary" : ""}`;
+      btn.textContent = action.label || "OK";
+      btn.addEventListener("click", () => {
+        action.onClick?.();
+        close(action.value);
+      });
+      bar.appendChild(btn);
+    }
+    toast.appendChild(bar);
+  }
+
+  host.appendChild(toast);
+
+  let done = false;
+  let timer = null;
+  let countdownTimer = null;
+
+  if (resolvedDuration > 0 && bar) {
+    const countdown = document.createElement("span");
+    countdown.className = "admin-toast__countdown";
+    bar.prepend(countdown);
+
+    const startedAt = Date.now();
+    const updateCountdown = () => {
+      const elapsed = Date.now() - startedAt;
+      const remaining = Math.max(0, resolvedDuration - elapsed);
+      countdown.textContent = `Auto close in ${Math.ceil(remaining / 1000)}s`;
+    };
+    updateCountdown();
+    countdownTimer = window.setInterval(updateCountdown, 200);
+  }
+
+  const close = (reason = null) => {
+    if (done) return;
+    done = true;
+    if (timer) clearTimeout(timer);
+    if (countdownTimer) clearInterval(countdownTimer);
+    toast.classList.add("is-closing");
+    window.setTimeout(() => {
+      toast.remove();
+      onClose?.(reason);
+    }, 140);
+  };
+
+  if (resolvedDuration > 0) timer = window.setTimeout(() => close("timeout"), resolvedDuration);
+  return close;
+}
+
+export function confirmToast(message, opts = {}) {
+  const {
+    confirmLabel = "Confirm",
+    cancelLabel = "Cancel",
+    tone = "warn"
+  } = opts;
+
+  return new Promise((resolve) => {
+    const backdrop = document.createElement("div");
+    backdrop.className = "admin-confirm-backdrop";
+
+    const modal = document.createElement("div");
+    modal.className = `admin-confirm admin-confirm--${tone}`;
+    modal.setAttribute("role", "alertdialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-label", "Confirmation");
+
+    const msg = document.createElement("p");
+    msg.className = "admin-confirm__msg";
+    msg.textContent = String(message || "");
+
+    const actions = document.createElement("div");
+    actions.className = "admin-confirm__actions";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.type = "button";
+    cancelBtn.className = "admin-confirm__btn";
+    cancelBtn.textContent = cancelLabel;
+
+    const confirmBtn = document.createElement("button");
+    confirmBtn.type = "button";
+    confirmBtn.className = "admin-confirm__btn admin-confirm__btn--primary";
+    confirmBtn.textContent = confirmLabel;
+
+    actions.append(cancelBtn, confirmBtn);
+    modal.append(msg, actions);
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    let settled = false;
+    const cleanup = () => {
+      document.body.style.overflow = previousOverflow;
+      backdrop.remove();
+      document.removeEventListener("keydown", onKeyDown);
+    };
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(!!value);
+    };
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        settle(false);
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) settle(false);
+    });
+    cancelBtn.addEventListener("click", () => settle(false));
+    confirmBtn.addEventListener("click", () => settle(true));
+
+    confirmBtn.focus();
+  });
 }
 
 function initAdminNavMenu() {
@@ -419,15 +699,6 @@ function safeJson(s, fallback) {
 
 
 
-
-export function slugifySeries(name){
-  return String(name || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-}
 
 export async function apiGetSeries(){
   return apiFetch("/api/admin/series", { method:"GET" });

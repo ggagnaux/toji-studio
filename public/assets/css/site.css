@@ -282,11 +282,27 @@ img{max-width:100%;display:block}
   display:inline-flex; align-items:center; justify-content:center;
   border:1px solid var(--line);
   border-radius:999px;
-  background:transparent;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
   color:var(--text);
   cursor:pointer;
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease, transform .12s ease;
 }
-.icon-btn:hover{ border-color: var(--hover-line); }
+.icon-btn:hover{
+  border-color: var(--hover-line);
+  transform: translateY(-1px);
+}
+.icon-btn[data-theme-mode="light"]{
+  border-color: color-mix(in srgb, var(--accent-border) 72%, var(--line));
+  background: color-mix(in srgb, #ffe7ac 24%, var(--panel));
+}
+.icon-btn[data-theme-mode="dark"]{
+  border-color: color-mix(in srgb, var(--accent-border) 86%, #ffffff 14%);
+  background: color-mix(in srgb, var(--accent) 28%, var(--panel));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 48%, transparent);
+}
+.icon-btn[data-theme-mode="system"]{
+  border-style: dashed;
+}
 
 .icon{
   width:18px; height:18px;
@@ -299,19 +315,40 @@ img{max-width:100%;display:block}
   border:1px solid var(--line);
   border-radius:999px;
   overflow:hidden;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  padding:2px;
+  gap:2px;
 }
 .segmented button{
   border:0;
   background:transparent;
   color:var(--muted);
-  padding:5px 8px;
+  padding:6px 10px;
   cursor:pointer;
   font-size:12px;
+  border-radius:999px;
+  font-weight:500;
+  transition: color .18s ease, background-color .18s ease, box-shadow .18s ease;
 }
 .segmented button:hover{ color:var(--text); }
 .segmented button.active{
   color:var(--text);
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent-soft) 78%, var(--panel) 22%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 74%, transparent);
+  font-weight:700;
+}
+[data-theme="dark"] .segmented{
+  border-color: color-mix(in srgb, var(--line) 52%, #ffffff 48%);
+}
+[data-theme="dark"] .segmented button{
+  color: color-mix(in srgb, var(--muted) 72%, #ffffff 28%);
+}
+[data-theme="dark"] .segmented button.active{
+  color: #fefefe;
+  background: color-mix(in srgb, var(--accent) 34%, #ffffff 6%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #ffffff 24%, var(--accent-border) 76%),
+    0 0 0 1px color-mix(in srgb, var(--accent) 36%, transparent);
 }
 
 .footer{
@@ -365,7 +402,18 @@ input, textarea, select{
     border:1px solid transparent;
   }
   .search{width:100%; margin-left:0}
-  .segmented{ display:none; }
+  .theme-controls{
+    gap:6px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+  .theme-controls .segmented{
+    display:inline-flex;
+  }
+  .theme-controls .segmented button{
+    padding:5px 8px;
+    font-size:11px;
+  }
   .nav > .btn{display:none}
 }
 

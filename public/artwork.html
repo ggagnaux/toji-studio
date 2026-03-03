@@ -60,6 +60,7 @@
   <script type="module">
     import { renderPublicHeader } from "./assets/js/header.js";
     import { renderPublicFooter } from "./assets/js/footer.js";
+    import { qs, el, sortBySortOrderAndDate } from "./assets/js/content-utils.js";
 
     // Header/footers
     renderPublicHeader({
@@ -67,7 +68,8 @@
       small: "artwork",
       ctaText: "Explore",
       ctaHref: "gallery.html",
-      brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
+      //brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
+      brandLogoSrc: "assets/img/logo.png"
     });
     renderPublicFooter({
       rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="about.html">About</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
@@ -76,8 +78,6 @@
     // Data
     const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
     const FALLBACK_URL = "assets/data/admin.sample.json";
-
-    function qs(name){ return new URLSearchParams(location.search).get(name); }
 
     async function loadStateLike(){
       const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
@@ -90,29 +90,7 @@
       return (state.artworks || []).filter(a => a.status === "published");
     }
 
-    function el(tag, attrs = {}, ...children){
-      const n = document.createElement(tag);
-      for (const [k,v] of Object.entries(attrs)) {
-        if (k === "class") n.className = v;
-        else if (k === "style") n.setAttribute("style", v);
-        else if (k.startsWith("on") && typeof v === "function") n.addEventListener(k.slice(2), v);
-        else if (v !== undefined && v !== null) n.setAttribute(k, v);
-      }
-      for (const c of children.flat()) {
-        if (c == null) continue;
-        n.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
-      }
-      return n;
-    }
-
-    function sortRecent(items){
-      return items.slice().sort((a,b) => {
-        const soA = Number(a.sortOrder || 0), soB = Number(b.sortOrder || 0);
-        if (soA !== soB) return soB - soA;
-        const da = (a.publishedAt || a.createdAt || ""), db = (b.publishedAt || b.createdAt || "");
-        return String(db).localeCompare(String(da));
-      });
-    }
+    const sortRecent = (items) => sortBySortOrderAndDate(items);
 
     // DOM
     const h1 = document.getElementById("t");

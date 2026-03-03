@@ -10,7 +10,7 @@
   <header class="header">
     <div class="container nav">
       <a class="brand" href="../index.html">
-        <img class="brand-logo-image" src="../assets/img/TojiStudios_LogoAndName_ForWebsite.png" alt="Toji Studios" />
+        <img class="brand-logo-image" src="../assets/img/Logo.png" alt="Toji Studios" />
       </a>
 
 
@@ -99,6 +99,8 @@
     import {
       loadStateAutoSync, saveState, el, setYearFooter, ensureBaseStyles,
       ensureSeriesMeta,
+      showToast,
+      confirmToast,
       getAdminToken,
       syncSeriesFromBackend,
       apiUpsertSeries,
@@ -116,7 +118,6 @@
     const listEl = document.getElementById("list");
     const editor = document.getElementById("editor");
     const count = document.getElementById("count");
-    const status = document.getElementById("status");
     const newName = document.getElementById("newName");
     const showHiddenToggle = document.getElementById("showHidden");
     const selectAllBtn = document.getElementById("selectAllBtn");
@@ -131,9 +132,9 @@
     const selectedSlugs = new Set();
     if (showHiddenToggle) showHiddenToggle.checked = showHidden;
 
-    const setStatus = (m, ms=900) => {
-      status.textContent = m || "";
-      if (m && ms) setTimeout(() => { if (status.textContent === m) status.textContent = ""; }, ms);
+    const setStatus = (m, ms=10000, tone="info") => {
+      if (!m) return;
+      showToast(m, { tone, duration: Math.max(10000, Number(ms) || 0) });
     };
 
     function seriesArray(){
@@ -233,7 +234,11 @@
     deleteSelectedBtn?.addEventListener("click", async () => {
       const slugs = Array.from(selectedSlugs);
       if (!slugs.length) return;
-      if (!confirm(`Delete ${slugs.length} selected series? (Does NOT change artworks)`)) return;
+      const ok = await confirmToast(
+        `Delete ${slugs.length} selected series? (Does NOT change artworks)`,
+        { confirmLabel: "Delete", cancelLabel: "Cancel", tone: "warn" }
+      );
+      if (!ok) return;
 
       for (const slug of slugs) delete state.seriesMeta[slug];
       if (activeSlug && slugs.includes(activeSlug)) activeSlug = null;
@@ -247,14 +252,14 @@
       }
 
       if (!getAdminToken()) {
-        setStatus("Deleted locally (no token).", 1400);
+        setStatus("Deleted locally (no token).", 10000, "warn");
         return;
       }
 
       const results = await Promise.allSettled(slugs.map(slug => apiDeleteSeries(slug)));
       const failed = results.filter(r => r.status === "rejected").length;
-      if (!failed) setStatus(`Deleted ${slugs.length} series.`, 1400);
-      else setStatus(`Deleted locally. Backend failed for ${failed}/${slugs.length}.`, 2600);
+      if (!failed) setStatus(`Deleted ${slugs.length} series.`, 10000, "success");
+      else setStatus(`Deleted locally. Backend failed for ${failed}/${slugs.length}.`, 10000, "error");
     });
 
     function artworkOptions(){
@@ -285,7 +290,6 @@
         )
       );
 
-      const saveMsg = el("span", { class:"sub", "aria-live":"polite" }, "");
 
       const nameField = inputField("Name", s.name || "", (v)=>{ s.name = v; queueSave(); });
       const descField = textareaField("Description", s.description || "", (v)=>{ s.description = v; queueSave(); });
@@ -325,7 +329,7 @@
       editor.appendChild(el("div", { style:"display:flex; gap:10px; flex-wrap:wrap; align-items:center" },
         saveBtn,
         delBtn,
-        el("span", { style:"margin-left:auto" }, saveMsg)
+        el("span", { style:"margin-left:auto" })
       ));
 
       // Save logic: local immediately, backend debounced
@@ -340,8 +344,7 @@
       async function backendSave(){
         // If token missing, keep local-only
         if (!getAdminToken()){
-          saveMsg.textContent = "Saved locally (no token).";
-          setTimeout(()=> saveMsg.textContent="", 900);
+          setStatus("Saved locally (no token).", 10000, "warn");
           return;
         }
 
@@ -354,7 +357,7 @@
           coverArtworkId: s.coverArtworkId || ""
         };
 
-        saveMsg.textContent = "Saving…";
+        setStatus("Saving...", 10000, "info");
         try {
           const out = await apiUpsertSeries(slug, payload);
           // Merge backend response back in
@@ -364,12 +367,11 @@
             isPublic: !!out.isPublic
           };
           saveState(state);
-          saveMsg.textContent = "Saved.";
-          setTimeout(()=> saveMsg.textContent="", 900);
+          setStatus("Saved.", 10000, "success");
           refreshCoverPreview();
           renderList();
         } catch (e) {
-          saveMsg.textContent = `Backend save failed (local ok): ${e?.message || e}`;
+          setStatus(`Backend save failed (local ok): ${e?.message || e}`, 10000, "error");
         }
       }
 
@@ -384,7 +386,11 @@
       saveBtn.addEventListener("click", () => backendSave());
 
       delBtn.addEventListener("click", async () => {
-        if (!confirm(`Delete series "${s.name}"? (Does NOT change artworks)`)) return;
+        const ok = await confirmToast(
+          `Delete series "${s.name}"? (Does NOT change artworks)`,
+          { confirmLabel: "Delete", cancelLabel: "Cancel", tone: "warn" }
+        );
+        if (!ok) return;
 
         // local
         delete state.seriesMeta[slug];
@@ -397,9 +403,9 @@
         // backend
         if (getAdminToken()){
           try { await apiDeleteSeries(slug); }
-          catch (e) { setStatus(`Backend delete failed: ${e?.message || e}`, 2500); }
+          catch (e) { setStatus(`Backend delete failed: ${e?.message || e}`, 10000, "error"); }
         } else {
-          setStatus("Deleted locally (no token).", 1400);
+          setStatus("Deleted locally (no token).", 10000, "warn");
         }
       });
     }
@@ -407,10 +413,10 @@
     // Create series
     document.getElementById("createBtn").addEventListener("click", async () => {
       const name = newName.value.trim();
-      if (!name) return setStatus("Enter a series name.", 1400);
+      if (!name) return setStatus("Enter a series name.", 10000, "warn");
 
       const slug = slugifySeries(name);
-      if (!slug) return setStatus("Name produced an invalid slug.", 1400);
+      if (!slug) return setStatus("Name produced an invalid slug.", 10000, "warn");
 
       if (!state.seriesMeta[slug]) {
         state.seriesMeta[slug] = {
@@ -433,12 +439,12 @@
       if (getAdminToken()){
         try {
           await apiUpsertSeries(slug, state.seriesMeta[slug]);
-          setStatus("Created (and saved to backend).");
+          setStatus("Created (and saved to backend).", 10000, "success");
         } catch(e) {
-          setStatus(`Created locally; backend failed: ${e?.message || e}`, 2500);
+          setStatus(`Created locally; backend failed: ${e?.message || e}`, 10000, "error");
         }
       } else {
-        setStatus("Created locally (no token).", 1400);
+        setStatus("Created locally (no token).", 10000, "warn");
       }
     });
 

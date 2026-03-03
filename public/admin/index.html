@@ -10,7 +10,7 @@
   <header class="header">
     <div class="container nav">
       <a class="brand" href="../index.html">
-        <img class="brand-logo-image" src="../assets/img/TojiStudios_LogoAndName_ForWebsite.png" alt="Toji Studios" />
+        <img class="brand-logo-image" src="../assets/img/Logo.png" alt="Toji Studios" />
       </a>
 
       <nav class="navlinks" aria-label="Primary">
@@ -293,6 +293,7 @@
     loadStateAutoSync, saveState, el, statusChip,
     setYearFooter, ensureBaseStyles,
     sortArtworksManualFirst, ensureSeriesMeta,
+    showToast, confirmToast,
     getAdminToken,
     patchArtworkToBackend,
     deleteArtworkFromBackend
@@ -333,15 +334,10 @@
   const rowSortBySelect = document.getElementById("rowSortBy");
   const rowSortDirSelect = document.getElementById("rowSortDir");
   const homeHeroToggle = document.getElementById("homeHeroToggle");
-  const homeHeroStatus = document.getElementById("homeHeroStatus");
   const homeLatestToggle = document.getElementById("homeLatestToggle");
-  const homeLatestStatus = document.getElementById("homeLatestStatus");
   const homeFeaturedToggle = document.getElementById("homeFeaturedToggle");
-  const homeFeaturedStatus = document.getElementById("homeFeaturedStatus");
   const homeSeriesToggle = document.getElementById("homeSeriesToggle");
-  const homeSeriesStatus = document.getElementById("homeSeriesStatus");
   const homeFeaturedSlideshowToggle = document.getElementById("homeFeaturedSlideshowToggle");
-  const homeFeaturedSlideshowStatus = document.getElementById("homeFeaturedSlideshowStatus");
 
   // Bulk selection
   const selected = new Set();
@@ -398,12 +394,7 @@
     homeHeroToggle.checked = raw == null ? true : raw === "1";
     homeHeroToggle.addEventListener("change", () => {
       localStorage.setItem(HOME_HERO_VISIBLE_KEY, homeHeroToggle.checked ? "1" : "0");
-      if (homeHeroStatus) {
-        homeHeroStatus.textContent = "Saved.";
-        setTimeout(() => {
-          if (homeHeroStatus.textContent === "Saved.") homeHeroStatus.textContent = "";
-        }, 1000);
-      }
+      showToast("Home Intro visibility saved.", { tone: "success" });
     });
   }
 
@@ -411,12 +402,7 @@
     homeLatestToggle.checked = localStorage.getItem(HOME_LATEST_VISIBLE_KEY) === "1";
     homeLatestToggle.addEventListener("change", () => {
       localStorage.setItem(HOME_LATEST_VISIBLE_KEY, homeLatestToggle.checked ? "1" : "0");
-      if (homeLatestStatus) {
-        homeLatestStatus.textContent = "Saved.";
-        setTimeout(() => {
-          if (homeLatestStatus.textContent === "Saved.") homeLatestStatus.textContent = "";
-        }, 1000);
-      }
+      showToast("Latest section visibility saved.", { tone: "success" });
     });
   }
 
@@ -425,12 +411,7 @@
     homeFeaturedToggle.checked = raw == null ? true : raw === "1";
     homeFeaturedToggle.addEventListener("change", () => {
       localStorage.setItem(HOME_FEATURED_VISIBLE_KEY, homeFeaturedToggle.checked ? "1" : "0");
-      if (homeFeaturedStatus) {
-        homeFeaturedStatus.textContent = "Saved.";
-        setTimeout(() => {
-          if (homeFeaturedStatus.textContent === "Saved.") homeFeaturedStatus.textContent = "";
-        }, 1000);
-      }
+      showToast("Featured section visibility saved.", { tone: "success" });
     });
   }
 
@@ -439,12 +420,7 @@
     homeSeriesToggle.checked = raw == null ? true : raw === "1";
     homeSeriesToggle.addEventListener("change", () => {
       localStorage.setItem(HOME_SERIES_VISIBLE_KEY, homeSeriesToggle.checked ? "1" : "0");
-      if (homeSeriesStatus) {
-        homeSeriesStatus.textContent = "Saved.";
-        setTimeout(() => {
-          if (homeSeriesStatus.textContent === "Saved.") homeSeriesStatus.textContent = "";
-        }, 1000);
-      }
+      showToast("Series section visibility saved.", { tone: "success" });
     });
   }
 
@@ -453,12 +429,7 @@
     homeFeaturedSlideshowToggle.checked = raw == null ? true : raw === "1";
     homeFeaturedSlideshowToggle.addEventListener("change", () => {
       localStorage.setItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY, homeFeaturedSlideshowToggle.checked ? "1" : "0");
-      if (homeFeaturedSlideshowStatus) {
-        homeFeaturedSlideshowStatus.textContent = "Saved.";
-        setTimeout(() => {
-          if (homeFeaturedSlideshowStatus.textContent === "Saved.") homeFeaturedSlideshowStatus.textContent = "";
-        }, 1000);
-      }
+      showToast("Featured slideshow visibility saved.", { tone: "success" });
     });
   }
 
@@ -667,7 +638,7 @@
 
   bulkTagApplyBtn?.addEventListener("click", async () => {
     if (!selected.size) {
-      alert("Select at least one item first.");
+      showToast("Select at least one item first.", { tone: "warn" });
       return;
     }
 
@@ -675,12 +646,15 @@
     const tags = parseTags(bulkTagInput?.value || "");
 
     if (!tags.length) {
-      alert("Enter one or more tags (comma-separated).");
+      showToast("Enter one or more tags (comma-separated).", { tone: "warn" });
       return;
     }
 
     const label = mode === "remove" ? "Remove tag(s)" : "Add tag(s)";
-    const ok = confirm(`${label} [${tags.join(", ")}] for ${selected.size} selected item(s)?`);
+    const ok = await confirmToast(
+      `${label} [${tags.join(", ")}] for ${selected.size} selected item(s)?`,
+      { confirmLabel: "Apply", cancelLabel: "Cancel", tone: "warn" }
+    );
     if (!ok) return;
 
     const patches = [];
@@ -707,7 +681,7 @@
     }
 
     if (!patches.length) {
-      alert("Nothing to change for the selected items.");
+      showToast("Nothing to change for the selected items.", { tone: "info" });
       return;
     }
 
@@ -767,13 +741,16 @@
 
   async function applySeriesToSelection(seriesValue){
     if (!selected.size) {
-      alert("Select at least one item first.");
+      showToast("Select at least one item first.", { tone: "warn" });
       return;
     }
 
     const series = normSeries(seriesValue);
     const label = series ? `Assign series "${series}"` : "Clear series";
-    const ok = confirm(`${label} for ${selected.size} selected item(s)?`);
+    const ok = await confirmToast(
+      `${label} for ${selected.size} selected item(s)?`,
+      { confirmLabel: "Apply", cancelLabel: "Cancel", tone: "warn" }
+    );
     if (!ok) return;
 
     const patches = [];
@@ -790,7 +767,7 @@
     }
 
     if (!patches.length) {
-      alert("Nothing to change for the selected items.");
+      showToast("Nothing to change for the selected items.", { tone: "info" });
       return;
     }
 
@@ -894,7 +871,7 @@
 
     // No token? stop here (local cache removed)
     if (!getAdminToken()) {
-      alert("Deleted locally, but no admin token set — backend was not updated.");
+      showToast("Deleted locally, but no admin token set - backend was not updated.", { tone: "warn", duration: 3200 });
       return;
     }
 
@@ -911,10 +888,10 @@
     if (fails.length) {
       console.warn("Some deletes failed:", fails);
 
-      alert(
+      showToast(
         `Some deletes failed on the backend (${fails.length}/${ids.length}).\n\n` +
         `Those items may reappear after refresh/sync. Check console for details.`
-      );
+      , { tone: "error", duration: 4200 });
     }
   }
 
@@ -976,15 +953,16 @@
 
     if (action === "delete") {
       if (!selected.size) {
-        alert("Select at least one item first.");
+        showToast("Select at least one item first.", { tone: "warn" });
         bulkAction.value = "";
         return;
       }
 
-      const ok = confirm(
+      const ok = await confirmToast(
         `Delete ${selected.size} selected item(s)?\n\n` +
         `This will remove the artworks and their files on the server.\n` +
-        `This cannot be undone.`
+        `This cannot be undone.`,
+        { confirmLabel: "Delete", cancelLabel: "Cancel", tone: "warn" }
       );
       if (!ok) return;
 
@@ -1003,7 +981,7 @@
 
 
     if (!selected.size) {
-      alert("Select at least one item first.");
+      showToast("Select at least one item first.", { tone: "warn" });
       bulkAction.value = "";
       return;
     }
@@ -1017,13 +995,16 @@
       delete: "Delete"
     };
 
-    const ok = confirm(`${labels[action] || "Apply"} ${selected.size} selected item(s)?`);
+    const ok = await confirmToast(
+      `${labels[action] || "Apply"} ${selected.size} selected item(s)?`,
+      { confirmLabel: "Apply", cancelLabel: "Cancel", tone: "warn" }
+    );
     if (!ok) return;
 
     const patches = buildBulkPatches(action);
 
     if (!patches.length) {
-      alert("Nothing to change for the selected items.");
+      showToast("Nothing to change for the selected items.", { tone: "info" });
       bulkAction.value = "";
       setTagBoxVisible(false);
       return;
@@ -1062,7 +1043,10 @@
     if (!a) return;
 
     const label = a.title ? `"${a.title}"` : id;
-    const ok = confirm(`Delete ${label}?\n\nThis will remove the artwork and its files on the server.`);
+    const ok = await confirmToast(
+      `Delete ${label}?\n\nThis will remove the artwork and its files on the server.`,
+      { confirmLabel: "Delete", cancelLabel: "Cancel", tone: "warn" }
+    );
     if (!ok) return;
 
     // Local-first removal (snappy)
@@ -1079,7 +1063,7 @@
       await deleteArtworkFromBackend(id);
     } catch (e) {
       console.warn("Delete failed on backend; local cache already removed.", e);
-      alert(`Delete failed on backend: ${e?.message || e}\n\nRefresh may bring the item back.`);
+      showToast(`Delete failed on backend: ${e?.message || e}. Refresh may bring the item back.`, { tone: "error", duration: 4200 });
     }
   }
 
@@ -1292,15 +1276,21 @@
   // Cleanup files (admin-only)
   // ---------------------------
   const cleanupBtn = document.getElementById("cleanupBtn");
-  const cleanupStatus = document.getElementById("cleanupStatus");
-  const setCleanup = (m)=> cleanupStatus.textContent = m || "";
+  const setCleanup = (m, tone = "info") => {
+    if (!m) return;
+    showToast(m, { tone });
+  };
 
   cleanupBtn?.addEventListener("click", async () => {
-    if (!confirm("Cleanup orphan files (variants/originals) and broken variant rows?")) return;
+    const ok = await confirmToast(
+      "Cleanup orphan files (variants/originals) and broken variant rows?",
+      { confirmLabel: "Run cleanup", cancelLabel: "Cancel", tone: "warn" }
+    );
+    if (!ok) return;
 
-    if (!getAdminToken()) return setCleanup("Set admin token in Upload page first.");
+    if (!getAdminToken()) return setCleanup("Set admin token in Upload page first.", "warn");
 
-    setCleanup("Cleaning…");
+    setCleanup("Cleaning...", "info");
 
     try{
       const { API_BASE } = await import("./admin.js");
@@ -1312,9 +1302,9 @@
       const j = await res.json();
       if (!res.ok) throw new Error(j?.error || `${res.status} ${res.statusText}`);
 
-      setCleanup(`Done. Deleted variants: ${j.deletedVariantFiles}, originals: ${j.deletedOriginalFiles}, broken rows: ${j.deletedBrokenVariantRows}.`);
+      setCleanup(`Done. Deleted variants: ${j.deletedVariantFiles}, originals: ${j.deletedOriginalFiles}, broken rows: ${j.deletedBrokenVariantRows}.`, "success");
     }catch(err){
-      setCleanup(`Cleanup failed: ${err?.message || err}`);
+      setCleanup(`Cleanup failed: ${err?.message || err}`, "error");
     }
   });
 </script>

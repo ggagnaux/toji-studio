@@ -5,14 +5,74 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Studio - Other Settings</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
+  <style>
+    .setting-toggle{
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      gap:10px;
+      margin-top:2px;
+      text-align:left;
+    }
+    .setting-toggle .switch{
+      position:relative;
+      display:inline-flex;
+      width:46px;
+      height:26px;
+      flex:0 0 auto;
+    }
+    .setting-toggle .switch input{
+      position:absolute;
+      width:1px;
+      height:1px;
+      overflow:hidden;
+      clip:rect(0 0 0 0);
+      white-space:nowrap;
+      border:0;
+      margin:-1px;
+      padding:0;
+    }
+    .setting-toggle .slider{
+      width:100%;
+      height:100%;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: color-mix(in srgb, var(--panel) 84%, transparent);
+      transition: background .18s ease, border-color .18s ease;
+      position:relative;
+    }
+    .setting-toggle .slider::after{
+      content:"";
+      position:absolute;
+      top:3px;
+      left:3px;
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background:var(--text);
+      transition: transform .18s ease;
+    }
+    .setting-toggle input:checked + .slider{
+      background:var(--accent-soft);
+      border-color: var(--accent-border);
+    }
+    .setting-toggle input:checked + .slider::after{
+      transform: translateX(20px);
+    }
+  </style>
 </head>
 <body>
   <header class="header">
     <div class="container nav">
       <a class="brand" href="../index.html">
-        <span class="brand-logo-stack" aria-hidden="true">
-          <img class="brand-logo-image brand-logo-image--for-dark" src="../assets/img/logo-light.png" alt="" />
-          <img class="brand-logo-image brand-logo-image--for-light" src="../assets/img/logo-dark.png" alt="" />
+        <span class="brand-logo-combo" aria-hidden="true">
+          <span class="brand-logo-icon-stack">
+            <img class="brand-logo-icon-image" src="../assets/img/TojiStudios-Logo.png" alt="" />
+          </span>
+          <span class="brand-logo-wordmark-stack">
+            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark" src="../assets/img/TojiStudios-Light-TextOnly.png" alt="" />
+            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light" src="../assets/img/TojiStudios-Dark-TextOnly.png" alt="" />
+          </span>
         </span>
         <span class="sr-only">Toji Studios</span>
       </a>
@@ -20,8 +80,6 @@
       <nav class="navlinks" aria-label="Primary">
         <a href="../index.html">Public</a>
         <a class="active" href="index.html">Studio</a>
-        <a href="upload.html">Upload</a>
-        <a href="series.html">Series</a>
       </nav>
 
       <div class="theme-controls">
@@ -49,7 +107,7 @@
         <a href="linkmanager.html">Link Manager</a>
         <a href="HomePageManager.html">Home Page Manager</a>
         <a class="active" href="OtherSettings.html">Other Settings</a>
-        <a href="../gallery.html">View public gallery</a>
+        <a href="SecurityManager.html">Security Manager</a>
       </aside>
 
       <section>
@@ -61,15 +119,63 @@
             <div class="field" style="margin-top:12px">
               <div class="sub">Active animation</div>
               <select id="splashMode">
+                <option value="random">Randomize each visit</option>
                 <option value="nodes">Nodes and edges (existing)</option>
                 <option value="bezier">Bezier curves (dense)</option>
                 <option value="flock">Flocking triangles (mouse follow)</option>
+                <option value="circles">Outlined circles grid (fill/unfill)</option>
+                <option value="matrix">Matrix digital rain</option>
+                <option value="life">Conway's Game of Life</option>
+                <option value="code">Code writer (neon terminal)</option>
+                <option value="plot">Random x/y function plot</option>
+                <option value="bounce">Bouncing ball + logo deflect</option>
+                <option value="logo3d">Floating logo (3D rotate)</option>
+                <option value="turningcircles">Turning circles + fade trails</option>
+                <option value="asteroids">Asteroids simulation (auto-play)</option>
+                <option value="tempest">Tempest simulation (auto-play)</option>
+                <option value="pi">Pi digits screen fill</option>
               </select>
             </div>
+
+            <div id="splashRandomOptions" style="display:none; margin-top:12px; border:1px solid var(--line); border-radius:12px; padding:10px;">
+              <label class="setting-toggle" style="cursor:pointer;">
+                <span class="switch">
+                  <input id="splashRandomCycleEnabled" type="checkbox" />
+                  <span class="slider" aria-hidden="true"></span>
+                </span>
+                <span class="sub">Change animation automatically while splash is open</span>
+              </label>
+              <div class="field" style="margin-top:10px">
+                <div class="sub">Change interval (seconds)</div>
+                <input id="splashRandomCycleSeconds" type="number" min="1" step="1" value="12" />
+              </div>
+            </div>
+
+            <hr class="sep" />
+
+            <p class="title" style="margin:0">Banner Logo</p>
+            <p class="sub" style="margin-top:8px">Optionally replace the header logo image with an animated canvas.</p>
+            <label class="setting-toggle" style="margin-top:10px; cursor:pointer;">
+              <span class="switch">
+                <input id="bannerBezierLogoEnabled" type="checkbox" />
+                <span class="slider" aria-hidden="true"></span>
+              </span>
+              <span class="sub">Use animation for header and splash screen logo</span>
+            </label>
+            <div class="field" style="margin-top:10px">
+              <div class="sub">Animation style</div>
+              <select id="bannerLogoAnimationStyle">
+                <option value="circles">White circles</option>
+                <option value="plot">x/y function plot (no formula)</option>
+              </select>
+            </div>
+
+            <hr class="sep" />
 
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px">
               <button class="btn primary" id="saveSplashMode" type="button">Save</button>
               <span class="sub" id="splashModeCurrent" aria-live="polite"></span>
+              <span class="sub" id="bannerLogoCurrent" aria-live="polite"></span>
             </div>
           </div>
         </article>
@@ -85,42 +191,170 @@
   </main>
 
   <script type="module">
-    import { ensureBaseStyles, setYearFooter, showToast } from "./admin.js";
+    import { applyBannerLogoBehavior } from "../assets/js/header.js";
+    import {
+      ensureBaseStyles,
+      setYearFooter,
+      showToast
+    } from "./admin.js";
 
     ensureBaseStyles();
     setYearFooter();
+    const headerHost = document.querySelector("header.header");
+    applyBannerLogoBehavior(headerHost);
 
     const SPLASH_MODE_KEY = "toji_splash_animation_mode_v1";
+    const SPLASH_RANDOM_CYCLE_ENABLED_KEY = "toji_splash_random_cycle_enabled_v1";
+    const SPLASH_RANDOM_CYCLE_SECONDS_KEY = "toji_splash_random_cycle_seconds_v1";
+    const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
+    const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
     const splashMode = document.getElementById("splashMode");
     const saveSplashMode = document.getElementById("saveSplashMode");
     const splashModeCurrent = document.getElementById("splashModeCurrent");
+    const splashRandomOptions = document.getElementById("splashRandomOptions");
+    const splashRandomCycleEnabled = document.getElementById("splashRandomCycleEnabled");
+    const splashRandomCycleSeconds = document.getElementById("splashRandomCycleSeconds");
+    const bannerBezierLogoEnabled = document.getElementById("bannerBezierLogoEnabled");
+    const bannerLogoAnimationStyle = document.getElementById("bannerLogoAnimationStyle");
+    const bannerLogoCurrent = document.getElementById("bannerLogoCurrent");
 
     function normalizeSplashMode(value){
       const mode = String(value || "").toLowerCase();
+      if (mode === "random") return "random";
       if (mode === "bezier") return "bezier";
       if (mode === "flock") return "flock";
+      if (mode === "circles") return "circles";
+      if (mode === "matrix") return "matrix";
+      if (mode === "life") return "life";
+      if (mode === "code") return "code";
+      if (mode === "plot") return "plot";
+      if (mode === "bounce") return "bounce";
+      if (mode === "logo3d") return "logo3d";
+      if (mode === "turningcircles") return "turningcircles";
+      if (mode === "asteroids") return "asteroids";
+      if (mode === "tempest") return "tempest";
+      if (mode === "pi") return "pi";
       return "nodes";
     }
 
     function describeSplashMode(mode){
+      if (mode === "random") return "Randomize each visit";
       if (mode === "bezier") return "Bezier curves (dense)";
       if (mode === "flock") return "Flocking triangles (mouse follow)";
+      if (mode === "circles") return "Outlined circles grid (fill/unfill)";
+      if (mode === "matrix") return "Matrix digital rain";
+      if (mode === "life") return "Conway's Game of Life";
+      if (mode === "code") return "Code writer (neon terminal)";
+      if (mode === "plot") return "Random x/y function plot";
+      if (mode === "bounce") return "Bouncing ball + logo deflect";
+      if (mode === "logo3d") return "Floating logo (3D rotate)";
+      if (mode === "turningcircles") return "Turning circles + fade trails";
+      if (mode === "asteroids") return "Asteroids simulation (auto-play)";
+      if (mode === "tempest") return "Tempest simulation (auto-play)";
+      if (mode === "pi") return "Pi digits screen fill";
       return "Nodes and edges (existing)";
+    }
+
+    function normalizeCycleSeconds(value){
+      const n = Math.floor(Number(value));
+      if (!Number.isFinite(n)) return 12;
+      return Math.min(600, Math.max(1, n));
+    }
+
+    function normalizeBannerLogoAnimationStyle(value){
+      const style = String(value || "").toLowerCase();
+      if (style === "plot") return "plot";
+      return "circles";
+    }
+
+    function updateRandomizeControls(){
+      const isRandom = normalizeSplashMode(splashMode?.value) === "random";
+      if (splashRandomOptions) splashRandomOptions.style.display = isRandom ? "" : "none";
+      if (splashRandomCycleEnabled) splashRandomCycleEnabled.disabled = !isRandom;
+      if (splashRandomCycleSeconds) {
+        splashRandomCycleSeconds.disabled = !isRandom || !splashRandomCycleEnabled?.checked;
+      }
+      if (bannerLogoAnimationStyle) bannerLogoAnimationStyle.disabled = !bannerBezierLogoEnabled?.checked;
+    }
+
+    function ensureStaticBannerIconMarkup(){
+      if (!headerHost) return;
+      const logoCombo = headerHost.querySelector(".brand-logo-combo");
+      if (!logoCombo) return;
+      const currentIconStack = logoCombo.querySelector(".brand-logo-icon-stack");
+      const currentCanvas = logoCombo.querySelector(".brand-logo-canvas--icon");
+      if (currentIconStack) return;
+
+      const iconStack = document.createElement("span");
+      iconStack.className = "brand-logo-icon-stack";
+      const iconImage = document.createElement("img");
+      iconImage.className = "brand-logo-icon-image";
+      iconImage.src = "../assets/img/TojiStudios-Logo.png";
+      iconImage.alt = "";
+      iconStack.appendChild(iconImage);
+
+      if (currentCanvas) {
+        currentCanvas.replaceWith(iconStack);
+        return;
+      }
+      logoCombo.insertBefore(iconStack, logoCombo.firstChild || null);
     }
 
     function syncSplashModeUI(){
       const mode = normalizeSplashMode(localStorage.getItem(SPLASH_MODE_KEY));
       if (splashMode) splashMode.value = mode;
-      if (splashModeCurrent) splashModeCurrent.textContent = `Current: ${describeSplashMode(mode)}`;
+      const cycleEnabled = localStorage.getItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY) === "1";
+      const cycleSeconds = normalizeCycleSeconds(localStorage.getItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY));
+      const bannerBezierEnabled = localStorage.getItem(BANNER_BEZIER_LOGO_ENABLED_KEY) === "1";
+      const bannerAnimationStyle = normalizeBannerLogoAnimationStyle(
+        localStorage.getItem(BANNER_LOGO_ANIMATION_MODE_KEY)
+      );
+      if (splashRandomCycleEnabled) splashRandomCycleEnabled.checked = cycleEnabled;
+      if (splashRandomCycleSeconds) splashRandomCycleSeconds.value = String(cycleSeconds);
+      if (bannerBezierLogoEnabled) bannerBezierLogoEnabled.checked = bannerBezierEnabled;
+      if (bannerLogoAnimationStyle) bannerLogoAnimationStyle.value = bannerAnimationStyle;
+
+      if (splashModeCurrent) {
+        const cycleText = mode === "random"
+          ? ` | Auto change: ${cycleEnabled ? `On (${cycleSeconds}s)` : "Off"}`
+          : "";
+        splashModeCurrent.textContent = `Current: ${describeSplashMode(mode)}${cycleText}`;
+      }
+      if (bannerLogoCurrent) {
+        if (!bannerBezierEnabled) bannerLogoCurrent.textContent = "Banner: Static image logo";
+        else bannerLogoCurrent.textContent = `Banner: Animated ${bannerAnimationStyle === "plot" ? "x/y plot" : "circles"} canvas`;
+      }
+      updateRandomizeControls();
     }
 
     syncSplashModeUI();
 
+    splashMode?.addEventListener("change", () => {
+      updateRandomizeControls();
+    });
+
+    splashRandomCycleEnabled?.addEventListener("change", () => {
+      updateRandomizeControls();
+    });
+    bannerBezierLogoEnabled?.addEventListener("change", () => {
+      updateRandomizeControls();
+    });
+
     saveSplashMode?.addEventListener("click", () => {
       const mode = normalizeSplashMode(splashMode?.value);
+      const cycleEnabled = !!splashRandomCycleEnabled?.checked;
+      const cycleSeconds = normalizeCycleSeconds(splashRandomCycleSeconds?.value);
+      const bannerBezierEnabled = !!bannerBezierLogoEnabled?.checked;
+      const bannerAnimationStyle = normalizeBannerLogoAnimationStyle(bannerLogoAnimationStyle?.value);
       localStorage.setItem(SPLASH_MODE_KEY, mode);
+      localStorage.setItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY, cycleEnabled ? "1" : "0");
+      localStorage.setItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY, String(cycleSeconds));
+      localStorage.setItem(BANNER_BEZIER_LOGO_ENABLED_KEY, bannerBezierEnabled ? "1" : "0");
+      localStorage.setItem(BANNER_LOGO_ANIMATION_MODE_KEY, bannerAnimationStyle);
       syncSplashModeUI();
-      showToast("Splash animation setting saved.", { tone: "success" });
+      ensureStaticBannerIconMarkup();
+      applyBannerLogoBehavior(headerHost);
+      showToast("Settings saved.", { tone: "success" });
     });
   </script>
 </body>

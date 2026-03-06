@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Studio - Admin Login</title>
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <main class="container" style="max-width: 560px; padding-top: min(10vh, 80px);">
+    <section class="card">
+      <div class="meta" style="display:grid; gap:12px;">
+        <h1 style="margin:0; font-size: clamp(24px, 4vw, 32px);">Admin Login</h1>
+        <p class="sub" style="margin:0;">Sign in to access Studio admin pages.</p>
+
+        <form id="loginForm" style="display:grid; gap:10px; margin-top:8px;">
+          <label class="field">
+            <div class="sub" style="margin-bottom:8px;">Password</div>
+            <input id="password" type="password" autocomplete="current-password" required />
+          </label>
+
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button class="btn primary" type="submit">Sign in</button>
+            <a class="btn" href="../index.html">Back to site</a>
+            <span id="status" class="sub" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      setAdminSessionAuthenticated,
+      isAdminSessionAuthenticated,
+      getExpectedAdminPassword
+    } from "./admin.js";
+
+    const form = document.getElementById("loginForm");
+    const passwordEl = document.getElementById("password");
+    const statusEl = document.getElementById("status");
+
+    function getSafeNext() {
+      const raw = new URLSearchParams(window.location.search).get("next");
+      if (!raw) return "index.html";
+      try {
+        const next = new URL(raw, window.location.origin);
+        const path = String(next.pathname || "").toLowerCase();
+        if (next.origin !== window.location.origin) return "index.html";
+        if (!path.includes("/admin/")) return "index.html";
+        if (path.endsWith("/admin/login.html")) return "index.html";
+        return `${next.pathname}${next.search}${next.hash}`;
+      } catch {
+        return "index.html";
+      }
+    }
+
+    const redirectTarget = getSafeNext();
+    if (isAdminSessionAuthenticated()) {
+      window.location.replace(redirectTarget);
+    }
+
+    form?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const entered = String(passwordEl?.value || "");
+      if (entered !== getExpectedAdminPassword()) {
+        if (statusEl) statusEl.textContent = "Incorrect password.";
+        return;
+      }
+
+      sessionStorage.setItem("toji_admin_just_logged_in_v1", "1");
+      setAdminSessionAuthenticated(true);
+      window.location.replace(redirectTarget);
+    });
+  </script>
+</body>
+</html>

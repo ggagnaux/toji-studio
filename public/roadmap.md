@@ -113,17 +113,25 @@ Roadmap for that later:
 - [ ] Simple analytics (privacy-friendly)
 - [ ] Mouse-over effects in studio image grid
 - [ ] Admin Tool - Tag Manager
-- [ ] Add a blog page
 - [ ] Add the ability to upload to social media (images to Instagram and Threads, textual blog posts to Medium and Substack?)
 - [ ] Investigate why 503 error is produced when uploading too many files at once.
-- [ ] Series Manager - Remove hidden entries that keep building up
-- [ ] Series Manager - Add ability to remove multiple series at once.
 - [ ] Splash Screen - Add moving bezier curves option
-- [ ] Admin - Add the ability to specify different splash screen animations.
+- [ ] Admin - Link Manager - Add ability to reorder items.
+- [ ] Admin - Link Manager - Ensure all sites referenced render their icons correctly.
+- [ ] Update database schema to track which Social Media/External sites the image has been posted to
+- [ ] Admin - Add the ability to configure the different splash screen animations.
+- [ ] Public Gallery - Order the Series cards correctly.
 
 
 
 
+- [x] Admin - Add the ability to specify different splash screen animations.
+- [x] Series - For Series cards on the home page, instead of having a single image, instead, tile a bunch of small images from the series.
+- [x] Series Manager - Add ability to remove multiple series at once.
+- [x] Series Manager - Remove hidden entries that keep building up
+
+
+- [ ] [WILL NOT IMPLEMENT] Add a blog page
 
 
 

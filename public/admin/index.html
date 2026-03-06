@@ -10,9 +10,14 @@
   <header class="header">
     <div class="container nav">
       <a class="brand" href="../index.html">
-        <span class="brand-logo-stack" aria-hidden="true">
-          <img class="brand-logo-image brand-logo-image--for-dark" src="../assets/img/logo-light.png" alt="" />
-          <img class="brand-logo-image brand-logo-image--for-light" src="../assets/img/logo-dark.png" alt="" />
+        <span class="brand-logo-combo" aria-hidden="true">
+          <span class="brand-logo-icon-stack">
+            <img class="brand-logo-icon-image" src="../assets/img/TojiStudios-Logo.png" alt="" />
+          </span>
+          <span class="brand-logo-wordmark-stack">
+            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark" src="../assets/img/TojiStudios-Light-TextOnly.png" alt="" />
+            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light" src="../assets/img/TojiStudios-Dark-TextOnly.png" alt="" />
+          </span>
         </span>
         <span class="sr-only">Toji Studios</span>
       </a>
@@ -20,8 +25,6 @@
       <nav class="navlinks" aria-label="Primary">
         <a href="../index.html">Public</a>
         <a class="active" href="index.html">Studio</a>
-        <a href="upload.html">Upload</a>
-        <a href="series.html">Series</a>
       </nav>
 
       <div class="theme-controls">
@@ -49,7 +52,7 @@
         <a href="linkmanager.html">Link Manager</a>
         <a href="HomePageManager.html">Home Page Manager</a>
         <a href="OtherSettings.html">Other Settings</a>
-        <a href="../gallery.html">View public gallery</a>
+        <a href="SecurityManager.html">Security Manager</a>
         <hr class="sep" />
 
         <button class="btn" id="cleanupBtn" type="button">Cleanup files</button>
@@ -259,6 +262,7 @@
 
 
 <script type="module">
+  import { applyBannerLogoBehavior } from "../assets/js/header.js";
   import {
     loadStateAutoSync, saveState, el, statusChip,
     setYearFooter, ensureBaseStyles,
@@ -271,6 +275,7 @@
 
   ensureBaseStyles();
   setYearFooter();
+  applyBannerLogoBehavior(document.querySelector("header.header"));
 
   // Auto-sync on load (token permitting)
   const state = await loadStateAutoSync();

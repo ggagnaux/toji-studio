@@ -1,6 +1,54 @@
 import { initThemeSystem } from "../assets/js/site.js";
 import { qs, el, slugifySeries } from "../assets/js/content-utils.js";
 
+const ADMIN_SESSION_KEY = "toji_admin_session_v1";
+const ADMIN_JUST_LOGGED_IN_KEY = "toji_admin_just_logged_in_v1";
+export const ADMIN_PASSWORD_KEY = "toji_admin_login_password_v1";
+export const ADMIN_DEFAULT_PASSWORD = "toji-admin";
+
+function enforceAdminSession() {
+  if (typeof window === "undefined") return;
+  const path = String(window.location.pathname || "").toLowerCase();
+  if (!path.includes("/admin/")) return;
+  if (path.endsWith("/admin/login.html")) return;
+  if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "1") return;
+
+  const next = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  window.location.replace(`login.html?next=${encodeURIComponent(next)}`);
+}
+
+export function setAdminSessionAuthenticated(value = true) {
+  if (typeof window === "undefined") return;
+  if (value) sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+  else sessionStorage.removeItem(ADMIN_SESSION_KEY);
+}
+
+export function isAdminSessionAuthenticated() {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+}
+
+export function clearAdminSession() {
+  setAdminSessionAuthenticated(false);
+}
+
+export function getExpectedAdminPassword() {
+  if (typeof window === "undefined") return ADMIN_DEFAULT_PASSWORD;
+  const saved = localStorage.getItem(ADMIN_PASSWORD_KEY);
+  return String(saved || ADMIN_DEFAULT_PASSWORD);
+}
+
+export function setAdminPassword(nextPassword) {
+  if (typeof window === "undefined") return;
+  const value = String(nextPassword || "").trim();
+  if (!value) {
+    localStorage.removeItem(ADMIN_PASSWORD_KEY);
+    return;
+  }
+  localStorage.setItem(ADMIN_PASSWORD_KEY, value);
+}
+
+enforceAdminSession();
 initThemeSystem();
 
 export { qs, el, slugifySeries };
@@ -48,6 +96,17 @@ export function ensureBaseStyles() {
     .sidebar{ position:sticky; top:84px; align-self:start; border:1px solid var(--line); border-radius: var(--radius); padding:14px; background: var(--panel); }
     .sidebar a{ display:block; padding:10px 10px; border-radius:12px; color:var(--muted); border:1px solid transparent; }
     .sidebar a.active{ color:var(--text); border-color: var(--accent-border); background: var(--accent-soft); }
+    .sidebar .logout-btn{
+      width: 100%;
+      margin-top: 6px;
+    }
+    .sidebar .logout-btn.logout-btn--pulse{
+      border-color: color-mix(in srgb, var(--accent) 72%, var(--line));
+      color: var(--text);
+      background: color-mix(in srgb, var(--accent) 20%, var(--panel));
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 38%, transparent);
+      animation: adminLogoutPulse 1s ease-in-out infinite;
+    }
     .kpi{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
     .kpi .card{ box-shadow:none; }
     .kpi .meta{ padding:12px; }
@@ -196,6 +255,22 @@ export function ensureBaseStyles() {
       from{ opacity:0; transform:translateY(8px); }
       to{ opacity:1; transform:translateY(0); }
     }
+    @keyframes adminLogoutPulse{
+      0%{
+        background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 38%, transparent);
+      }
+      50%{
+        background: color-mix(in srgb, var(--accent) 34%, var(--panel));
+      }
+      70%{
+        box-shadow: 0 0 0 12px color-mix(in srgb, var(--accent) 0%, transparent);
+      }
+      100%{
+        background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent);
+      }
+    }
     @keyframes adminToastOut{
       from{ opacity:1; transform:translateY(0); }
       to{ opacity:0; transform:translateY(8px); }
@@ -205,6 +280,7 @@ export function ensureBaseStyles() {
   `;
   document.head.appendChild(style);
   initAdminNavMenu();
+  initAdminSidebarControls();
 }
 
 let toastHost = null;
@@ -230,7 +306,7 @@ export function showToast(message, opts = {}) {
     actions = [],
     onClose
   } = opts;
-  const resolvedDuration = duration === 0 ? 0 : Math.max(10000, Number(duration) || 0);
+  const resolvedDuration = duration === 0 ? 0 : 3000;
 
   const host = ensureToastHost();
   const toast = document.createElement("article");
@@ -437,6 +513,40 @@ function initAdminNavMenu() {
 
   if (mobileQuery.matches) setMenuOpen(false);
   else navLinks.removeAttribute("aria-hidden");
+}
+
+function initAdminSidebarControls() {
+  const sidebar = document.querySelector(".sidebar");
+  if (!sidebar) return;
+  if (sidebar.querySelector("[data-admin-logout]")) return;
+
+  const logoutBtn = document.createElement("button");
+  logoutBtn.type = "button";
+  logoutBtn.className = "btn logout-btn";
+  logoutBtn.setAttribute("data-admin-logout", "1");
+  logoutBtn.textContent = "Log out";
+  logoutBtn.addEventListener("click", () => {
+    clearAdminSession();
+    window.location.href = "login.html";
+  });
+
+  const logoutSep = document.createElement("hr");
+  logoutSep.className = "sep";
+  sidebar.appendChild(logoutSep);
+  sidebar.appendChild(logoutBtn);
+
+  const path = String(window.location.pathname || "").toLowerCase();
+  const shouldHighlightLogout =
+    path.endsWith("/admin/index.html") &&
+    sessionStorage.getItem(ADMIN_JUST_LOGGED_IN_KEY) === "1";
+
+  if (shouldHighlightLogout) {
+    sessionStorage.removeItem(ADMIN_JUST_LOGGED_IN_KEY);
+    logoutBtn.classList.add("logout-btn--pulse");
+    window.setTimeout(() => {
+      logoutBtn.classList.remove("logout-btn--pulse");
+    }, 10000);
+  }
 }
 
 export function upsertTag(state, tagName) {
@@ -728,12 +838,14 @@ export async function syncSeriesFromBackend(state){
     return p;
   };
 
-  state.seriesMeta = state.seriesMeta || {};
-  state.series = state.series || [];
+  // Treat backend series as authoritative when a token is present.
+  // This prevents deleted series from persisting in local cache.
+  const rebuiltSeriesMeta = {};
+  const rebuiltSeriesNames = [];
 
   for (const r of (rows || [])) {
     const slug = r.slug;
-    state.seriesMeta[slug] = {
+    rebuiltSeriesMeta[slug] = {
       slug,
       name: r.name,
       description: r.description || "",
@@ -744,8 +856,18 @@ export async function syncSeriesFromBackend(state){
     };
 
     // Keep a convenient display list too (names)
-    if (r.name && !state.series.includes(r.name)) state.series.push(r.name);
+    if (r.name && !rebuiltSeriesNames.includes(r.name)) rebuiltSeriesNames.push(r.name);
   }
+
+  // Preserve artwork-attached series labels as convenience values.
+  for (const a of (state.artworks || [])) {
+    const name = String(a?.series || "").trim();
+    if (!name) continue;
+    if (!rebuiltSeriesNames.includes(name)) rebuiltSeriesNames.push(name);
+  }
+
+  state.seriesMeta = rebuiltSeriesMeta;
+  state.series = rebuiltSeriesNames;
 
   saveState(state);
   return rows;

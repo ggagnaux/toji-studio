@@ -93,8 +93,21 @@ export function initThemeSystem(){
 
   if (!window.__tojiNavCompactInit) {
     window.__tojiNavCompactInit = true;
+    let isCompact = false;
+    const ENTER_COMPACT_Y = 36;
+    const EXIT_COMPACT_Y = 12;
+
     const syncCompactNav = () => {
-      root.classList.toggle("nav-compact", window.scrollY > 24);
+      const y = window.scrollY || 0;
+      if (!isCompact && y >= ENTER_COMPACT_Y) {
+        isCompact = true;
+        root.classList.add("nav-compact");
+        return;
+      }
+      if (isCompact && y <= EXIT_COMPACT_Y) {
+        isCompact = false;
+        root.classList.remove("nav-compact");
+      }
     };
     syncCompactNav();
     window.addEventListener("scroll", syncCompactNav, { passive: true });

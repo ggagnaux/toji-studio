@@ -65,6 +65,29 @@
       aspect-ratio: auto;
       background: transparent;
     }
+    #seriesGrid .series-card{
+      overflow: hidden;
+    }
+    #seriesGrid .series-masonry{
+      columns: 3 70px;
+      column-gap: 6px;
+      padding: 10px;
+    }
+    #seriesGrid .series-masonry img{
+      width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 0 6px 0;
+      border-radius: 8px;
+      break-inside: avoid;
+      background: color-mix(in srgb, var(--surface) 80%, transparent);
+      border: 1px solid var(--line);
+    }
+    @media (max-width: 720px){
+      #seriesGrid .series-masonry{
+        columns: 2 90px;
+      }
+    }
     #featuredGrid .thumb img,
     #seriesGrid .thumb img{
       width: 100%;
@@ -405,18 +428,23 @@
 
       for (const s of entries) {
         const seriesItems = sortGallery(s.items);
+        const previewItems = seriesItems.slice(0, 8);
         seriesGrid.appendChild(
           el("article", { class: "series-item" },
             el("a", {
-              class: "card",
+              class: "card series-card",
               href: "#",
               onclick: (e) => {
                 e.preventDefault();
                 openLightbox(seriesItems, 0);
               }
             },
-              el("div", { class: "thumb" },
-                el("img", { src: s.cover, alt: `${s.name} series`, loading: "lazy" })
+              el("div", { class: "series-masonry", "aria-hidden": "true" },
+                ...previewItems.map((item) => el("img", {
+                  src: item.thumb || item.image || s.cover,
+                  alt: "",
+                  loading: "lazy"
+                }))
               ),
               el("div", { class: "meta" },
                 el("p", { class: "title" }, s.name),

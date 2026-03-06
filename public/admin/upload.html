@@ -15,24 +15,36 @@
     .upload-section-backend{ background: color-mix(in srgb, var(--panel) 86%, var(--accent) 14%); }
     .upload-section-originals{ background: color-mix(in srgb, var(--panel) 88%, var(--alternateaccent) 12%); }
     .upload-section-batch{ background: color-mix(in srgb, var(--panel) 90%, var(--muted) 10%); }
+    .status-pill{
+      border-radius:999px;
+      padding:7px 12px;
+    }
+    .status-pill.active{
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--text);
+    }
   </style>
 </head>
 <body>
   <header class="header">
     <div class="container nav">
       <a class="brand" href="../index.html">
-        <span class="brand-logo-stack" aria-hidden="true">
-          <img class="brand-logo-image brand-logo-image--for-dark" src="../assets/img/logo-light.png" alt="" />
-          <img class="brand-logo-image brand-logo-image--for-light" src="../assets/img/logo-dark.png" alt="" />
+        <span class="brand-logo-combo" aria-hidden="true">
+          <span class="brand-logo-icon-stack">
+            <img class="brand-logo-icon-image" src="../assets/img/TojiStudios-Logo.png" alt="" />
+          </span>
+          <span class="brand-logo-wordmark-stack">
+            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark" src="../assets/img/TojiStudios-Light-TextOnly.png" alt="" />
+            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light" src="../assets/img/TojiStudios-Dark-TextOnly.png" alt="" />
+          </span>
         </span>
         <span class="sr-only">Toji Studios</span>
       </a>
 
       <nav class="navlinks" aria-label="Primary">
         <a href="../index.html">Public</a>
-        <a href="index.html">Studio</a>
-        <a class="active" href="upload.html">Upload</a>
-        <a href="series.html">Series</a>
+        <a class="active" href="index.html">Studio</a>
       </nav>
 
       <div class="theme-controls">
@@ -50,8 +62,7 @@
     <section class="hero" style="padding-bottom:10px">
       <h1>Upload</h1>
       <p>
-        Upload originals privately to the backend. Only resized variants are served publicly.
-        (Local-first — deployment later.)
+        Upload original images privately to the backend. Only resized variants are served publicly.
       </p>
     </section>
 
@@ -63,7 +74,7 @@
         <a href="linkmanager.html">Link Manager</a>
         <a href="HomePageManager.html">Home Page Manager</a>
         <a href="OtherSettings.html">Other Settings</a>
-        <a href="../gallery.html">View public gallery</a>
+        <a href="SecurityManager.html">Security Manager</a>
       </aside>
       <section>
     <section class="grid">
@@ -134,11 +145,12 @@
 
               <div class="field">
                 <div class="sub">Status</div>
-                <select id="statusSelect">
-                  <option value="draft" selected>Draft</option>
-                  <option value="published">Published</option>
-                  <option value="hidden">Hidden</option>
-                </select>
+                <div id="statusPills" class="pillrow" role="group" aria-label="Status">
+                  <button class="btn status-pill active" type="button" data-status-pill="draft" aria-pressed="true">Draft</button>
+                  <button class="btn status-pill" type="button" data-status-pill="published" aria-pressed="false">Published</button>
+                  <button class="btn status-pill" type="button" data-status-pill="hidden" aria-pressed="false">Hidden</button>
+                </div>
+                <input id="statusSelect" type="hidden" value="draft" />
               </div>
             </div>
           </div>
@@ -146,7 +158,6 @@
           <div class="upload-section">
             <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
               <button class="btn primary" id="uploadBtn" type="button">Upload</button>
-              <button class="btn" id="goDash" type="button">Back to dashboard</button>
             </div>
           </div>
         </div>
@@ -182,6 +193,7 @@
   </div>
 
   <script type="module">
+    import { applyBannerLogoBehavior } from "../assets/js/header.js";
     import {
       loadState, saveState, el, setYearFooter, ensureBaseStyles,
       upsertTag,
@@ -192,6 +204,7 @@
 
     ensureBaseStyles();
     setYearFooter();
+    applyBannerLogoBehavior(document.querySelector("header.header"));
 
     const state = await loadState();
     state.artworks ||= [];
@@ -200,6 +213,8 @@
 
     const files = document.getElementById("files");
     const list = document.getElementById("list");
+    const statusSelect = document.getElementById("statusSelect");
+    const statusPills = Array.from(document.querySelectorAll("[data-status-pill]"));
 
     const tokenInput = document.getElementById("token");
     const uiBlocker = document.getElementById("uiBlocker");
@@ -208,6 +223,26 @@
 
     const newIds = [];
     let uiLocked = false;
+
+    const syncStatusPills = () => {
+      const current = String(statusSelect?.value || "draft").toLowerCase();
+      for (const btn of statusPills) {
+        const value = String(btn.getAttribute("data-status-pill") || "").toLowerCase();
+        const active = value === current;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-pressed", active ? "true" : "false");
+      }
+    };
+    if (statusSelect && !statusSelect.value) statusSelect.value = "draft";
+    statusPills.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const value = String(btn.getAttribute("data-status-pill") || "").toLowerCase();
+        if (!value || !statusSelect) return;
+        statusSelect.value = value;
+        syncStatusPills();
+      });
+    });
+    syncStatusPills();
 
     function setStatus(msg, tone = "info"){
       if (!msg) return;
@@ -459,7 +494,7 @@
       const tags = getSelectedBatchTags();
       const series = document.getElementById("series").value.trim();
       const year = document.getElementById("year").value.trim();
-      const status = document.getElementById("statusSelect").value;
+      const status = statusSelect?.value || "draft";
 
       const basePatch = {};
       if (series) basePatch.series = series;
@@ -549,7 +584,7 @@
         const uploadTags = getSelectedBatchTags();
         const uploadSeries = document.getElementById("series").value.trim();
         const uploadYear = document.getElementById("year").value.trim();
-        const uploadStatus = document.getElementById("statusSelect").value;
+        const uploadStatus = statusSelect?.value || "draft";
 
         if (uploadTags.length) fd.append("tags", JSON.stringify(uploadTags));
         if (uploadSeries) fd.append("series", uploadSeries);
@@ -614,10 +649,6 @@
         setUiLocked(false);
         setTimeout(() => hideUploadProgress(), 800);
       }
-    });
-
-    document.getElementById("goDash").addEventListener("click", () => {
-      location.href = "index.html";
     });
 
     renderTagPills();

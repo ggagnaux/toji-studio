@@ -254,7 +254,7 @@
             s.coverThumb ? el("img", { src:s.coverThumb, style:"width:48px;height:48px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" }) : null,
             el("div", { style:"display:grid; gap:4px; min-width:0" },
               el("div", { style:"font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" }, s.name),
-              el("div", { class:"sub" }, `${s.publishedCount} piece${s.publishedCount===1?"":"s"} • Order ${Number(s.sortOrder||0)}`)
+              el("div", { class:"sub" }, `${s.publishedCount} piece${s.publishedCount===1?"":"s"}`)
             )
           )
         );
@@ -372,4 +372,6 @@
   </script>
 </body>
 </html>
+
+
 

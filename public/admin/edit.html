@@ -5,6 +5,110 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Studio — Edit</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
+  <style>
+    .file-picker-shell{
+      border: 1px dashed color-mix(in srgb, var(--accent) 48%, var(--line));
+      border-radius: 14px;
+      background:
+        linear-gradient(
+          130deg,
+          color-mix(in srgb, var(--accent-soft) 60%, transparent),
+          color-mix(in srgb, var(--panel) 86%, transparent)
+        );
+      padding: 10px;
+      transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+    .file-picker-shell:hover{
+      border-color: color-mix(in srgb, var(--accent) 72%, var(--line));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+      transform: translateY(-1px);
+    }
+    .file-picker-shell:focus-within{
+      border-color: color-mix(in srgb, var(--accent) 85%, var(--line));
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent);
+    }
+    .file-picker-shell-flash{
+      animation: filePickerFlash .72s ease-in-out 1;
+    }
+    @keyframes filePickerFlash{
+      0%{
+        border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+        box-shadow: 0 0 0 0 color-mix(in srgb, #d15353 0%, transparent);
+        background:
+          linear-gradient(
+            130deg,
+            color-mix(in srgb, var(--accent-soft) 60%, transparent),
+            color-mix(in srgb, var(--panel) 86%, transparent)
+          );
+      }
+      25%{
+        border-color: color-mix(in srgb, #d15353 78%, var(--line));
+        box-shadow: 0 0 0 5px color-mix(in srgb, #d15353 36%, transparent);
+        background: color-mix(in srgb, #ffb2b2 34%, var(--panel));
+      }
+      50%{
+        border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+        box-shadow: 0 0 0 0 color-mix(in srgb, #d15353 0%, transparent);
+        background:
+          linear-gradient(
+            130deg,
+            color-mix(in srgb, var(--accent-soft) 60%, transparent),
+            color-mix(in srgb, var(--panel) 86%, transparent)
+          );
+      }
+      75%{
+        border-color: color-mix(in srgb, #d15353 78%, var(--line));
+        box-shadow: 0 0 0 5px color-mix(in srgb, #d15353 36%, transparent);
+        background: color-mix(in srgb, #ffb2b2 34%, var(--panel));
+      }
+      100%{
+        border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+        box-shadow: 0 0 0 0 color-mix(in srgb, #d15353 0%, transparent);
+        background:
+          linear-gradient(
+            130deg,
+            color-mix(in srgb, var(--accent-soft) 60%, transparent),
+            color-mix(in srgb, var(--panel) 86%, transparent)
+          );
+      }
+    }
+    #replaceFile{
+      width: 100%;
+      border: 0;
+      background: transparent;
+      padding: 4px;
+      color: var(--text);
+      font-size: 14px;
+      min-height: 46px;
+    }
+    #replaceFile::file-selector-button{
+      border: 1px solid var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-right: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    #replaceFile::file-selector-button:hover{
+      border-color: color-mix(in srgb, var(--accent) 86%, var(--line));
+      background: color-mix(in srgb, var(--accent-soft) 70%, var(--panel));
+      transform: translateY(-1px);
+    }
+    #replaceFile::-webkit-file-upload-button{
+      border: 1px solid var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-right: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .18s ease, border-color .18s ease, transform .18s ease;
+    }
+  </style>
 </head>
 <body>
   <header class="header">
@@ -40,6 +144,7 @@
 
   <main class="container">
     <section class="hero" style="padding-bottom:10px">
+      <button class="btn mini" id="backNavBtn" type="button" style="margin-bottom:10px">Back</button>
       <h1 id="h1">Edit artwork</h1>
       <p class="sub" id="sub">—</p>
     </section>
@@ -54,456 +159,8 @@
     </footer>
   </main>
 
-  <script type="module">
-    import { applyBannerLogoBehavior } from "../assets/js/header.js";
-    import {
-      loadState, saveState, qs, el, setYearFooter, ensureBaseStyles, upsertTag, confirmToast, showToast
-    } from "./admin.js";
-
-    import {
-      getAdminToken,
-      patchArtworkToBackend
-    } from "./admin.js";
-
-    ensureBaseStyles();
-    setYearFooter();
-    applyBannerLogoBehavior(document.querySelector("header.header"));
-
-    const state = await loadState();
-    const id = qs("id");
-    const a = state.artworks.find(x => x.id === id) || state.artworks[0];
-
-    const root = document.getElementById("root");
-    const h1 = document.getElementById("h1");
-    const sub = document.getElementById("sub");
-
-    if (!a) {
-      root.appendChild(el("div", { class:"sub" }, "No artwork found." ));
-      throw new Error("No artwork");
-    }
-
-    // -----------------------
-    // Status + autosave wiring
-    // -----------------------
-    const status = el("span", { class:"sub", id:"status", "aria-live":"polite" }, "");
-
-    function setStatusText(msg, ms=10000, tone="info"){
-      if (!msg) return;
-      showToast(msg, { tone, duration: Math.max(10000, Number(ms) || 0) });
-    }
-
-    function localSave(quiet=false){
-      a.updatedAt = new Date().toISOString();
-      saveState(state);
-      h1.textContent = a.title || "Untitled";
-      sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
-      if (!quiet) setStatusText("Saved locally.");
-    }
-
-    // Debounced backend PATCH
-    let saveTimer = null;
-    let saving = false;
-    let lastPatchJson = "";
-
-    function buildPatch(){
-      return {
-        title: a.title || "",
-        year: a.year || "",
-        series: a.series || "",
-        description: a.description || "",
-        alt: a.alt || "",
-        status: a.status || "draft",
-        featured: !!a.featured,
-        sortOrder: Number(a.sortOrder || 0),
-        tags: Array.isArray(a.tags) ? a.tags : []
-      };
-    }
-
-    // Treat current loaded state as baseline; prevents write-on-load loops.
-    lastPatchJson = JSON.stringify(buildPatch());
-
-    async function flushBackendSave(force=false){
-      const token = getAdminToken();
-      if (!token) {
-        if (force) setStatusText("No admin token - saved locally only.", 10000, "warn");
-        return;
-      }
-
-      const patch = buildPatch();
-      const patchJson = JSON.stringify(patch);
-
-      // avoid spamming identical saves
-      if (!force && patchJson === lastPatchJson) return;
-
-      saving = true;
-      setStatusText("Saving...", 10000, "info");
-
-      try {
-        const updated = await patchArtworkToBackend(a.id, patch);
-
-        // merge backend truth into local cache + current object
-        Object.assign(a, updated);
-
-        // also keep series/tags lists healthy
-        if (a.series && !state.series.includes(a.series)) state.series.push(a.series);
-        for (const t of (a.tags || [])) upsertTag(state, t);
-
-        lastPatchJson = patchJson;
-        localSave(true);
-        setStatusText("Saved to backend.", 10000, "success");
-      } catch (err) {
-        setStatusText(`Backend save failed - local only. (${err?.message || err})`, 10000, "error");
-      } finally {
-        saving = false;
-      }
-    }
-
-
-
-    async function replaceImage(){
-      const token = getAdminToken();
-      if (!token) return setStatusText("No admin token - set it in Upload page.", 10000, "warn");
-
-      const inp = document.getElementById("replaceFile");
-      const f = inp?.files?.[0];
-      if (!f) return setStatusText("Pick an image first.", 10000, "warn");
-
-      const setMedia = (m, tone="info") => { if (m) showToast(m, { tone, duration: 10000 }); };
-
-      setMedia("Replacing…");
-
-      try{
-        const fd = new FormData();
-        fd.append("file", f);
-
-        // call backend
-        const updated = await (await fetch(
-          `${(await import("./admin.js")).API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}/replace-image`,
-          {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${getAdminToken()}` },
-            body: fd
-          }
-        )).json();
-
-        if (updated?.error) throw new Error(updated.error);
-
-        // Normalize + merge into local object
-        const { API_BASE } = await import("./admin.js");
-        const norm = (p) => !p ? p : (p.startsWith("http") ? p : (p.startsWith("/") ? `${API_BASE}${p}` : p));
-        updated.thumb = norm(updated.thumb);
-        updated.image = norm(updated.image);
-        updated.featured = !!updated.featured;
-
-        Object.assign(a, updated);
-        localSave(true);
-
-        // Update preview immediately (cache-bust)
-        const img = document.getElementById("previewImg");
-        if (img) img.src = `${a.image}?v=${Date.now()}`;
-
-        setMedia("Replaced.", "success");
-        inp.value = "";
-      }catch(err){
-        setMedia(`Replace failed: ${err?.message || err}`, "error");
-      }
-    }
-
-    async function regenVariants(){
-      const token = getAdminToken();
-      if (!token) return setStatusText("No admin token - set it in Upload page.", 10000, "warn");
-
-      const setMedia = (m, tone="info") => { if (m) showToast(m, { tone, duration: 10000 }); };
-
-      setMedia("Regenerating…");
-
-      try{
-        const { API_BASE } = await import("./admin.js");
-        const res = await fetch(
-          `${API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}/regenerate-variants`,
-          {
-            method: "POST",
-            headers: { "Authorization": `Bearer ${getAdminToken()}` }
-          }
-        );
-
-        const updated = await res.json();
-        if (!res.ok) throw new Error(updated?.error || `${res.status} ${res.statusText}`);
-
-        const norm = (p) => !p ? p : (p.startsWith("http") ? p : (p.startsWith("/") ? `${API_BASE}${p}` : p));
-        updated.thumb = norm(updated.thumb);
-        updated.image = norm(updated.image);
-        updated.featured = !!updated.featured;
-
-        Object.assign(a, updated);
-        localSave(true);
-
-        const img = document.getElementById("previewImg");
-        if (img) img.src = `${a.image}?v=${Date.now()}`;
-
-        setMedia("Done.", "success");
-      }catch(err){
-        setMedia(`Regen failed: ${err?.message || err}`, "error");
-      }
-    }
-
-    async function deleteArtwork(){
-      const ok = await confirmToast(
-        "Delete this artwork? This removes the original + variants on the server and cannot be undone.",
-        { confirmLabel: "Delete", cancelLabel: "Cancel", tone: "warn" }
-      );
-      if (!ok) return;
-
-      const token = getAdminToken();
-      if (!token) return setStatusText("No admin token - set it in Upload page.", 10000, "warn");
-
-      setStatusText("Deleting...", 10000, "warn");
-
-      try{
-        const { API_BASE } = await import("./admin.js");
-        const res = await fetch(`${API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}`, {
-          method: "DELETE",
-          headers: { "Authorization": `Bearer ${getAdminToken()}` }
-        });
-
-        const j = await res.json().catch(()=> ({}));
-        if (!res.ok) throw new Error(j?.error || `${res.status} ${res.statusText}`);
-
-        // Remove from local cache
-        const idx = state.artworks.findIndex(x => x.id === a.id);
-        if (idx >= 0) state.artworks.splice(idx, 1);
-        saveState(state);
-
-        // Go back to dashboard
-        location.href = "index.html";
-      }catch(err){
-        setStatusText(`Delete failed: ${err?.message || err}`, 10000, "error");
-      }
-    }
-
-
-
-
-
-
-
-
-
-    function scheduleBackendSave(){
-      // Always save local immediately
-      localSave(true);
-
-      // Debounce backend save
-      clearTimeout(saveTimer);
-      saveTimer = setTimeout(() => flushBackendSave(false), 700);
-    }
-
-    function setStatus(next){
-      a.status = next;
-      if (next === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
-      localSave(true);
-      flushBackendSave(true);
-      sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
-    }
-
-    // -----------------------
-    // Initial header text
-    // -----------------------
-    h1.textContent = a.title || "Untitled";
-    sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
-
-    // -----------------------
-    // UI
-    // -----------------------
-    const left = el("div", { class:"card", style:"grid-column: span 7" },
-      el("div", { class:"thumb", style:"aspect-ratio:16/10" },
-        el("img", {
-          id: "previewImg",
-          src: a.image || a.thumb,
-          alt: a.alt || a.title,
-          style:"object-fit:contain;background:var(--bg)"
-        })
-      ),
-      el("div", { class:"meta" },
-        el("div", { class:"pillrow" },
-          el("button", { class:"btn mini", type:"button", onclick:()=>setStatus("published") }, "Publish"),
-          el("button", { class:"btn mini", type:"button", onclick:()=>setStatus("draft") }, "Draft"),
-          el("button", { class:"btn mini", type:"button", onclick:()=>setStatus("hidden") }, "Hide"),
-          el("span", { style:"margin-left:auto" }, status)
-        ),
-
-
-        el("hr", { class:"sep" }),
-
-        el("p", { class:"title" }, "Media tools"),
-        el("div", { class:"sub" }, "Replace original (private) and regenerate resized variants."),
-
-        el("div", { class:"field", style:"margin-top:12px" },
-          el("div", { class:"sub" }, "Replace image"),
-          el("input", { id:"replaceFile", type:"file", accept:"image/*" })
-        ),
-
-        el("div", { style:"display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:12px" },
-          el("button", { class:"btn", type:"button", onclick: replaceImage }, "Replace image"),
-          el("button", { class:"btn", type:"button", onclick: regenVariants }, "Regenerate variants"),
-          el("span", { class:"sub", id:"mediaStatus", "aria-live":"polite" }, "")
-        ),
-      )
-    );
-
-    const right = el("div", { class:"card", style:"grid-column: span 5" },
-      el("div", { class:"meta" },
-        el("p", { class:"title" }, "Details"),
-
-        field("Title", "title", a.title, (v)=>{ a.title=v; scheduleBackendSave(); }),
-        field("Year", "year", a.year || "", (v)=>{ a.year=v; scheduleBackendSave(); }),
-        selectField("Series", "series", state.series, a.series || "", (v)=>{
-          a.series=v;
-          if (v && !state.series.includes(v)) state.series.push(v);
-          scheduleBackendSave();
-        }),
-        field("Alt text", "alt", a.alt || "", (v)=>{ a.alt=v; scheduleBackendSave(); updatePreviewAlt(); }),
-        textareaField("Description", "description", a.description || "", (v)=>{ a.description=v; scheduleBackendSave(); }),
-
-        el("hr", { class:"sep" }),
-
-        el("p", { class:"title" }, "Tags"),
-        tagsEditor(),
-
-        el("hr", { class:"sep" }),
-
-        // el("div", { class:"pillrow" },
-        //   el("label", { class:"pill", style:"cursor:pointer" },
-        //     el("input", {
-        //       type:"checkbox",
-        //       style:"margin-right:8px",
-        //       checked: a.featured ? "" : null,
-        //       onchange:(e)=>{ a.featured = e.target.checked; scheduleBackendSave(); }
-        //     }),
-        //     "Featured"
-        //   ),
-        //   el("a", { class:"btn mini", href:"index.html", style:"margin-left:auto" }, "Done")
-        // )
-
-        el("div", { class:"pillrow" },
-          el("label", { class:"pill", style:"cursor:pointer; display:inline-flex; align-items:center; gap:8px; white-space:nowrap" },
-            el("input", {
-              type:"checkbox",
-              style:"margin:0; width:auto; height:auto;",
-              checked: a.featured ? "" : null,
-              onchange:(e)=>{ a.featured = e.target.checked; scheduleBackendSave(); }
-            }),
-            "Featured"
-          ),
-
-          el("button", {
-            class:"btn mini",
-            type:"button",
-            style:"margin-left:auto",
-            onclick: deleteArtwork
-          }, "Delete"),
-
-          el("a", { class:"btn mini", href:"index.html" }, "Done")
-        )
-      )
-    );
-
-    root.appendChild(left);
-    root.appendChild(right);
-
-    function updatePreviewAlt(){
-      const img = document.getElementById("previewImg");
-      if (img) img.alt = a.alt || a.title || "Artwork";
-    }
-
-    // -----------------------
-    // Fields
-    // -----------------------
-    function field(label, id, value, onChange){
-      const input = el("input", { id, value: value ?? "" });
-      input.addEventListener("input", (e)=> onChange(e.target.value));
-      return el("div", { class:"field", style:"margin-top:12px" },
-        el("div", { class:"sub" }, label),
-        input
-      );
-    }
-
-    function textareaField(label, id, value, onChange){
-      const t = el("textarea", { id }, value ?? "");
-      t.addEventListener("input", (e)=> onChange(e.target.value));
-      return el("div", { class:"field", style:"margin-top:12px" },
-        el("div", { class:"sub" }, label),
-        t
-      );
-    }
-
-    function selectField(label, id, options, current, onChange){
-      // Ensure current exists in options so it shows even if state.series isn't synced yet
-      const set = new Set([...(options || []), ...(current ? [current] : [])]);
-      const list = Array.from(set).filter(Boolean).sort((a,b)=>a.localeCompare(b));
-
-      const s = el("select", { id },
-        el("option", { value:"" }, "—"),
-        ...list.map(o => el("option", { value:o, selected: o===current ? "" : null }, o))
-      );
-      s.addEventListener("change", (e)=> onChange(e.target.value));
-      return el("div", { class:"field", style:"margin-top:12px" },
-        el("div", { class:"sub" }, label),
-        s
-      );
-    }
-
-    function tagsEditor(){
-      const wrap = el("div", { style:"display:grid; gap:10px; margin-top:10px" });
-      const list = el("div", { class:"pillrow" });
-
-      const input = el("input", { placeholder:"type tag + Enter" });
-      input.addEventListener("keydown", (e)=>{
-        if (e.key !== "Enter") return;
-        e.preventDefault();
-        const t = input.value.trim().toLowerCase();
-        if (!t) return;
-        input.value = "";
-
-        a.tags = Array.from(new Set([...(a.tags||[]), t]));
-        upsertTag(state, t);
-        scheduleBackendSave();
-        renderTags();
-      });
-
-      wrap.appendChild(input);
-      wrap.appendChild(list);
-
-      function renderTags(){
-        list.innerHTML = "";
-        const tags = (a.tags||[]).slice().sort();
-        if (!tags.length) list.appendChild(el("span", { class:"sub" }, "No tags yet."));
-        for (const t of tags){
-          list.appendChild(
-            el("span", { class:"pill" },
-              t,
-              el("button", {
-                class:"btn mini",
-                type:"button",
-                style:"margin-left:8px",
-                onclick:()=>{
-                  a.tags = (a.tags||[]).filter(x => x !== t);
-                  scheduleBackendSave();
-                  renderTags();
-                }
-              }, "×")
-            )
-          );
-        }
-      }
-
-      renderTags();
-      return wrap;
-    }
-
-    // No auto-write on load.
-    // Saves occur only after explicit user edits/actions.
-  </script>
+  <script type="module" src="./js/edit.js"></script>
 </body>
 </html>
+
 

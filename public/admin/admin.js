@@ -228,6 +228,17 @@ export function ensureBaseStyles() {
       line-height: 1.45;
       font-size: 14px;
     }
+    .admin-confirm__note{
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid color-mix(in srgb, #e0aa3c 58%, var(--line));
+      background: color-mix(in srgb, #e0aa3c 18%, var(--panel));
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 600;
+    }
     .admin-confirm__actions{
       display: flex;
       gap: 8px;
@@ -383,7 +394,8 @@ export function confirmToast(message, opts = {}) {
   const {
     confirmLabel = "Confirm",
     cancelLabel = "Cancel",
-    tone = "warn"
+    tone = "warn",
+    highlightText = ""
   } = opts;
 
   return new Promise((resolve) => {
@@ -399,6 +411,12 @@ export function confirmToast(message, opts = {}) {
     const msg = document.createElement("p");
     msg.className = "admin-confirm__msg";
     msg.textContent = String(message || "");
+    if (highlightText) {
+      const note = document.createElement("div");
+      note.className = "admin-confirm__note";
+      note.textContent = String(highlightText);
+      msg.appendChild(note);
+    }
 
     const actions = document.createElement("div");
     actions.className = "admin-confirm__actions";

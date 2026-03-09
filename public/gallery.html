@@ -16,6 +16,58 @@
     .gallery-section-featured{ background: color-mix(in srgb, var(--panel) 86%, var(--accent) 14%); }
     .gallery-section-series{ background: color-mix(in srgb, var(--panel) 88%, var(--alternateaccent) 12%); }
     .gallery-section-all{ background: color-mix(in srgb, var(--panel) 90%, var(--muted) 10%); }
+    .gallery-jump-pills{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin:0;
+    }
+    .gallery-jump-pill{
+      cursor:pointer;
+      user-select:none;
+    }
+    .gallery-jump-pill--top{
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(6px);
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .gallery-jump-pill--top.is-visible{
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    .gallery-jump-wrap{
+      position: sticky;
+      top: var(--gallery-jump-top, 78px);
+      z-index: 22;
+      margin-top: 6px;
+      margin-bottom: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--panel) 90%, transparent);
+      backdrop-filter: blur(6px);
+    }
+    .back-to-top{
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 30;
+      border-radius: 999px;
+      padding: 10px 14px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.22);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .back-to-top.is-visible{
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
 
     #featuredGrid,
     #seriesGrid,
@@ -158,6 +210,15 @@
       <p>Browse published work from Studio. Filter by tag, search, and open any piece to view larger.</p>
     </section>
 
+    <section aria-label="Jump to gallery section" class="gallery-jump-wrap">
+      <div class="gallery-jump-pills">
+        <button class="chip gallery-jump-pill" type="button" data-scroll-target="featuredWrap">Featured</button>
+        <button class="chip gallery-jump-pill" type="button" data-scroll-target="seriesWrap">Series</button>
+        <button class="chip gallery-jump-pill" type="button" data-scroll-target="allWorksWrap">All works</button>
+        <button id="jumpBackToTopBtn" class="chip gallery-jump-pill gallery-jump-pill--top" type="button" aria-label="Back to top">Top ↑</button>
+      </div>
+    </section>
+
     <!-- Featured section -->
     <section id="featuredWrap" class="gallery-section gallery-section-featured" style="display:none">
       <div class="section-title">
@@ -198,6 +259,7 @@
   </main>
 
   <footer id="siteFooter"></footer>
+  <button id="backToTopBtn" class="btn back-to-top" type="button" aria-label="Back to top">Top ↑</button>
 
   <script type="module">
     import { renderPublicHeader } from "./assets/js/header.js";
@@ -256,6 +318,10 @@
     const qInput = document.getElementById("q");
     const qClear = document.getElementById("qClear");
     const allWorksWrap = document.getElementById("allWorksWrap");
+    const jumpWrap = document.querySelector(".gallery-jump-wrap");
+    const sectionJumpButtons = Array.from(document.querySelectorAll("[data-scroll-target]"));
+    const jumpBackToTopBtn = document.getElementById("jumpBackToTopBtn");
+    const backToTopBtn = document.getElementById("backToTopBtn");
 
     const allCount = document.getElementById("allCount");
 
@@ -280,6 +346,46 @@
       qClear.style.display = qInput.value.trim() ? "inline-flex" : "none";
     }
 
+    function syncJumpPillOffset() {
+      const header = document.getElementById("siteHeader");
+      const headerHeight = Math.ceil(header?.getBoundingClientRect().height || 0);
+      const width = window.innerWidth || document.documentElement.clientWidth || 0;
+      const extraGap = width <= 560 ? 32 : width <= 920 ? 34 : 36;
+      const minTop = width <= 560 ? 82 : width <= 920 ? 84 : 86;
+      const top = Math.max(minTop, headerHeight + extraGap);
+      document.documentElement.style.setProperty("--gallery-jump-top", `${top}px`);
+    }
+    syncJumpPillOffset();
+    window.addEventListener("resize", syncJumpPillOffset);
+
+    sectionJumpButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-scroll-target");
+        const target = targetId ? document.getElementById(targetId) : null;
+        if (!target) return;
+        const header = document.getElementById("siteHeader");
+        const headerHeight = Math.ceil(header?.getBoundingClientRect().height || 0);
+        const jumpRowHeight = Math.ceil(jumpWrap?.getBoundingClientRect().height || 0);
+        const sectionGap = 10;
+        const top = window.scrollY + target.getBoundingClientRect().top - (headerHeight + jumpRowHeight + sectionGap);
+        window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      });
+    });
+
+    function syncBackToTopVisibility() {
+      const show = window.scrollY > 8;
+      backToTopBtn?.classList.toggle("is-visible", show);
+      jumpBackToTopBtn?.classList.toggle("is-visible", show);
+    }
+    jumpBackToTopBtn?.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    backToTopBtn?.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    window.addEventListener("scroll", syncBackToTopVisibility, { passive: true });
+    syncBackToTopVisibility();
+
     function rerenderFilteredSectionsPreserveAllWorksScroll() {
       const prevTop = allWorksWrap ? allWorksWrap.getBoundingClientRect().top : null;
       renderAll();
@@ -301,14 +407,14 @@
         chip.addEventListener("click", () => {
           activeTag = t;
           renderChips();
-          rerenderFilteredSectionsPreserveAllWorksScroll();
+          renderAll();
         });
         chip.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
             activeTag = t;
             renderChips();
-            rerenderFilteredSectionsPreserveAllWorksScroll();
+            renderAll();
           }
         });
         chipHost.appendChild(chip);
@@ -316,7 +422,13 @@
     }
 
     // ---- Filtering ----
-    function matches(a) {
+    function matchesTopSections(a) {
+      const text = `${a.title || ""} ${(a.tags || []).join(" ")} ${a.series || ""} ${a.year || ""}`.toLowerCase();
+      const qOk = !q || text.includes(q);
+      return qOk;
+    }
+
+    function matchesAllWorks(a) {
       const tagOk = activeTag === "all" || (a.tags || []).map(x => String(x).toLowerCase()).includes(activeTag);
       const text = `${a.title || ""} ${(a.tags || []).join(" ")} ${a.series || ""} ${a.year || ""}`.toLowerCase();
       const qOk = !q || text.includes(q);
@@ -383,7 +495,7 @@
     // ---- Featured section ----
     function renderFeatured() {
       // Featured should follow the same filters/search so it feels consistent.
-      const featured = sortGallery(allItems.filter(a => a.featured && matches(a)));
+      const featured = sortGallery(allItems.filter(a => a.featured && matchesTopSections(a)));
 
       if (!featured.length) {
         featuredWrap.style.display = "none";
@@ -397,7 +509,7 @@
 
     // ---- Series section ----
     function renderSeries() {
-      const filtered = sortGallery(allItems.filter(matches)).filter(a => a.series);
+      const filtered = sortGallery(allItems.filter(matchesTopSections)).filter(a => a.series);
       const bySeries = new Map();
 
       for (const a of filtered) {
@@ -413,9 +525,16 @@
           const meta = seriesMetaByName.get(name.toLowerCase()) || seriesMetaBySlug.get(slug) || null;
           const cover = (meta && meta.coverThumb) || items[0]?.thumb || items[0]?.image || "assets/img/placeholders/p1.jpg";
           const description = (meta && meta.description) || "";
-          return { name, slug, cover, description, items };
+          const sortOrderRaw = Number(meta?.sortOrder);
+          const sortOrder = Number.isFinite(sortOrderRaw) ? sortOrderRaw : Number.MAX_SAFE_INTEGER;
+          const isPublic = meta?.isPublic == null ? true : !!meta.isPublic;
+          return { name, slug, cover, description, items, sortOrder, isPublic };
         })
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .filter((s) => s.isPublic)
+        .sort((a, b) => {
+          if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+          return a.name.localeCompare(b.name);
+        });
 
       seriesGrid.innerHTML = "";
       if (!entries.length) {
@@ -458,7 +577,7 @@
 
     // ---- All works section ----
     function renderAll() {
-      const items = sortGallery(allItems.filter(matches));
+      const items = sortGallery(allItems.filter(matchesAllWorks));
       allCount.textContent = `${items.length} piece${items.length === 1 ? "" : "s"}`;
 
       grid.innerHTML = "";

@@ -5,7 +5,8 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "deploy:build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-deploy-dist.ps1"
   },
   "dependencies": {
     "better-sqlite3": "^11.6.0",

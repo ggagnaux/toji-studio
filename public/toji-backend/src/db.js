@@ -22,6 +22,7 @@ fs.mkdirSync(VARIANTS_DIR, { recursive: true });
 
 export const db = new Database(path.join(STORAGE_DIR, "toji.sqlite"));
 db.pragma("journal_mode = WAL");
+db.pragma("foreign_keys = ON");
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS artworks (
@@ -67,9 +68,65 @@ CREATE TABLE IF NOT EXISTS series (
   updatedAt TEXT
 );
 
+CREATE TABLE IF NOT EXISTS social_platforms (
+  id TEXT PRIMARY KEY,                 -- stable slug (instagram, threads, x, etc.)
+  name TEXT NOT NULL,
+  category TEXT DEFAULT 'social',      -- social|newsletter|portfolio|other
+  enabled INTEGER DEFAULT 1,           -- 1=enabled, 0=disabled
+  configJson TEXT DEFAULT '{}',        -- platform posting config (JSON)
+  authJson TEXT DEFAULT '{}',          -- platform auth credentials/tokens (JSON)
+  createdAt TEXT,
+  updatedAt TEXT
+);
+
+CREATE TABLE IF NOT EXISTS artwork_social_posts (
+  id TEXT PRIMARY KEY,
+  artworkId TEXT NOT NULL,
+  platformId TEXT NOT NULL,
+  status TEXT DEFAULT 'draft',         -- draft|queued|posted|failed|skipped
+  caption TEXT DEFAULT '',
+  postUrl TEXT DEFAULT '',
+  externalPostId TEXT DEFAULT '',
+  payload TEXT DEFAULT '{}',           -- JSON blob for API request/response metadata
+  errorMessage TEXT DEFAULT '',
+  postedAt TEXT,
+  createdAt TEXT,
+  updatedAt TEXT,
+  UNIQUE(artworkId, platformId),
+  FOREIGN KEY (artworkId) REFERENCES artworks(id) ON DELETE CASCADE,
+  FOREIGN KEY (platformId) REFERENCES social_platforms(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_artwork_social_posts_platform_status
+  ON artwork_social_posts(platformId, status);
+
+CREATE INDEX IF NOT EXISTS idx_artwork_social_posts_artwork
+  ON artwork_social_posts(artworkId);
+
+INSERT OR IGNORE INTO social_platforms (id, name, category, enabled, createdAt, updatedAt)
+VALUES
+  ('instagram', 'Instagram', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('threads', 'Threads', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('x', 'X', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('facebook', 'Facebook', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('linkedin', 'LinkedIn', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('bluesky', 'Bluesky', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('youtube', 'YouTube', 'video', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('substack', 'Substack', 'newsletter', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('medium', 'Medium', 'newsletter', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
 
 
 `);
+
+function ensureColumn(table, column, sqlTypeAndDefault) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (columns.some((c) => c.name === column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${sqlTypeAndDefault}`);
+}
+
+ensureColumn("social_platforms", "configJson", "TEXT DEFAULT '{}'");
+ensureColumn("social_platforms", "authJson", "TEXT DEFAULT '{}'");
 
 export function nowIso() {
   return new Date().toISOString();

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Studio - Security Manager</title>
+  <title>Studio - Social Media Manager</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
 </head>
 <body>
@@ -40,8 +40,8 @@
 
   <main class="container">
     <section class="hero" style="padding-bottom:10px">
-      <h1>Security Manager</h1>
-      <p>Manage admin account security settings.</p>
+      <h1>Social Media Manager</h1>
+      <p>Configure platform settings and credentials used for publishing artwork posts.</p>
     </section>
 
     <div class="admin-layout">
@@ -51,53 +51,52 @@
         <a href="series.html">Series Manager</a>
         <a href="linkmanager.html">Link Manager</a>
         <a href="HomePageManager.html">Home Page Manager</a>
-        <a href="SocialMediaManager.html">Social Media Manager</a>
+        <a class="active" href="SocialMediaManager.html">Social Media Manager</a>
         <a href="OtherSettings.html">Other Settings</a>
-        <a class="active" href="SecurityManager.html">Security Manager</a>
+        <a href="SecurityManager.html">Security Manager</a>
       </aside>
 
-      <section>
+      <section style="display:grid; gap:14px">
         <article class="card">
           <div class="meta">
-            <p class="title" style="margin:0">Admin Password</p>
-            <p class="sub" style="margin-top:8px">Change the password used to sign in to admin pages.</p>
+            <p class="title" style="margin:0">Add platform</p>
+            <p class="sub" style="margin-top:8px">Create a platform profile for posting automation.</p>
 
-            <form id="adminPasswordForm" style="display:grid; gap:10px; margin-top:12px; max-width:560px">
-              <label class="field">
-                <div class="sub">Current password</div>
-                <input id="currentAdminPassword" type="password" autocomplete="current-password" required />
-              </label>
-              <label class="field">
-                <div class="sub">New password</div>
-                <input id="newAdminPassword" type="password" autocomplete="new-password" required />
-              </label>
-              <label class="field">
-                <div class="sub">Confirm new password</div>
-                <input id="confirmAdminPassword" type="password" autocomplete="new-password" required />
-              </label>
-
+            <form id="platformCreateForm" style="display:grid; gap:10px; margin-top:12px; max-width:680px">
+              <div class="field">
+                <div class="sub">Platform id (slug)</div>
+                <input id="platformNewId" placeholder="e.g. pinterest or tiktok" />
+              </div>
+              <div class="field">
+                <div class="sub">Display name</div>
+                <input id="platformNewName" placeholder="e.g. Pinterest" />
+              </div>
               <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <button class="btn primary" type="submit">Change password</button>
-                <button class="btn" id="resetAdminPassword" type="button">Reset to default</button>
-                <span class="sub" id="passwordStatus" aria-live="polite"></span>
+                <button class="btn primary" type="submit">Add platform</button>
+                <span class="sub" id="platformCreateStatus" aria-live="polite"></span>
               </div>
             </form>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="meta">
+            <p class="title" style="margin:0">Platform configuration</p>
+            <p class="sub" id="platformSummary" style="margin-top:8px">Loading...</p>
+            <div id="platformList" style="display:grid; gap:12px; margin-top:12px"></div>
           </div>
         </article>
 
         <footer class="footer">
           <div class="row">
             <div>© <span id="y"></span> Toji Studios</div>
-            <div>Security Manager</div>
+            <div>Social Media Manager</div>
           </div>
         </footer>
       </section>
     </div>
   </main>
 
-  <script type="module" src="./js/security-manager.js"></script>
+  <script type="module" src="./js/social-media-manager.js"></script>
 </body>
 </html>
-
-
-

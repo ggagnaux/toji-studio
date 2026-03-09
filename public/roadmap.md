@@ -1,4 +1,4 @@
-# Toji Studios Website — Roadmap
+# Toji Studios Website - Roadmap
 
 ## Legend
 - [x] Done
@@ -6,184 +6,191 @@
 
 ---
 
-## 1) What we’ve built so far
+## 1) Current State (March 2026)
 
-### 1.1 Public layout & navigation
-- [x] Centralized public header/nav in `public/assets/js/header.js`
-  - [x] Injects header into `<header id="siteHeader"></header>`
-  - [x] Nav includes **Home / Gallery / Series / About / Contact / Studio**
-  - [x] Theme controls (System / Light / Dark + toggle)
-- [x] Centralized public footer in `public/assets/js/footer.js`
-  - [x] Injects footer into `<footer id="siteFooter"></footer>`
-  - [x] Auto-updates year
-  - [x] Footer links configurable per page
+### 1.1 Public site foundation
+- [x] Shared public header in `public/assets/js/header.js`
+  - [x] Nav links: Home / Gallery / Series / About / Contact / Studio
+  - [x] Theme controls: System / Light / Dark + toggle
+  - [x] Mobile nav behavior and responsive controls
+- [x] Shared public footer in `public/assets/js/footer.js`
+  - [x] Dynamic year + per-page right-side links
 
-### 1.2 Public pages wired to shared layout
-- [x] `public/index.html` updated to use shared header/footer
-- [x] `public/gallery.html` updated to use shared header/footer
-- [x] `public/about.html` updated to use shared header/footer
-- [x] `public/contact.html` updated to use shared header/footer
-- [x] New `public/series.html` created and added to nav
-- [x] New `public/artwork.html` (permalink page) created
-
-### 1.3 Studio-driven public content (front-end only)
-- [x] Public pages read from **Studio Admin localStorage** (key: `toji_admin_state_v1`)
-  - [x] Only **published** items are shown publicly
-  - [x] Fallback to `public/assets/data/admin.sample.json` when localStorage is empty
-
-### 1.4 Gallery improvements
-- [x] Tag chips + search filter
-- [x] Added **Featured section** above “All works”
-- [x] Click-to-view via a lightweight lightbox (ESC / arrows / backdrop click)
-
-### 1.5 Home page improvements
-- [x] Featured strip (horizontal scroll)
-- [x] Latest works grid
-- [x] Both sections populate from Studio-published content
-
-### 1.6 Series browsing
-- [x] `public/series.html` supports:
+### 1.2 Public pages and content views
+- [x] `public/index.html`
+  - [x] Splash screen with configurable animation modes
+  - [x] Featured slideshow
+  - [x] Featured artworks strip
+  - [x] Latest works grid
+  - [x] Series section with tiled previews
+- [x] `public/gallery.html`
+  - [x] Featured section
+  - [x] Series grouping section
+  - [x] Search + tag filters
+  - [x] Artwork links route to permalinks (`artwork.html?id=...`)
+- [x] `public/series.html`
   - [x] Series list with counts
-  - [x] Series detail view with ordered pieces
-  - [x] Optional series descriptions via `state.seriesMeta`
-  - [x] Deep link support via query string `?s=Series%20Name`
+  - [x] Series detail with ordered pieces
+  - [x] Deep linking via query parameter
+- [x] `public/artwork.html`
+  - [x] Permalink rendering by artwork id
+  - [x] Copy-link action
+  - [x] "More like this" recommendations (series-first fallback to recent)
+  - [x] Inquiry handoff to Contact with query-prefill
+- [x] `public/contact.html`
+  - [x] Mailto-based inquiry flow
+  - [x] Query-prefilled fields (`topic`, `title`, `id`, `url`)
+  - [x] Renders managed external/social links from Studio settings
 
-### 1.7 Contact workflow
-- [x] Full contact page using mailto-based draft (no backend required)
-- [x] Contact page supports **auto-prefill** from query params:
-  - [x] `topic`, `title`, `id`, `url`
-  - [x] Used by the “Inquire” button on `public/artwork.html`
+### 1.3 Studio Admin UX
+- [x] Studio admin page set now includes:
+  - [x] `index.html` (Image Manager / Dashboard)
+  - [x] `upload.html`
+  - [x] `edit.html`
+  - [x] `series.html`
+  - [x] `linkmanager.html`
+  - [x] `HomePageManager.html`
+  - [x] `OtherSettings.html`
+  - [x] `SecurityManager.html`
+  - [x] `login.html`
+- [x] Admin session gate + login page (`public/admin/login.html`)
+- [x] Dashboard (`public/admin/index.html`)
+  - [x] KPI counts (published/draft/hidden)
+  - [x] Search + tabs + row/card views
+  - [x] Bulk actions (status/feature/delete/tags)
+  - [x] Backend cleanup trigger
+- [x] Upload (`public/admin/upload.html`)
+  - [x] Multi-file upload
+  - [x] Batch tags/series/year/status
+- [x] Edit (`public/admin/edit.html`)
+  - [x] Metadata editing, status controls, feature toggle
+  - [x] Tag editing and backend patch sync
+  - [x] Replace image / regenerate variants actions
+- [x] Series Manager (`public/admin/series.html`)
+  - [x] Upsert/delete series
+  - [x] Sort order, visibility, descriptions
+  - [x] Cover artwork selection
+  - [x] Multi-select + delete flows
+- [x] Link Manager (`public/admin/linkmanager.html`)
+  - [x] Manage external links (label/url/category/enabled)
+  - [x] Validation + persisted settings
+- [x] Home Page Manager (`public/admin/HomePageManager.html`)
+  - [x] Toggle visibility for: intro/latest/featured/series/featured slideshow
+- [x] Other Settings (`public/admin/OtherSettings.html`)
+  - [x] Splash animation mode selection (including random mode)
+  - [x] Random-cycle timing controls
+  - [x] Header/splash logo animation toggle + style selector
+  - [x] Banner updates immediately after Save
+- [x] Security Manager (`public/admin/SecurityManager.html`)
+  - [x] Change admin password
+  - [x] Reset password to default
 
----
+### 1.4 Backend and media pipeline
+- [x] Node/Express API with token-protected admin routes
+- [x] SQLite persistence (`artworks`, `variants`, `series`)
+- [x] Private originals + public variants architecture
+  - [x] Originals stored privately
+  - [x] Only `/media` variants served publicly
+- [x] Upload pipeline with Sharp variant generation
+  - [x] `thumb` + `web` variant generation
+  - [x] Image replacement and variant regeneration endpoints
+- [x] Cleanup endpoint for orphaned files/rows
+- [x] Public read APIs for artworks and series
 
-## 2) Next changes (recommended order)
-
-### 2.1 Switch cards to permalinks everywhere
-Goal: make the site more “web-native” and shareable.
-- [ ] Update **Home** cards (Featured + Latest) to link to:
-  - [ ] `artwork.html?id=<id>`
-- [ ] Update **Gallery** cards to link to:
-  - [ ] `artwork.html?id=<id>`
-- [ ] Update **Series** piece cards to link to:
-  - [ ] `artwork.html?id=<id>`
-
-Optional (if you want to keep lightbox):
-- [ ] Keep click-to-open lightbox but add a **“View page”** button inside the lightbox.
-
-### 2.2 Add “Backlinks” and better navigation on the artwork page
-- [ ] If artwork has a series, show a “Back to series” button (already partially present via “More like this” link target)
-- [ ] Add “Previous / Next” within the same series (or within recent items)
-- [ ] Add an always-visible “Copy link” success toast (polish)
-
-### 2.3 Make gallery filters sharable via URL
-- [ ] Support `gallery.html?tag=...` (and `?q=...`) so tags from `artwork.html` chips work predictably
-- [ ] Persist filter state in URL when clicking chips
-
-### 2.4 Reduce duplicated lightbox code (DRY)
-Right now, similar lightbox logic exists in multiple pages.
-- [ ] Create `public/assets/js/lightbox.js` as a shared module
-- [ ] Reuse it across `index.html`, `gallery.html`, `series.html`
-
-### 2.5 Studio Admin “Series” management polish
-- [ ] Add/confirm a Studio UI for:
-  - [ ] Editing `seriesMeta.description`
-  - [ ] Controlling series order (`seriesMeta.sortOrder`)
-  - [ ] Bulk-assigning series to artworks
-
-### 2.6 Image pipeline planning (when you’re ready for backend)
-You asked for:
-- hide originals (private)
-- only serve resized versions publicly
-- future multi-user
-
-Roadmap for that later:
-- [ ] Decide storage layout: originals (private) + variants (public)
-- [ ] Generate variants server-side (thumb / medium / large)
-- [ ] Public pages point to variants only
-- [ ] Add upload endpoint with auth, then replace “mock upload” with real upload
-
----
-
-## 3) Backlog / Nice-to-haves
-- [ ] Sitemap + robots + basic SEO meta (title/description per page)
-- [ ] OpenGraph tags on `artwork.html` for rich social previews
-- [ ] Accessibility pass (focus styles, ARIA, keyboard navigation for chips)
-- [ ] Performance pass (lazy loading, responsive `srcset`, prefetch)
-- [ ] Print / licensing info page
-- [ ] Simple analytics (privacy-friendly)
-- [ ] Mouse-over effects in studio image grid
-- [ ] Admin Tool - Tag Manager
-- [ ] Add the ability to upload to social media (images to Instagram and Threads, textual blog posts to Medium and Substack?)
-- [ ] Investigate why 503 error is produced when uploading too many files at once.
-- [ ] Splash Screen - Add moving bezier curves option
-- [ ] Admin - Link Manager - Add ability to reorder items.
-- [ ] Admin - Link Manager - Ensure all sites referenced render their icons correctly.
-- [ ] Update database schema to track which Social Media/External sites the image has been posted to
-- [ ] Admin - Add the ability to configure the different splash screen animations.
-- [ ] Public Gallery - Order the Series cards correctly.
-
-
-
-
-- [x] Admin - Add the ability to specify different splash screen animations.
-- [x] Series - For Series cards on the home page, instead of having a single image, instead, tile a bunch of small images from the series.
-- [x] Series Manager - Add ability to remove multiple series at once.
-- [x] Series Manager - Remove hidden entries that keep building up
-
-
-- [ ] [WILL NOT IMPLEMENT] Add a blog page
-
-
+### 1.5 Data source model (current)
+- [x] Studio uses local cache (`toji_admin_state_v1`) for fast/offline-ish UX
+- [x] If API token is present, Studio auto-syncs with backend APIs
+- [x] Public pages can consume backend content and retain local/fallback support where needed
 
 ---
 
-## 4) File map (current)
+## 2) Recently Completed (from older roadmap items)
+- [x] Switched public cards to permalink navigation (`artwork.html?id=...`)
+- [x] Added configurable splash animation options in admin
+- [x] Added home page section visibility controls in admin
+- [x] Added/expanded series management workflows
+- [x] Added security/login flows for admin pages
+- [x] Moved from "mock upload" direction to real backend upload + image pipeline
+
+---
+
+## 3) Next Priorities
+
+### 3.1 Security hardening
+- [ ] Replace localStorage/sessionStorage-style admin auth with server-authenticated login sessions/JWT flow
+- [ ] Add password hashing and secure credential storage server-side
+- [ ] Add rate limiting + lockout/backoff for auth endpoints
+- [ ] Add CSRF/abuse review for admin mutations
+- [ ] Add a confirmation dialog PRIOR to any calls to external Ai systems.
+
+
+### 3.2 Content architecture consistency
+- [ ] Fully standardize public pages to backend-first reads (with intentional fallback strategy)
+- [ ] Remove stale local-only assumptions where backend is now source-of-truth
+- [ ] Add migration/versioning for local admin cache shape
+
+### 3.3 Studio quality-of-life
+- [ ] Add drag/drop ordering UI for external links
+- [ ] Add dedicated tag manager view (merge/rename/remove)
+- [ ] Improve bulk operations feedback and progress for large sets
+- [ ] Add safer multi-step destructive actions for large deletes
+
+### 3.4 Public UX polish
+- [ ] Shareable URL state for Gallery filters (`?q=`, `?tag=`)
+- [ ] Previous/Next navigation on artwork permalink
+- [ ] Accessibility pass (focus states, keyboard paths, announcements)
+- [ ] Performance pass (image loading strategy, query batching, bundle cleanup)
+
+### 3.5 Operational readiness
+- [ ] Environment/setup docs for local + deployed API (`ADMIN_TOKEN`, CORS, storage location)
+- [ ] Basic smoke tests for key API flows (upload, patch, delete, series CRUD)
+- [ ] Backup/restore guidance for SQLite + media storage
+
+---
+
+## 4) Backlog / Nice-to-haves
+- [ ] SEO baseline (metadata consistency, sitemap, robots)
+- [ ] OpenGraph enrichment for artwork permalinks
+- [ ] Optional analytics (privacy-conscious)
+- [ ] Social publishing tracking schema and UI
+- [ ] Optional social posting integrations
+- [ ] Investigate and mitigate large-batch upload 503 behavior
+
+---
+
+## 5) File Map (Current)
 
 ### Public
-- `public/index.html` — Home (Featured + Latest)
-- `public/gallery.html` — Gallery (Featured section + filters + lightbox)
-- `public/series.html` — Series list + series detail
-- `public/artwork.html` — Single piece permalink + “More like this”
-- `public/about.html` — About
-- `public/contact.html` — Contact (mailto draft + prefill)
+- `public/index.html`
+- `public/gallery.html`
+- `public/series.html`
+- `public/artwork.html`
+- `public/about.html`
+- `public/contact.html`
 
-### Shared modules
-- `public/assets/js/header.js` — Public header/nav + theme controls
-- `public/assets/js/footer.js` — Public footer rendering
-- `public/assets/js/site.js` — Theme system + shared site behavior (already referenced)
-
-### Data
-- `public/assets/data/admin.sample.json` — Fallback seed data
+### Shared JS
+- `public/assets/js/header.js`
+- `public/assets/js/footer.js`
+- `public/assets/js/site.js`
+- `public/assets/js/content-utils.js`
 
 ### Studio Admin
-- `public/admin/...` — Studio pages (Dashboard / Upload mock / Edit / Series, etc.)
-- localStorage key: `toji_admin_state_v1`
-- `public/gallery.html` — Gallery (Featured section + filters)
-- `public/series.html` — Series browser
-- `public/artwork.html` — Artwork permalink page
-- `public/about.html` — About
-- `public/contact.html` — Contact (mailto draft + query prefill)
+- `public/admin/index.html`
+- `public/admin/upload.html`
+- `public/admin/edit.html`
+- `public/admin/series.html`
+- `public/admin/linkmanager.html`
+- `public/admin/HomePageManager.html`
+- `public/admin/OtherSettings.html`
+- `public/admin/SecurityManager.html`
+- `public/admin/login.html`
+- `public/admin/admin.js`
 
-### Shared public JS
-- `public/assets/js/header.js` — Injected header/nav + theme controls
-- `public/assets/js/footer.js` — Injected footer + dynamic year
-- `public/assets/js/site.js` — Theme implementation (called by header)
-
-### Data
-- `public/assets/data/admin.sample.json` — Fallback content when Studio state is empty
-
-### Studio Admin (front-end)
-- `public/admin/index.html` — Studio dashboard
-- `public/admin/upload.html` — Upload mock (creates draft records)
-- `public/admin/edit.html` — Artwork editor (metadata/status/featured/etc.)
-- `public/admin/series.html` — Series management
-- `public/admin/admin.js` — Admin state + helpers (localStorage key: `toji_admin_state_v1`)
-
-
----
-
-## 5) Notes / Constraints we’re honoring
-- Originals should stay private long-term; public should serve resized variants only (backend phase).
-- Multi-user is planned later (backend + auth).
-- No WordPress / third-party CMS; plain HTML/JS front-end, with Node planned for backend when needed.
-
+### Backend
+- `public/toji-backend/src/server.js`
+- `public/toji-backend/src/auth.js`
+- `public/toji-backend/src/db.js`
+- `public/toji-backend/src/routes/public.js`
+- `public/toji-backend/src/routes/admin.js`
+- `public/toji-backend/src/routes/upload.js`
+- `public/toji-backend/src/routes/series.js`

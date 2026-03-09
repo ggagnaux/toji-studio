@@ -11,14 +11,14 @@
 /* Default theme: dark */
 :root, [data-theme="dark"]{
   --bg:#16181c;
-  --panel:#20242a;
+  --panel:#28283c;
   --text:#e7ebf0;
   --muted:#a1a8b3;
   --selectedmenu:#e5cf0d;
   --selecteditem:#dce7ff;
   --line:rgba(255,255,255,.12);
-  --accent:#e5cf0d;
-  --alternateaccent:#e5cf0d;
+  --accent:#7d7b6c;
+  --alternateaccent:#5d5e45;
   --accent-soft:rgba(126,162,255,.14);
   --accent-border:rgba(126,162,255,.42);
   --focus-ring:rgba(126,162,255,.22);

@@ -5,61 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Studio - Other Settings</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
-  <style>
-    .setting-toggle{
-      display:flex;
-      align-items:center;
-      justify-content:flex-start;
-      gap:10px;
-      margin-top:2px;
-      text-align:left;
-    }
-    .setting-toggle .switch{
-      position:relative;
-      display:inline-flex;
-      width:46px;
-      height:26px;
-      flex:0 0 auto;
-    }
-    .setting-toggle .switch input{
-      position:absolute;
-      width:1px;
-      height:1px;
-      overflow:hidden;
-      clip:rect(0 0 0 0);
-      white-space:nowrap;
-      border:0;
-      margin:-1px;
-      padding:0;
-    }
-    .setting-toggle .slider{
-      width:100%;
-      height:100%;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background: color-mix(in srgb, var(--panel) 84%, transparent);
-      transition: background .18s ease, border-color .18s ease;
-      position:relative;
-    }
-    .setting-toggle .slider::after{
-      content:"";
-      position:absolute;
-      top:3px;
-      left:3px;
-      width:18px;
-      height:18px;
-      border-radius:50%;
-      background:var(--text);
-      transition: transform .18s ease;
-    }
-    .setting-toggle input:checked + .slider{
-      background:var(--accent-soft);
-      border-color: var(--accent-border);
-    }
-    .setting-toggle input:checked + .slider::after{
-      transform: translateX(20px);
-    }
-  </style>
+  <link rel="stylesheet" href="css/OtherSettings.css" />
 </head>
 <body>
   <header class="header">

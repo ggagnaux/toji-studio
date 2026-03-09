@@ -1,0 +1,10 @@
+    .series-pieces-grid .card{
+      width: 100%;
+      min-width: 220px;
+      max-width: 300px;
+      justify-self: start;
+      box-shadow: none;
+    }
+    .series-pieces-grid .thumb{
+      aspect-ratio: 16/10;
+    }

@@ -1,0 +1,16 @@
+    .social-link-btn--icon{
+      width:40px;
+      height:40px;
+      padding:0;
+    }
+    .social-link-btn__icon{
+      width:20px;
+      height:20px;
+      display:block;
+      overflow:visible;
+    }
+    .social-link-btn__glyph{
+      font-size:17px;
+      line-height:1;
+      display:block;
+    }

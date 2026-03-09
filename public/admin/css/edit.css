@@ -1,0 +1,102 @@
+    .file-picker-shell{
+      border: 1px dashed color-mix(in srgb, var(--accent) 48%, var(--line));
+      border-radius: 14px;
+      background:
+        linear-gradient(
+          130deg,
+          color-mix(in srgb, var(--accent-soft) 60%, transparent),
+          color-mix(in srgb, var(--panel) 86%, transparent)
+        );
+      padding: 10px;
+      transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+    .file-picker-shell:hover{
+      border-color: color-mix(in srgb, var(--accent) 72%, var(--line));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+      transform: translateY(-1px);
+    }
+    .file-picker-shell:focus-within{
+      border-color: color-mix(in srgb, var(--accent) 85%, var(--line));
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent);
+    }
+    .file-picker-shell-flash{
+      animation: filePickerFlash .72s ease-in-out 1;
+    }
+    @keyframes filePickerFlash{
+      0%{
+        border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+        box-shadow: 0 0 0 0 color-mix(in srgb, #d15353 0%, transparent);
+        background:
+          linear-gradient(
+            130deg,
+            color-mix(in srgb, var(--accent-soft) 60%, transparent),
+            color-mix(in srgb, var(--panel) 86%, transparent)
+          );
+      }
+      25%{
+        border-color: color-mix(in srgb, #d15353 78%, var(--line));
+        box-shadow: 0 0 0 5px color-mix(in srgb, #d15353 36%, transparent);
+        background: color-mix(in srgb, #ffb2b2 34%, var(--panel));
+      }
+      50%{
+        border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+        box-shadow: 0 0 0 0 color-mix(in srgb, #d15353 0%, transparent);
+        background:
+          linear-gradient(
+            130deg,
+            color-mix(in srgb, var(--accent-soft) 60%, transparent),
+            color-mix(in srgb, var(--panel) 86%, transparent)
+          );
+      }
+      75%{
+        border-color: color-mix(in srgb, #d15353 78%, var(--line));
+        box-shadow: 0 0 0 5px color-mix(in srgb, #d15353 36%, transparent);
+        background: color-mix(in srgb, #ffb2b2 34%, var(--panel));
+      }
+      100%{
+        border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+        box-shadow: 0 0 0 0 color-mix(in srgb, #d15353 0%, transparent);
+        background:
+          linear-gradient(
+            130deg,
+            color-mix(in srgb, var(--accent-soft) 60%, transparent),
+            color-mix(in srgb, var(--panel) 86%, transparent)
+          );
+      }
+    }
+    #replaceFile{
+      width: 100%;
+      border: 0;
+      background: transparent;
+      padding: 4px;
+      color: var(--text);
+      font-size: 14px;
+      min-height: 46px;
+    }
+    #replaceFile::file-selector-button{
+      border: 1px solid var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-right: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .18s ease, border-color .18s ease, transform .18s ease;
+    }
+    #replaceFile::file-selector-button:hover{
+      border-color: color-mix(in srgb, var(--accent) 86%, var(--line));
+      background: color-mix(in srgb, var(--accent-soft) 70%, var(--panel));
+      transform: translateY(-1px);
+    }
+    #replaceFile::-webkit-file-upload-button{
+      border: 1px solid var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-right: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .18s ease, border-color .18s ease, transform .18s ease;
+    }

@@ -96,125 +96,6 @@ export function renderPublicHeader({
   const navLinks = headerHost.querySelector(".navlinks");
   const navToggle = headerHost.querySelector("[data-nav-toggle]");
   const mobileQuery = window.matchMedia("(max-width: 760px)");
-  const connectorMediaQuery = window.matchMedia("(min-width: 761px)");
-
-  const findPrimaryTitle = () => {
-    const mainContainer = document.querySelector("main.container");
-    if (!mainContainer) return null;
-
-    // Primary target requested: hero title under <section class="hero" id="homeHeroSection">.
-    const homeHeroTitle = mainContainer.querySelector("section.hero#homeHeroSection h1");
-    if (homeHeroTitle && homeHeroTitle.isConnected && homeHeroTitle.getClientRects().length) {
-      return homeHeroTitle;
-    }
-
-    const candidates = Array.from(mainContainer.querySelectorAll("h1"));
-    for (const node of candidates) {
-      if (!node) continue;
-      if (!node.isConnected) continue;
-      if (!node.getClientRects().length) continue;
-      return node;
-    }
-    return null;
-  };
-
-  const findPrimaryHeroSection = () => {
-    const mainContainer = document.querySelector("main.container");
-    if (!mainContainer) return null;
-    const hero = mainContainer.querySelector("section.hero#homeHeroSection");
-    if (hero && hero.isConnected && hero.getClientRects().length) return hero;
-    const anyHero = mainContainer.querySelector("section.hero");
-    if (anyHero && anyHero.isConnected && anyHero.getClientRects().length) return anyHero;
-    return mainContainer;
-  };
-
-  const clearMainConnector = () => {
-    const mainContainer = document.querySelector("main.container");
-    if (!mainContainer) return;
-    mainContainer.classList.remove("main-nav-title-connector");
-    mainContainer.style.removeProperty("--main-connector-x");
-    mainContainer.style.removeProperty("--main-connector-height");
-  };
-
-  const getNodeTextCenterX = (node) => {
-    if (!node) return NaN;
-    try {
-      const r = document.createRange();
-      r.selectNodeContents(node);
-      const textRect = r.getBoundingClientRect();
-      if (textRect && textRect.width > 0) {
-        return textRect.left + (textRect.width / 2);
-      }
-    } catch {}
-    const rect = node.getBoundingClientRect();
-    return rect.left + (rect.width / 2);
-  };
-
-  const syncNavTitleConnector = () => {
-    if (!connectorMediaQuery.matches) {
-      headerHost.classList.remove("nav-title-connector");
-      headerHost.style.removeProperty("--nav-connector-left");
-      headerHost.style.removeProperty("--nav-connector-width");
-      headerHost.style.removeProperty("--nav-connector-end-x");
-      clearMainConnector();
-      return;
-    }
-
-    const activeLink = headerHost.querySelector(".navlinks a.active");
-    const titleNode = findPrimaryTitle();
-    const heroNode = findPrimaryHeroSection();
-    const mainContainer = document.querySelector("main.container");
-    if (!activeLink || !titleNode) {
-      headerHost.classList.remove("nav-title-connector");
-      headerHost.style.removeProperty("--nav-connector-left");
-      headerHost.style.removeProperty("--nav-connector-width");
-      headerHost.style.removeProperty("--nav-connector-end-x");
-      clearMainConnector();
-      return;
-    }
-
-    const headerRect = headerHost.getBoundingClientRect();
-    const activeRect = activeLink.getBoundingClientRect();
-    const titleCenterViewportX = getNodeTextCenterX(titleNode);
-    const activeX = activeRect.left + (activeRect.width / 2) - headerRect.left;
-    const titleX = titleCenterViewportX - headerRect.left;
-    const left = Math.min(activeX, titleX);
-    const width = Math.abs(titleX - activeX);
-
-    if (!(width > 1)) {
-      headerHost.classList.remove("nav-title-connector");
-      headerHost.style.removeProperty("--nav-connector-left");
-      headerHost.style.removeProperty("--nav-connector-width");
-      headerHost.style.removeProperty("--nav-connector-end-x");
-      clearMainConnector();
-      return;
-    }
-
-    headerHost.style.setProperty("--nav-connector-left", `${left}px`);
-    headerHost.style.setProperty("--nav-connector-width", `${width}px`);
-    headerHost.style.setProperty("--nav-connector-end-x", `${titleX}px`);
-    headerHost.classList.add("nav-title-connector");
-
-    if (mainContainer) {
-      const mainRect = mainContainer.getBoundingClientRect();
-      const heroRect = heroNode ? heroNode.getBoundingClientRect() : mainRect;
-      const mainX = titleCenterViewportX - mainRect.left;
-      const mainDrop = Math.max(0, Math.round(heroRect.top - mainRect.top));
-      mainContainer.style.setProperty("--main-connector-x", `${mainX}px`);
-      mainContainer.style.setProperty("--main-connector-height", `${mainDrop}px`);
-      mainContainer.classList.add("main-nav-title-connector");
-    } else {
-      clearMainConnector();
-    }
-  };
-
-  if (typeof headerHost.__syncNavTitleConnector === "function") {
-    window.removeEventListener("resize", headerHost.__syncNavTitleConnector);
-    window.removeEventListener("scroll", headerHost.__syncNavTitleConnector);
-    connectorMediaQuery.removeEventListener("change", headerHost.__syncNavTitleConnector);
-  }
-  headerHost.__syncNavTitleConnector = syncNavTitleConnector;
-
   const setMenuOpen = (open) => {
     if (!navRoot || !navToggle || !navLinks) return;
     navRoot.classList.toggle("nav-open", !!open);
@@ -245,17 +126,11 @@ export function renderPublicHeader({
     setMenuOpen(false);
   });
 
-  connectorMediaQuery.addEventListener("change", syncNavTitleConnector);
-  window.addEventListener("resize", syncNavTitleConnector, { passive: true });
-  window.addEventListener("scroll", syncNavTitleConnector, { passive: true });
-
   if (mobileQuery.matches) setMenuOpen(false);
   else navLinks?.removeAttribute("aria-hidden");
 
   initThemeSystem();
   applyBannerLogoBehavior(headerHost);
-  requestAnimationFrame(syncNavTitleConnector);
-  setTimeout(syncNavTitleConnector, 120);
 }
 
 export function applyBannerLogoBehavior(headerHost) {

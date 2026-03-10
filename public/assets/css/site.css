@@ -139,48 +139,6 @@ img{max-width:100%;display:block}
   border-bottom:1px solid var(--line);
   transition: background-color .2s ease, border-color .2s ease;
 }
-@media (min-width: 761px){
-  .header.nav-title-connector::after{
-    content:"";
-    position:absolute;
-    bottom:0;
-    left:var(--nav-connector-left, 0);
-    width:var(--nav-connector-width, 0);
-    /* border-top:1px solid var(--muted); */
-    border-top:1px dotted var(--muted);
-    pointer-events:none;
-  }
-  main.container.main-nav-title-connector{
-    position:relative;
-  }
-  main.container.main-nav-title-connector::before{
-    content:"";
-    position:absolute;
-    top:0;
-    left:var(--main-connector-x, 0);
-    width:0;
-    height:var(--main-connector-height, 0);
-    border-left:1px dotted var(--muted);
-    pointer-events:none;
-  }
-  main.container.main-nav-title-connector::after{
-    content:"";
-    position:absolute;
-    left:calc(var(--main-connector-x, 0) - 3px);
-    top:calc(var(--main-connector-height, 0) - 3px);
-    width:6px;
-    height:6px;
-    border:1px dotted var(--muted);
-    border-radius:50%;
-    background:var(--bg);
-    pointer-events:none;
-  }
-  html.nav-compact .header.nav-title-connector::after,
-  html.nav-compact main.container.main-nav-title-connector::before,
-  html.nav-compact main.container.main-nav-title-connector::after{
-    display:none;
-  }
-}
 @supports (background: color-mix(in srgb, black, white)){
   .header{ background: color-mix(in srgb, var(--bg) 78%, transparent); }
   .card{
@@ -302,24 +260,9 @@ img{max-width:100%;display:block}
   color:var(--muted);
   border-color:var(--muted);
   background:transparent;
-  border-radius:0;
+  border-radius:20px;
 }
 @media (min-width: 761px){
-  .navlinks a.active::after{
-    content:"";
-    position:absolute;
-    left:50%;
-    bottom:-46px;
-    transform:translateX(-50%);
-    width:0;
-    height:46px;
-    border-left:1px solid var(--muted);
-    pointer-events:none;
-  }
-  html.nav-compact .navlinks a.active::after{
-    bottom:-33px;
-    height:33px;
-  }
 }
 .nav-toggle{display:none}
 @media (min-width: 761px){

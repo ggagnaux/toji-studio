@@ -12,14 +12,17 @@
 <body class="home-animated">
   <header id="siteHeader"></header>
 
-  <main class="container">
-    <section class="hero" style="padding-bottom:10px">
+  <main class="container gallery-page">
+    <section class="hero gallery-hero" id="galleryHeroSection" style="padding-bottom:10px">
       <h1>Gallery</h1>
       <p>Browse published work from Studio. Filter by tag, search, and open any piece to view larger.</p>
     </section>
 
     <section aria-label="Jump to gallery section" class="gallery-jump-wrap">
       <div class="gallery-jump-pills">
+        <span class="gallery-jump-label" aria-label="Jump menu" title="Jump menu">
+          <span aria-hidden="true">☰</span>
+        </span>
         <button class="chip gallery-jump-pill" type="button" data-scroll-target="featuredWrap">Featured</button>
         <button class="chip gallery-jump-pill" type="button" data-scroll-target="seriesWrap">Series</button>
         <button class="chip gallery-jump-pill" type="button" data-scroll-target="allWorksWrap">All works</button>
@@ -53,7 +56,9 @@
       </div>
 
       <section class="filters" aria-label="Gallery filters">
-        <span class="sub" style="width:100%">Tag Filter:</span>
+        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; width:100%">
+          <span class="sub">Tag Filter:</span>
+        </div>
         <div id="tagPrefilterChips" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; width:100%; margin-bottom:2px"></div>
         <div id="tagChips" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center"></div>
         <div id="tagFilterSummary" class="sub" style="width:100%; margin-top:4px"></div>
@@ -131,6 +136,7 @@
     const qInput = document.getElementById("q");
     const qClear = document.getElementById("qClear");
     const allWorksWrap = document.getElementById("allWorksWrap");
+    const allWorksFilters = allWorksWrap?.querySelector(".filters");
     const jumpWrap = document.querySelector(".gallery-jump-wrap");
     const sectionJumpButtons = Array.from(document.querySelectorAll("[data-scroll-target]"));
     const jumpBackToTopBtn = document.getElementById("jumpBackToTopBtn");
@@ -159,17 +165,19 @@
       qClear.style.display = qInput.value.trim() ? "inline-flex" : "none";
     }
 
-    function syncJumpPillOffset() {
+    const galleryHero = document.getElementById("galleryHeroSection");
+
+    function syncStickyOffsets() {
       const header = document.getElementById("siteHeader");
-      const headerHeight = Math.ceil(header?.getBoundingClientRect().height || 0);
-      const width = window.innerWidth || document.documentElement.clientWidth || 0;
-      const extraGap = width <= 560 ? 32 : width <= 920 ? 34 : 36;
-      const minTop = width <= 560 ? 82 : width <= 920 ? 84 : 86;
-      const top = Math.max(minTop, headerHeight + extraGap);
-      document.documentElement.style.setProperty("--gallery-jump-top", `${top}px`);
+      const headerHeight = header?.getBoundingClientRect().height || 0;
+      const heroHeight = galleryHero?.getBoundingClientRect().height || 0;
+      const heroGap = 0;
+      const jumpTop = headerHeight + heroHeight + heroGap;
+      document.documentElement.style.setProperty("--gallery-hero-top", `${headerHeight}px`);
+      document.documentElement.style.setProperty("--gallery-jump-top", `${jumpTop}px`);
     }
-    syncJumpPillOffset();
-    window.addEventListener("resize", syncJumpPillOffset);
+    syncStickyOffsets();
+    window.addEventListener("resize", syncStickyOffsets);
 
     const JUMP_SECTION_ORDER = ["featuredWrap", "seriesWrap", "allWorksWrap"];
 
@@ -198,11 +206,12 @@
     function getJumpScrollTop(target) {
       const header = document.getElementById("siteHeader");
       const headerHeight = Math.ceil(header?.getBoundingClientRect().height || 0);
+      const heroHeight = Math.ceil(galleryHero?.getBoundingClientRect().height || 0);
       const jumpRowHeight = Math.ceil(jumpWrap?.getBoundingClientRect().height || 0);
       const sectionGap = 10;
       return Math.max(
         0,
-        window.scrollY + target.getBoundingClientRect().top - (headerHeight + jumpRowHeight + sectionGap)
+        window.scrollY + target.getBoundingClientRect().top - (headerHeight + heroHeight + jumpRowHeight + sectionGap)
       );
     }
 
@@ -242,6 +251,11 @@
       backToTopBtn?.classList.toggle("is-visible", show);
       jumpBackToTopBtn?.classList.toggle("is-visible", show);
     }
+    function syncGalleryHeroState() {
+      const compact = window.scrollY > 8;
+      galleryHero?.classList.toggle("is-scrolled", compact);
+      syncStickyOffsets();
+    }
     jumpBackToTopBtn?.addEventListener("click", () => {
       scrollToTopStable();
     });
@@ -249,15 +263,20 @@
       scrollToTopStable();
     });
     window.addEventListener("scroll", syncBackToTopVisibility, { passive: true });
+    window.addEventListener("scroll", syncGalleryHeroState, { passive: true });
     syncBackToTopVisibility();
+    syncGalleryHeroState();
 
-    function rerenderFilteredSectionsPreserveAllWorksScroll() {
-      const prevTop = allWorksWrap ? allWorksWrap.getBoundingClientRect().top : null;
+    function rerenderAllWorksPreserveScroll() {
+      const activeEl = document.activeElement;
+      const anchor =
+        (activeEl instanceof HTMLElement && allWorksWrap?.contains(activeEl) ? activeEl : null) ||
+        allWorksFilters ||
+        allWorksWrap;
+      const prevTop = anchor ? anchor.getBoundingClientRect().top : null;
       renderAll();
-      renderFeatured();
-      renderSeries();
-      if (prevTop == null || !allWorksWrap) return;
-      const nextTop = allWorksWrap.getBoundingClientRect().top;
+      if (prevTop == null || !anchor?.isConnected) return;
+      const nextTop = anchor.getBoundingClientRect().top;
       const delta = nextTop - prevTop;
       if (Math.abs(delta) > 1) window.scrollBy({ top: delta, left: 0, behavior: "auto" });
     }
@@ -278,10 +297,11 @@
 
     function getVisibleTagsByLetter() {
       const allRealTags = tags.filter((t) => t !== "all");
-      if (!selectedLetters.size) return allRealTags;
       return allRealTags.filter((t) => {
         const key = getTagPrefilterKey(t);
-        return key ? selectedLetters.has(key) : false;
+        const matchesLetter = !selectedLetters.size || (key ? selectedLetters.has(key) : false);
+        const matchesSearch = !q || String(t).toLowerCase().includes(q);
+        return matchesLetter && matchesSearch;
       });
     }
 
@@ -371,32 +391,73 @@
 
       const selectedLetterList = prefilterTokens.filter((token) => selectedLetters.has(token));
       const selectedTagList = Array.from(selectedTags);
+      const hasSearchFilter = !!q;
+      tagFilterSummary.innerHTML = "";
 
-      const lettersText = selectedLetterList.join(" or ");
-      const tagsText = selectedTagList.join(" AND ");
-
-      if (!selectedLetterList.length && !selectedTagList.length) {
+      if (!selectedLetterList.length && !selectedTagList.length && !hasSearchFilter) {
         tagFilterSummary.textContent = "No filtering";
         return;
       }
-      if (selectedLetterList.length && !selectedTagList.length) {
-        tagFilterSummary.textContent = `Filtering tags by ${lettersText}`;
-        return;
+
+      if (hasSearchFilter) {
+        tagFilterSummary.appendChild(
+          el("div", { class: "tag-filter-summary-line" },
+            el("span", {}, `Showing tags matching search: "${q}"`)
+          )
+        );
       }
-      if (selectedLetterList.length && selectedTagList.length) {
-        tagFilterSummary.textContent = `Filtering tags by ${lettersText} AND (${tagsText})`;
-        return;
+      if (selectedLetterList.length) {
+        tagFilterSummary.appendChild(
+          el("div", { class: "tag-filter-summary-line" },
+            el("span", {}, "Showing tags starting with the following: "),
+            el("span", { class: "tag-filter-summary-pills" },
+              ...selectedLetterList.flatMap((token, idx) => (
+                idx === 0
+                  ? [el("span", { class: "chip tag-filter-summary-pill" }, token)]
+                  : [el("span", { class: "tag-filter-summary-joiner" }, "or"), el("span", { class: "chip tag-filter-summary-pill" }, token)]
+              ))
+            )
+          )
+        );
       }
-      tagFilterSummary.textContent = `Filtering by (${tagsText})`;
+      if (selectedTagList.length) {
+        tagFilterSummary.appendChild(
+          el("div", { class: "tag-filter-summary-line" },
+            el("span", {}, "Showing images containing the following tags: "),
+            el("span", { class: "tag-filter-summary-pills" },
+              ...selectedTagList.flatMap((tag, idx) => (
+                idx === 0
+                  ? [el("span", { class: "chip tag-filter-summary-pill" }, tag)]
+                  : [el("span", { class: "tag-filter-summary-joiner" }, "and"), el("span", { class: "chip tag-filter-summary-pill" }, tag)]
+              ))
+            )
+          )
+        );
+      }
+      if (selectedLetterList.length || selectedTagList.length || hasSearchFilter) {
+        tagFilterSummary.appendChild(
+          el("div", { class: "tag-filter-summary-actions" },
+            el("button", { id: "tagFiltersClearBtn", class: "btn", type: "button" }, "Clear filters")
+          )
+        );
+        tagFilterSummary.querySelector("#tagFiltersClearBtn")?.addEventListener("click", () => {
+          clearTagFilters();
+        });
+      }
+    }
+
+    function clearTagFilters() {
+      selectedLetters.clear();
+      selectedTags.clear();
+      q = "";
+      if (qInput) qInput.value = "";
+      renderTagPrefilters();
+      renderChips();
+      rerenderAllWorksPreserveScroll();
+      refreshSearchClear();
     }
 
     // ---- Filtering ----
-    function matchesTopSections(a) {
-      const text = `${a.title || ""} ${(a.tags || []).join(" ")} ${a.series || ""} ${a.year || ""}`.toLowerCase();
-      const qOk = !q || text.includes(q);
-      return qOk;
-    }
-
     function matchesAllWorks(a) {
       const artworkTags = new Set((a.tags || []).map(x => String(x).toLowerCase()));
       const tagOk = selectedTags.size === 0 || Array.from(selectedTags).every(tag => artworkTags.has(tag));
@@ -464,8 +525,7 @@
 
     // ---- Featured section ----
     function renderFeatured() {
-      // Featured should follow the same filters/search so it feels consistent.
-      const featured = sortGallery(allItems.filter(a => a.featured && matchesTopSections(a)));
+      const featured = sortGallery(allItems.filter(a => a.featured));
 
       if (!featured.length) {
         featuredWrap.style.display = "none";
@@ -479,7 +539,7 @@
 
     // ---- Series section ----
     function renderSeries() {
-      const filtered = sortGallery(allItems.filter(matchesTopSections)).filter(a => a.series);
+      const filtered = sortGallery(allItems).filter(a => a.series);
       const bySeries = new Map();
 
       for (const a of filtered) {
@@ -568,28 +628,29 @@
 
     qInput.addEventListener("input", (e) => {
       q = e.target.value.trim().toLowerCase();
-      renderFeatured();
-      renderSeries();
-      renderAll();
+      renderTagPrefilters();
+      renderChips();
+      rerenderAllWorksPreserveScroll();
+      syncStickyOffsets();
       refreshSearchClear();
     });
 
     qClear?.addEventListener("click", () => {
       qInput.value = "";
       q = "";
-      renderFeatured();
-      renderSeries();
-      renderAll();
+      renderTagPrefilters();
+      renderChips();
+      rerenderAllWorksPreserveScroll();
+      syncStickyOffsets();
       refreshSearchClear();
       qInput.focus();
     });
-
-
     renderTagPrefilters();
     renderChips();
     renderFeatured();
     renderSeries();
     renderAll();
+    syncStickyOffsets();
     refreshSearchClear();
   </script>
 </body>

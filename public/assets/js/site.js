@@ -139,3 +139,28 @@ export function initThemeSystem(){
     `;
   }
 }
+
+export function initStickyHero({
+  heroSelector = ".hero--sticky",
+  compactClass = "is-scrolled",
+  compactThreshold = 8,
+} = {}) {
+  const root = document.documentElement;
+  const header = document.getElementById("siteHeader");
+  const hero = document.querySelector(heroSelector);
+  if (!header || !hero) return;
+
+  const syncOffsets = () => {
+    const headerHeight = header.getBoundingClientRect().height || 0;
+    root.style.setProperty("--sticky-hero-top", `${headerHeight}px`);
+  };
+
+  const syncState = () => {
+    hero.classList.toggle(compactClass, (window.scrollY || 0) > compactThreshold);
+    syncOffsets();
+  };
+
+  syncState();
+  window.addEventListener("resize", syncOffsets);
+  window.addEventListener("scroll", syncState, { passive: true });
+}

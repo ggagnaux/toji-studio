@@ -30,29 +30,10 @@
       <section style="display:grid; gap:14px">
         <article class="card">
           <div class="meta">
-            <p class="title" style="margin:0">Add platform</p>
-            <p class="sub" style="margin-top:8px">Create a platform profile for posting automation.</p>
-
-            <form id="platformCreateForm" style="display:grid; gap:10px; margin-top:12px; max-width:680px">
-              <div class="field">
-                <div class="sub">Platform id (slug)</div>
-                <input id="platformNewId" placeholder="e.g. pinterest or tiktok" />
-              </div>
-              <div class="field">
-                <div class="sub">Display name</div>
-                <input id="platformNewName" placeholder="e.g. Pinterest" />
-              </div>
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <button class="btn primary" type="submit">Add platform</button>
-                <span class="sub" id="platformCreateStatus" aria-live="polite"></span>
-              </div>
-            </form>
-          </div>
-        </article>
-
-        <article class="card">
-          <div class="meta">
-            <p class="title" style="margin:0">Platform configuration</p>
+            <div style="display:flex; gap:10px; align-items:center; justify-content:flex-start; flex-wrap:wrap">
+              <p class="title" style="margin:0">Platform configuration</p>
+              <button class="btn primary" id="openPlatformCreateDialogBtn" type="button">Add new platform</button>
+            </div>
             <p class="sub" id="platformSummary" style="margin-top:8px">Loading...</p>
             <div id="platformList" style="display:grid; gap:12px; margin-top:12px"></div>
           </div>
@@ -62,6 +43,40 @@
       </section>
     </div>
   </main>
+
+  <div id="platformCreateDialog" aria-hidden="true" style="display:none; position:fixed; inset:0; z-index:120; background:rgba(0,0,0,.58); padding:20px; align-items:center; justify-content:center;">
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="platformCreateDialogTitle" style="width:min(100%, 720px); max-height:min(100vh - 40px, 720px); overflow:auto; box-shadow:none;">
+      <div class="meta">
+        <div style="display:flex; gap:10px; align-items:start; justify-content:space-between; flex-wrap:wrap">
+          <div>
+            <p class="title" id="platformCreateDialogTitle" style="margin:0">Add platform</p>
+            <p class="sub" style="margin-top:8px">Create a platform profile for posting automation.</p>
+          </div>
+          <button class="btn" id="closePlatformCreateDialogBtn" type="button" aria-label="Close add platform dialog">Close</button>
+        </div>
+
+        <form id="platformCreateForm" style="display:grid; gap:10px; margin-top:12px; max-width:680px">
+          <div class="field">
+            <div class="sub">Platform id (slug)</div>
+            <input id="platformNewId" placeholder="e.g. pinterest or tiktok" />
+          </div>
+          <div class="field">
+            <div class="sub">Display name</div>
+            <input id="platformNewName" placeholder="e.g. Pinterest" />
+          </div>
+          <div class="field">
+            <div class="sub">Icon location</div>
+            <input id="platformNewIconLocation" placeholder="Remote URL or local filesystem path" />
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button class="btn primary" type="submit">Add platform</button>
+            <button class="btn" id="cancelPlatformCreateDialogBtn" type="button">Cancel</button>
+            <span class="sub" id="platformCreateStatus" aria-live="polite"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="./js/social-media-manager.js"></script>
 </body>

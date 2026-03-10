@@ -1,3 +1,57 @@
+    .gallery-page{
+      position: relative;
+      isolation: isolate;
+      padding-top: 0;
+    }
+    .gallery-hero{
+      position: sticky;
+      top: var(--gallery-hero-top, 72px);
+      z-index: 24;
+      display: block;
+      margin-top: 6px;
+      margin-bottom: 0;
+      padding-top: 14px;
+      padding-right: 10px;
+      padding-left: 10px;
+      transition: background-color .18s ease, padding .18s ease;
+    }
+    .gallery-hero h1{
+      margin-bottom: 20px;
+    }
+    .gallery-hero p{
+      margin: 0;
+      transition: max-width .18s ease;
+    }
+    .gallery-hero.is-scrolled{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: nowrap;
+      margin-top: 10px;
+      padding-top: 4px;
+      padding-bottom: 4px !important;
+      background: color-mix(in srgb, var(--panel) 92%, transparent);
+      backdrop-filter: blur(8px);
+    }
+    .gallery-hero.is-scrolled h1{
+      margin-top: 0;
+      margin-bottom: 0;
+      flex: 0 0 auto;
+      align-self: center;
+      padding-top: 4px;
+      padding-bottom: 4px;
+      line-height: 1.05;
+      margin-right: 12px;
+    }
+    .gallery-hero.is-scrolled p{
+      flex: 1 1 auto;
+      align-self: center;
+      max-width: none;
+      text-align: left;
+      line-height: 1.2;
+      padding-left: 4px;
+    }
     .gallery-section{
       border: 1px solid var(--line);
       border-radius: 14px;
@@ -8,15 +62,73 @@
     .gallery-section-series{ background: color-mix(in srgb, var(--panel) 88%, var(--alternateaccent) 12%); }
     .gallery-section-all{ background: color-mix(in srgb, var(--panel) 90%, var(--muted) 10%); }
     .gallery-jump-pills{
-      display:flex;
+      display:inline-flex;
       gap:10px;
-      flex-wrap:wrap;
       align-items:center;
       margin:0;
+    }
+    .gallery-jump-label{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-width: 40px;
+      min-height: 40px;
+      padding: 0 10px;
+      color: var(--text);
+      font-weight: 600;
+      white-space: nowrap;
+      background: var(--panel);
+      border: 1px solid var(--chip-border);
+    }
+    .gallery-jump-label > span{
+      display: none;
+    }
+    .gallery-jump-label::before{
+      content: "";
+      display: block;
+      width: 16px;
+      height: 2px;
+      background: currentColor;
+      border-radius: 999px;
+      box-shadow: 0 -5px 0 currentColor, 0 5px 0 currentColor;
     }
     .gallery-jump-pill{
       cursor:pointer;
       user-select:none;
+      background: var(--panel);
+      border: 1px solid var(--chip-border);
+      overflow: hidden;
+      max-width: 0;
+      opacity: 0;
+      padding: 8px 0;
+      margin-left: -10px;
+      border-width: 0;
+      pointer-events: none;
+      transform: translateX(-6px);
+      white-space: nowrap;
+      transition:
+        max-width .2s ease,
+        opacity .16s ease,
+        transform .16s ease,
+        margin-left .16s ease,
+        padding .16s ease,
+        border-width .16s ease,
+        border-color .16s ease;
+    }
+    .gallery-jump-wrap:hover .gallery-jump-pill:not(.gallery-jump-pill--top),
+    .gallery-jump-wrap:focus-within .gallery-jump-pill:not(.gallery-jump-pill--top){
+      max-width: 160px;
+      opacity: 1;
+      padding: 8px 12px;
+      margin-left: 0;
+      border-width: 1px;
+      pointer-events: auto;
+      transform: translateX(0);
+    }
+    .gallery-jump-pill:hover,
+    .gallery-jump-pill:focus-visible{
+      border-color: color-mix(in srgb, var(--accent-border) 82%, #ffffff 18%);
     }
     .tag-chip-separator{
       width: 1px;
@@ -27,28 +139,67 @@
       border-radius: 999px;
       pointer-events: none;
     }
+    .tag-filter-summary-line{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .tag-filter-summary-line + .tag-filter-summary-line{
+      margin-top:6px;
+    }
+    .tag-filter-summary-actions{
+      margin-top:10px;
+    }
+    .tag-filter-summary-pills{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .tag-filter-summary-pill{
+      pointer-events:none;
+    }
+    .tag-filter-summary-joiner{
+      color: var(--muted);
+    }
     .gallery-jump-pill--top{
       opacity: 0;
       pointer-events: none;
-      transform: translateY(6px);
-      transition: opacity .18s ease, transform .18s ease;
+      transform: translateX(-6px) translateY(6px);
     }
     .gallery-jump-pill--top.is-visible{
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-6px) translateY(0);
+    }
+    .gallery-jump-wrap:hover .gallery-jump-pill--top.is-visible,
+    .gallery-jump-wrap:focus-within .gallery-jump-pill--top.is-visible{
+      max-width: 120px;
       opacity: 1;
+      padding: 8px 12px;
+      margin-left: 0;
+      border-width: 1px;
       pointer-events: auto;
-      transform: translateY(0);
+      transform: translateX(0) translateY(0);
     }
     .gallery-jump-wrap{
       position: sticky;
       top: var(--gallery-jump-top, 78px);
-      z-index: 22;
-      margin-top: 6px;
+      display: inline-block;
+      width: fit-content;
+      max-width: 100%;
+      z-index: 23;
+      margin-top: 0;
       margin-bottom: 8px;
       padding: 8px 10px;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: color-mix(in srgb, var(--panel) 90%, transparent);
+      border: 0;
+      border-radius: 0;
+      background: transparent;
       backdrop-filter: blur(6px);
+    }
+    .gallery-hero.is-scrolled + .gallery-jump-wrap{
+      margin-top: -1px;
     }
     .back-to-top{
       position: fixed;
@@ -136,6 +287,18 @@
       border: 1px solid var(--line);
     }
     @media (max-width: 720px){
+      .gallery-hero.is-scrolled{
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .gallery-hero.is-scrolled p{
+        width: 100%;
+        text-align: left;
+      }
+      .gallery-hero{
+        padding-right: 8px;
+        padding-left: 8px;
+      }
       #seriesGrid .series-masonry{
         columns: 2 90px;
       }

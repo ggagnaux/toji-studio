@@ -5,10 +5,17 @@ setYearFooter();
 
 const platformList = document.getElementById("platformList");
 const platformSummary = document.getElementById("platformSummary");
+const openPlatformCreateDialogBtn = document.getElementById("openPlatformCreateDialogBtn");
+const closePlatformCreateDialogBtn = document.getElementById("closePlatformCreateDialogBtn");
+const cancelPlatformCreateDialogBtn = document.getElementById("cancelPlatformCreateDialogBtn");
+const platformCreateDialog = document.getElementById("platformCreateDialog");
 const platformCreateForm = document.getElementById("platformCreateForm");
 const platformNewId = document.getElementById("platformNewId");
 const platformNewName = document.getElementById("platformNewName");
+const platformNewIconLocation = document.getElementById("platformNewIconLocation");
 const platformCreateStatus = document.getElementById("platformCreateStatus");
+const platformCreateDialogPanel = platformCreateDialog?.querySelector('[role="dialog"]');
+let lastFocusedBeforeDialog = null;
 
 function cleanText(v) {
   return String(v || "").trim();
@@ -37,6 +44,16 @@ const categoryOptions = ["social", "video", "newsletter", "portfolio", "other"];
 let platforms = [];
 let activePlatformId = "";
 const TAB_BORDER_PALETTE = ["#2a97d4", "#2ea97d", "#d18b2e", "#d15353", "#8a63d2", "#cf5ea8", "#3aa5a0", "#7e8c2b"];
+const PLATFORM_TAB_ICON_SRC = {
+  linkedin: "https://s.magecdn.com/social/tc-linkedin.svg"
+};
+
+function getPlatformTabIconSrc(platform) {
+  const configured = cleanText(platform?.config?.iconLocation);
+  if (configured) return configured;
+  const iconKey = cleanSlug(platform?.id || platform?.name);
+  return PLATFORM_TAB_ICON_SRC[iconKey] || "";
+}
 
 function ensureSocialManagerStyles() {
   if (document.getElementById("social-manager-tabs-styles")) return;
@@ -63,6 +80,21 @@ function ensureSocialManagerStyles() {
       display:inline-flex;
       align-items:center;
       gap:8px;
+    }
+    .smm-tab-icon{
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid color-mix(in srgb, var(--smm-tab-color, var(--accent)) 72%, var(--line));
+      background: color-mix(in srgb, var(--smm-tab-color, var(--accent)) 14%, transparent);
+      flex: 0 0 auto;
+      display: inline-block;
+    }
+    .smm-tab-icon img{
+      display:block;
+      width:100%;
+      height:100%;
+      object-fit:contain;
     }
     .smm-tab[aria-selected="true"]{
       border-color: color-mix(in srgb, var(--smm-tab-color, var(--accent)) 88%, var(--line));
@@ -141,6 +173,70 @@ function ensureSocialManagerStyles() {
   document.head.appendChild(style);
 }
 ensureSocialManagerStyles();
+
+function openPlatformCreateDialog() {
+  if (!platformCreateDialog) return;
+  lastFocusedBeforeDialog = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  platformCreateDialog.style.display = "flex";
+  platformCreateDialog.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  window.setTimeout(() => {
+    platformNewId?.focus();
+  }, 0);
+}
+
+function closePlatformCreateDialog() {
+  if (!platformCreateDialog) return;
+  platformCreateDialog.style.display = "none";
+  platformCreateDialog.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  if (platformCreateStatus) platformCreateStatus.textContent = "";
+  (lastFocusedBeforeDialog || openPlatformCreateDialogBtn)?.focus();
+  lastFocusedBeforeDialog = null;
+}
+
+openPlatformCreateDialogBtn?.addEventListener("click", () => {
+  openPlatformCreateDialog();
+});
+
+closePlatformCreateDialogBtn?.addEventListener("click", () => {
+  closePlatformCreateDialog();
+});
+
+cancelPlatformCreateDialogBtn?.addEventListener("click", () => {
+  closePlatformCreateDialog();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && platformCreateDialog?.getAttribute("aria-hidden") === "false") {
+    closePlatformCreateDialog();
+  }
+});
+
+platformCreateDialog?.addEventListener("keydown", (event) => {
+  if (event.key !== "Tab" || !platformCreateDialogPanel) return;
+  const focusable = Array.from(
+    platformCreateDialogPanel.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((node) => node instanceof HTMLElement && node.offsetParent !== null);
+  if (!focusable.length) {
+    event.preventDefault();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  if (event.shiftKey && active === first) {
+    event.preventDefault();
+    last.focus();
+    return;
+  }
+  if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+});
 
 function tabColorAt(index) {
   return TAB_BORDER_PALETTE[index % TAB_BORDER_PALETTE.length];
@@ -468,7 +564,20 @@ function renderPlatformConfiguration() {
     tab.setAttribute("role", "tab");
     tab.setAttribute("aria-selected", active ? "true" : "false");
     tab.style.setProperty("--smm-tab-color", tabColor);
-    tab.textContent = platform.name;
+    const tabIcon = document.createElement("span");
+    tabIcon.className = "smm-tab-icon";
+    tabIcon.setAttribute("aria-hidden", "true");
+    const iconSrc = getPlatformTabIconSrc(platform);
+    if (iconSrc) {
+      const iconImg = document.createElement("img");
+      iconImg.src = iconSrc;
+      iconImg.alt = "";
+      iconImg.loading = "lazy";
+      tabIcon.appendChild(iconImg);
+    }
+    const tabLabel = document.createElement("span");
+    tabLabel.textContent = platform.name;
+    tab.append(tabIcon, tabLabel);
     tab.addEventListener("click", () => {
       activePlatformId = platform.id;
       renderPlatformConfiguration();
@@ -502,6 +611,7 @@ platformCreateForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const id = cleanSlug(platformNewId?.value);
   const name = cleanText(platformNewName?.value);
+  const iconLocation = cleanText(platformNewIconLocation?.value);
   if (!id || !name) {
     if (platformCreateStatus) platformCreateStatus.textContent = "Provide both id and name.";
     showToast("Provide both id and name.", { tone: "warn" });
@@ -513,12 +623,22 @@ platformCreateForm?.addEventListener("submit", async (e) => {
     await apiFetch("/api/admin/social/platforms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, name, category: "social", enabled: true })
+      body: JSON.stringify({
+        id,
+        name,
+        category: "social",
+        enabled: true,
+        config: {
+          iconLocation
+        }
+      })
     });
     if (platformNewId) platformNewId.value = "";
     if (platformNewName) platformNewName.value = "";
+    if (platformNewIconLocation) platformNewIconLocation.value = "";
     if (platformCreateStatus) platformCreateStatus.textContent = "Created.";
     showToast(`Created platform ${name}.`, { tone: "success" });
+    closePlatformCreateDialog();
     await loadPlatforms();
   } catch (err) {
     if (platformCreateStatus) platformCreateStatus.textContent = "Create failed.";

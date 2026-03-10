@@ -13,11 +13,11 @@
     const externalLinksRows = document.getElementById("externalLinksRows");
     const externalLinksHint = document.getElementById("externalLinksHint");
     const externalLinksAddBtn = document.getElementById("externalLinksAdd");
-    const externalLinksSaveBtn = document.getElementById("externalLinksSave");
 
     const EXTERNAL_LINK_CATEGORIES = ["social", "portfolio", "shop", "video", "newsletter", "other"];
     state.settings.externalLinks = normalizeExternalLinks(state.settings.externalLinks);
     let externalLinksDraft = cloneExternalLinks(state.settings.externalLinks);
+    let externalLinksSaveTimer = null;
 
     function uniqueLinkId(){
       return `lnk_${Math.random().toString(16).slice(2, 10)}`;
@@ -76,13 +76,15 @@
         return;
       }
 
-      externalLinksDraft.forEach((row, idx) => {
-        const popId = `removeLinkConfirm_${row.id || idx}`;
+    externalLinksDraft.forEach((row, idx) => {
+      const popId = `removeLinkConfirm_${row.id || idx}`;
+      const rowEl = el("div", { class: `external-link-row${row.enabled ? "" : " is-disabled"}` });
         const categorySelect = el("select", {
           "aria-label": `Category for link ${idx + 1}`,
           onchange: (e) => {
             const value = String(e.target.value || "").toLowerCase();
             row.category = EXTERNAL_LINK_CATEGORIES.includes(value) ? value : "other";
+            scheduleExternalLinksAutoSave();
           }
         });
 
@@ -91,67 +93,94 @@
           categorySelect.appendChild(option);
         });
 
-        externalLinksRows.appendChild(
-          el("div", { class: "external-link-row" },
-            el("input", {
-              type: "text",
-              placeholder: "Label (e.g., Instagram)",
-              value: row.label,
-              "aria-label": `Label for link ${idx + 1}`,
-              oninput: (e) => { row.label = e.target.value; }
-            }),
-            el("input", {
-              type: "url",
-              placeholder: "https://...",
-              value: row.url,
-              "aria-label": `URL for link ${idx + 1}`,
-              oninput: (e) => { row.url = e.target.value; }
-            }),
-            categorySelect,
-            el("label", { class: "external-link-toggle" },
-              el("input", {
-                type: "checkbox",
-                checked: row.enabled ? "" : null,
-                onchange: (e) => { row.enabled = !!e.target.checked; }
-              }),
-              el("span", { class: "sub" }, "Enabled")
-            ),
-            el("div", {},
+      const labelInput = el("input", {
+        type: "text",
+        placeholder: "Label (e.g., Instagram)",
+        value: row.label,
+        "aria-label": `Label for link ${idx + 1}`,
+        oninput: (e) => {
+          row.label = e.target.value;
+          scheduleExternalLinksAutoSave();
+        }
+      });
+      const urlInput = el("input", {
+        type: "url",
+        placeholder: "https://...",
+        value: row.url,
+        "aria-label": `URL for link ${idx + 1}`,
+        oninput: (e) => {
+          row.url = e.target.value;
+          scheduleExternalLinksAutoSave();
+        }
+      });
+      const editableControls = [labelInput, urlInput, categorySelect];
+      const enabledLabel = el("span", { class: "sub" }, row.enabled ? "Enabled" : "Disabled");
+      const syncRowEnabledState = () => {
+        rowEl.classList.toggle("is-disabled", !row.enabled);
+        enabledLabel.textContent = row.enabled ? "Enabled" : "Disabled";
+        editableControls.forEach((control) => {
+          control.disabled = !row.enabled;
+        });
+      };
+
+      const enabledToggle = el("label", { class: "external-link-toggle external-link-toggle--slider" },
+        el("input", {
+          type: "checkbox",
+          checked: row.enabled ? "" : null,
+          "aria-label": `Enabled state for link ${idx + 1}`,
+          onchange: (e) => {
+            row.enabled = !!e.target.checked;
+            syncRowEnabledState();
+            scheduleExternalLinksAutoSave();
+          }
+        }),
+        el("span", { class: "external-link-toggle-slider", "aria-hidden": "true" }),
+        enabledLabel
+      );
+
+      rowEl.append(
+        enabledToggle,
+        labelInput,
+        urlInput,
+        categorySelect,
+        el("div", {},
+          el("button", {
+            class: "btn danger",
+            type: "button",
+            popovertarget: popId,
+            "aria-haspopup": "dialog",
+            "aria-label": `Remove link ${row.label || idx + 1}`
+          }, "Remove"),
+          el("div", {
+            id: popId,
+            class: "external-link-confirm",
+            popover: "auto",
+            role: "dialog",
+            "aria-label": "Confirm remove link"
+          },
+            el("p", {}, `Remove "${row.label || "this link"}"?`),
+            el("div", { class: "external-link-confirm-actions" },
+              el("button", {
+                class: "btn",
+                type: "button",
+                popovertarget: popId,
+                popovertargetaction: "hide"
+              }, "Cancel"),
               el("button", {
                 class: "btn danger",
                 type: "button",
-                popovertarget: popId,
-                "aria-haspopup": "dialog",
-                "aria-label": `Remove link ${row.label || idx + 1}`
-              }, "Remove"),
-              el("div", {
-                id: popId,
-                class: "external-link-confirm",
-                popover: "auto",
-                role: "dialog",
-                "aria-label": "Confirm remove link"
-              },
-                el("p", {}, `Remove "${row.label || "this link"}"?`),
-                el("div", { class: "external-link-confirm-actions" },
-                  el("button", {
-                    class: "btn",
-                    type: "button",
-                    popovertarget: popId,
-                    popovertargetaction: "hide"
-                  }, "Cancel"),
-                  el("button", {
-                    class: "btn danger",
-                    type: "button",
-                    onclick: () => {
-                      externalLinksDraft.splice(idx, 1);
-                      renderExternalLinksEditor();
-                    }
-                  }, "Remove")
-                )
-              )
+                onclick: () => {
+                  externalLinksDraft.splice(idx, 1);
+                  renderExternalLinksEditor();
+                  saveExternalLinks({ notifySuccess: false, rerender: false, silentInvalid: true });
+                }
+              }, "Remove")
             )
           )
-        );
+        )
+      );
+      syncRowEnabledState();
+      externalLinksRows.appendChild(rowEl);
       });
     }
 
@@ -170,26 +199,37 @@
       return "";
     }
 
-    function saveExternalLinks(){
+    function saveExternalLinks({ notifySuccess = false, rerender = true, silentInvalid = false } = {}){
       const next = normalizeExternalLinks(externalLinksDraft);
       for (let i = 0; i < next.length; i += 1) {
         const err = validateExternalLink(next[i], i);
-        if (err) return showToast(err, { tone: "error" });
+        if (err) {
+          if (!silentInvalid) showToast(err, { tone: "error" });
+          return false;
+        }
       }
 
       state.settings.externalLinks = next;
       saveState(state);
       externalLinksDraft = cloneExternalLinks(next);
-      renderExternalLinksEditor();
-      showToast(`Saved ${next.length} external link${next.length === 1 ? "" : "s"}.`, { tone: "success" });
+      if (rerender) renderExternalLinksEditor();
+      if (notifySuccess) {
+        showToast(`Saved ${next.length} external link${next.length === 1 ? "" : "s"}.`, { tone: "success" });
+      }
+      return true;
+    }
+
+    function scheduleExternalLinksAutoSave() {
+      clearTimeout(externalLinksSaveTimer);
+      externalLinksSaveTimer = setTimeout(() => {
+        saveExternalLinks({ notifySuccess: false, rerender: false, silentInvalid: true });
+      }, 250);
     }
 
     externalLinksAddBtn?.addEventListener("click", () => {
       externalLinksDraft.push(emptyExternalLink());
       renderExternalLinksEditor();
     });
-
-    externalLinksSaveBtn?.addEventListener("click", saveExternalLinks);
 
     renderExternalLinksEditor();
   

@@ -124,6 +124,12 @@ img{max-width:100%;display:block}
   margin:0 auto;
   padding:12px clamp(14px, 2.5vw, 32px);
 }
+.page-with-sticky-hero{
+  padding-top: 0;
+}
+.page-with-sticky-hero--about-contact .hero--sticky{
+  margin-bottom: 12px;
+}
 
 /* Smooth theme transitions (respects reduced motion) */
 @media (prefers-reduced-motion: no-preference){
@@ -251,16 +257,53 @@ img{max-width:100%;display:block}
 .navlinks{display:flex; gap:18px; align-items:center}
 .navlinks a{
   color:var(--muted);
-  padding:4px 10px;
+  padding:8px 10px;
   border-radius:999px;
   border:1px solid transparent;
   position:relative;
 }
+.navlinks a::before{
+  content:"";
+  position:absolute;
+  left:10px;
+  right:10px;
+  top:3px;
+  height:1px;
+  background:currentColor;
+  opacity:0;
+  transform:scaleX(.35);
+  transform-origin:center;
+  box-shadow: 0 calc(100% + 11px) 0 currentColor;
+  transition:opacity .16s ease, transform .16s ease;
+}
+.navlinks a:hover::before,
+.navlinks a:focus-visible::before,
+.navlinks a:focus-visible::before{
+  opacity:1;
+  transform:scaleX(1);
+}
 .navlinks a.active{
   color:var(--muted);
-  border-color:var(--muted);
   background:transparent;
-  border-radius:20px;
+  border-color:transparent;
+}
+.navlinks a.active::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:-1px;
+  transform:translateX(-50%);
+  width:0;
+  height:0;
+  border-left:5px solid transparent;
+  border-right:5px solid transparent;
+  border-top:6px solid var(--muted);
+}
+.navlinks a.active:hover::before,
+.navlinks a.active:focus-visible::before,
+.navlinks a.active:focus-visible::before{
+  opacity:0;
+  transform:scaleX(.35);
 }
 @media (min-width: 761px){
 }
@@ -310,6 +353,55 @@ html.nav-compact .brand-logo-canvas--icon{
 .hero{
   /* padding:56px 0 26px; */
 }
+.hero--sticky{
+  position: sticky;
+  top: var(--sticky-hero-top, 72px);
+  z-index: 24;
+  display: block;
+  margin-top: 6px;
+  margin-bottom: 0;
+  padding-top: 14px;
+  padding-right: 10px;
+  padding-left: 10px;
+  transition: background-color .18s ease, padding .18s ease, margin .18s ease;
+}
+.hero--sticky h1{
+  margin-bottom: 20px;
+}
+.hero--sticky p{
+  margin: 0;
+  transition: max-width .18s ease;
+}
+.hero--sticky.is-scrolled{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: nowrap;
+  margin-top: 10px;
+  padding-top: 4px;
+  padding-bottom: 4px !important;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+.hero--sticky.is-scrolled h1{
+  margin-top: 0;
+  margin-bottom: 0;
+  flex: 0 0 auto;
+  align-self: center;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  line-height: 1.05;
+  margin-right: 12px;
+}
+.hero--sticky.is-scrolled p{
+  flex: 1 1 auto;
+  align-self: center;
+  max-width: none;
+  text-align: left;
+  line-height: 1.2;
+  padding-left: 4px;
+}
 .hero h1{
   /* font-size: clamp(32px, 5vw, 56px); */
   font-size: clamp(22px, 5vw, 36px);
@@ -318,6 +410,20 @@ html.nav-compact .brand-logo-canvas--icon{
 }
 .hero p{color:var(--muted); font-size:20px; max-width:170ch}
 .hero .cta{display:flex; gap:12px; margin-top:18px; flex-wrap:wrap}
+@media (max-width: 720px){
+  .hero--sticky{
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+  .hero--sticky.is-scrolled{
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .hero--sticky.is-scrolled p{
+    width: 100%;
+    text-align: left;
+  }
+}
 
 .section-title{
   display:flex; align-items:end; justify-content:space-between;
@@ -500,8 +606,22 @@ html.nav-compact .brand-logo-canvas--icon{
   color: var(--selecteditem);
   font-weight: 400;
   text-decoration: none;
-  border: 1px solid var(--muted);
-  padding: 1px 6px;
+  border: 0;
+  padding: 8px 6px 1px;
+  position: relative;
+}
+.footer .row a.active::before,
+.footer .row a[aria-current="page"]::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:0;
+  transform:translateX(-50%);
+  width:0;
+  height:0;
+  border-left:5px solid transparent;
+  border-right:5px solid transparent;
+  border-bottom:6px solid var(--selecteditem);
 }
 .footer.footer--full-bleed{
   width:100vw;

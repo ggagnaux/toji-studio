@@ -141,6 +141,9 @@
 - [ ] Accessibility pass (focus states, keyboard paths, announcements)
 - [ ] Performance pass (image loading strategy, query batching, bundle cleanup)
 - [ ] In Gallery.html, replace the floating jump bar with a small panel that will slide out or down from the top or left edge. in that panel will be links/buttons to allow jumping to each section.
+- [ ] Social Media Manager - Remove the 'Add Platform' panel. Instead, add a button to the 'Platform Configuration' panel called 'Add' and then display a modal dialog for adding the new platform.
+- [ ] In Gallery.html, hide the jump panel when the mouse is not over it. Instead, shrink it down to the left and
+have it open when the mouse goes over it.
 
 ### 3.5 Operational readiness
 - [ ] Environment/setup docs for local + deployed API (`ADMIN_TOKEN`, CORS, storage location)

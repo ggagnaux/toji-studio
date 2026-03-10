@@ -1,4 +1,4 @@
-import { initThemeSystem } from "../assets/js/site.js";
+import { initThemeSystem, initStickyHero } from "../assets/js/site.js";
 import { qs, el, slugifySeries } from "../assets/js/content-utils.js";
 import { renderPublicFooter } from "../assets/js/footer.js";
 import { renderPublicHeader } from "../assets/js/header.js";
@@ -88,6 +88,15 @@ export function statusChip(status) {
 
 export function setYearFooter() {
   document.body.classList.add("admin-shell");
+
+  const mainHost = document.querySelector("main.container");
+  if (mainHost) mainHost.classList.add("page-with-sticky-hero");
+
+  const hero = document.querySelector("main.container .hero");
+  if (hero) {
+    hero.classList.add("hero--sticky");
+    initStickyHero({ heroSelector: "main.container .hero--sticky" });
+  }
 
   const siteHeader = document.getElementById("siteHeader");
   let syncAdminHeaderHeight = null;

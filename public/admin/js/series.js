@@ -1,4 +1,3 @@
-    import { applyBannerLogoBehavior } from "../../assets/js/header.js";
     import {
       loadStateAutoSync, saveState, el, setYearFooter, ensureBaseStyles,
       ensureSeriesMeta,
@@ -15,10 +14,9 @@
 
     ensureBaseStyles();
     setYearFooter();
-    applyBannerLogoBehavior(document.querySelector("header.header"));
 
     const state = await loadStateAutoSync();
-    ensureSeriesMeta(state);
+    ensureSeriesMeta(state, { includeDerived: !getAdminToken() });
     saveState(state);
 
     const listEl = document.getElementById("list");

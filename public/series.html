@@ -193,8 +193,7 @@
           ? Number(s.publishedCount || 0)
           : published.filter(a => a.series === s.name).length;
         return { ...s, publishedCount: count };
-      })
-      .filter(s => s.publishedCount > 0);
+      });
 
     seriesCountEl.textContent = `${seriesWithCounts.length} series`;
 

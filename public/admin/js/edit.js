@@ -1,6 +1,5 @@
-    import { applyBannerLogoBehavior } from "../../assets/js/header.js";
     import {
-      loadState, saveState, qs, el, setYearFooter, ensureBaseStyles, upsertTag, confirmToast, showToast
+      loadStateAutoSync, saveState, qs, el, setYearFooter, ensureBaseStyles, upsertTag, confirmToast, showToast
     } from "../admin.js";
 
     import {
@@ -11,7 +10,6 @@
 
     ensureBaseStyles();
     setYearFooter();
-    applyBannerLogoBehavior(document.querySelector("header.header"));
 
     function ensureSocialPanelStyles(){
       if (document.getElementById("social-posting-styles")) return;
@@ -92,6 +90,7 @@
           border-radius:0 0 10px 10px;
           padding:10px;
           margin-top:0;
+          background: color-mix(in srgb, var(--social-site-color) 8%, var(--panel));
         }
         .edit-tabbar{
           display:flex;
@@ -128,7 +127,6 @@
         }
         .edit-tabcontent{
           border:1px solid var(--line);
-          border-top:0;
           border-radius:0 0 12px 12px;
           padding:12px;
           background: color-mix(in srgb, var(--panel) 98%, transparent);
@@ -146,6 +144,28 @@
         .edit-tabpane[hidden]{
           display:none !important;
         }
+        .btn-ai{
+          border-color: color-mix(in srgb, #2a97d4 82%, var(--line));
+          background: color-mix(in srgb, #2a97d4 16%, var(--panel));
+          color: var(--text);
+          font-weight: 700;
+          letter-spacing: .01em;
+          box-shadow: 0 0 0 1px color-mix(in srgb, #2a97d4 22%, transparent) inset;
+        }
+        .btn-ai:hover{
+          border-color: color-mix(in srgb, #2a97d4 92%, var(--line));
+          background: color-mix(in srgb, #2a97d4 24%, var(--panel));
+          transform: translateY(-1px);
+        }
+        .btn-ai:focus-visible{
+          outline: 2px solid color-mix(in srgb, #2a97d4 72%, transparent);
+          outline-offset: 2px;
+        }
+        .btn-ai[disabled]{
+          opacity: .75;
+          transform: none;
+          cursor: wait;
+        }
         @media (max-width: 780px){
           .social-posting-fields{
             grid-template-columns: 1fr;
@@ -162,7 +182,7 @@
     }
     ensureSocialPanelStyles();
 
-    const state = await loadState();
+    const state = await loadStateAutoSync();
     const id = qs("id");
     const a = state.artworks.find(x => x.id === id) || state.artworks[0];
 
@@ -433,6 +453,29 @@
       return "";
     }
 
+    function extractGeneratedTags(payload){
+      if (!payload) return [];
+      const fromArray = Array.isArray(payload.tags) ? payload.tags : null;
+      const text =
+        fromArray ? fromArray.join(",") :
+        (typeof payload.output_text === "string" ? payload.output_text :
+        (typeof payload.text === "string" ? payload.text :
+        (typeof payload.tags === "string" ? payload.tags : "")));
+
+      if (!text && !fromArray) return [];
+
+      const rawParts = (fromArray || String(text).split(/[\n,;|]/g))
+        .map((p) => String(p || "").replace(/^[-*•\d\.\)\s]+/, "").trim())
+        .map((p) => p.replace(/^#/, "").replace(/["']/g, "").trim())
+        .map((p) => p.toLowerCase())
+        .map((p) => p.replace(/\s+/g, " "))
+        .map((p) => p.replace(/[^a-z0-9 -]/g, "").trim())
+        .filter(Boolean)
+        .filter((p) => p.length <= 32);
+
+      return Array.from(new Set(rawParts)).slice(0, 20);
+    }
+
     async function generateDescriptionViaAi(){
       const endpoint = String(
         localStorage.getItem("toji_ai_description_endpoint_v1") ||
@@ -470,11 +513,48 @@
       return generated;
     }
 
+    async function generateTagsViaAi(){
+      const endpoint = String(
+        localStorage.getItem("toji_ai_tags_endpoint_v1") ||
+        `${API_BASE}/api/admin/ai/generate-tags`
+      ).trim();
+      if (!endpoint) throw new Error("AI endpoint is not configured.");
+
+      const payload = {
+        artworkId: a.id,
+        imageUrl: a.image || a.thumb || "",
+        title: a.title || "",
+        year: a.year || "",
+        series: a.series || "",
+        alt: a.alt || "",
+        tags: Array.isArray(a.tags) ? a.tags : [],
+        description: a.description || ""
+      };
+
+      const headers = { "Content-Type": "application/json" };
+      const token = getAdminToken();
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      let json = null;
+      try { json = await res.json(); } catch {}
+      if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
+
+      const generated = extractGeneratedTags(json);
+      if (!generated.length) throw new Error("AI response did not include usable tags.");
+      return generated;
+    }
+
     let generatingDescription = false;
     const descriptionGenerateBtn = el(
       "button",
-      { class:"btn mini", type:"button", style:"padding:6px 10px; margin-left:auto;" },
-      "Generate"
+      { class:"btn mini btn-ai", type:"button", style:"padding:6px 10px; margin-left:auto; margin-bottom:10px;" },
+      "🤖 Generate"
     );
     descriptionGenerateBtn.addEventListener("click", async () => {
       if (generatingDescription) return;
@@ -492,7 +572,7 @@
 
       generatingDescription = true;
       descriptionGenerateBtn.disabled = true;
-      descriptionGenerateBtn.textContent = "Generating...";
+      descriptionGenerateBtn.textContent = "🤖 Generating...";
       setStatusText("Generating description...", 10000, "info");
 
       try {
@@ -507,7 +587,80 @@
       } finally {
         generatingDescription = false;
         descriptionGenerateBtn.disabled = false;
-        descriptionGenerateBtn.textContent = "Generate";
+        descriptionGenerateBtn.textContent = "🤖 Generate";
+      }
+    });
+
+    const TAG_CAP_KEY = "toji_ai_tag_cap_v1";
+
+    function normalizeTagCap(value){
+      const n = Math.floor(Number(value));
+      if (!Number.isFinite(n)) return 20;
+      return Math.min(120, Math.max(1, n));
+    }
+
+    function getTagCap(){
+      return normalizeTagCap(localStorage.getItem(TAG_CAP_KEY));
+    }
+
+    function normalizeTagList(tags){
+      const cap = getTagCap();
+      return Array.from(
+        new Set(
+          (Array.isArray(tags) ? tags : [])
+            .map((t) => String(t || "").trim().toLowerCase())
+            .map((t) => t.replace(/\s+/g, " "))
+            .map((t) => t.replace(/[^a-z0-9 -]/g, "").trim())
+            .filter(Boolean)
+            .filter((t) => t.length <= 32)
+        )
+      ).slice(0, cap);
+    }
+
+    let refreshTagsEditorView = () => {};
+    let generatingTags = false;
+    const tagsGenerateBtn = el(
+      "button",
+      { class:"btn mini btn-ai", type:"button", style:"padding:6px 10px; margin-left:auto;" },
+      "🤖 Generate"
+    );
+    tagsGenerateBtn.addEventListener("click", async () => {
+      if (generatingTags) return;
+
+      const ok = await confirmToast(
+        "Generate tags from the artwork image using an external Ai system? New tags will be merged with existing tags.",
+        {
+          confirmLabel: "Generate",
+          cancelLabel: "Cancel",
+          tone: "warn",
+          highlightText: "Note: This will consume API tokens."
+        }
+      );
+      if (!ok) return;
+
+      generatingTags = true;
+      tagsGenerateBtn.disabled = true;
+      tagsGenerateBtn.textContent = "🤖 Generating...";
+      setStatusText("Generating tags...", 10000, "info");
+
+      try {
+        const generated = await generateTagsViaAi();
+        const merged = normalizeTagList([...(a.tags || []), ...generated]);
+        a.tags = merged;
+        for (const t of merged) upsertTag(state, t);
+        refreshTagsEditorView();
+        scheduleBackendSave();
+        const cap = getTagCap();
+        const isAtCap = merged.length >= cap;
+        const generatedMsg = `Generated ${generated.length} tag${generated.length === 1 ? "" : "s"}.`;
+        const capMsg = isAtCap ? ` Reached cap (${cap}).` : "";
+        setStatusText(`${generatedMsg}${capMsg}`, 10000, "success");
+      } catch (err) {
+        setStatusText(`Generate failed: ${err?.message || err}`, 10000, "error");
+      } finally {
+        generatingTags = false;
+        tagsGenerateBtn.disabled = false;
+        tagsGenerateBtn.textContent = "🤖 Generate";
       }
     });
 
@@ -519,11 +672,28 @@
       binding: false,
       selectedBoundPlatformId: ""
     };
+    const socialAutoSaveTimers = new Map();
     const socialBindSelect = el("select", { "aria-label":"Available social platforms" });
     const socialBindBtn = el("button", { class:"btn mini", type:"button" }, "Bind platform");
+    const socialBoundLabel = el("div", { class:"sub", style:"margin-top:10px; display:none;" }, "Bound platforms");
     const socialBoundPills = el("div", { class:"social-site-tabbar" });
     const socialRowsHost = el("div", { class:"social-posting-grid social-site-panel" });
     const socialSummary = el("div", { class:"sub", "aria-live":"polite" }, "");
+    const socialBindLabel = el("div", { class:"sub" }, "Available platforms");
+    const socialBindField = el("div", { class:"field" }, socialBindLabel, socialBindSelect);
+    const socialBindBtnWrap = el("div", { style:"display:flex; align-items:flex-end;" }, socialBindBtn);
+    const socialBindRow = el("div", { class:"social-posting-fields", style:"margin-top:10px; grid-template-columns: 1fr auto;" },
+      socialBindField,
+      socialBindBtnWrap
+    );
+
+    function clearSocialAutoSaveTimer(platformId) {
+      const key = String(platformId || "").trim();
+      if (!key) return;
+      const timer = socialAutoSaveTimers.get(key);
+      if (timer) clearTimeout(timer);
+      socialAutoSaveTimers.delete(key);
+    }
 
     function buildSocialField(labelText, inputNode){
       return el("div", { class:"field" },
@@ -533,7 +703,9 @@
     }
 
     function getSocialPartitions() {
-      const all = (socialState.posts || []).slice();
+      const all = (socialState.posts || []).filter((p) =>
+        p?.platformEnabled == null ? true : !!p.platformEnabled
+      );
       return {
         all,
         bound: all.filter((p) => !!p.id),
@@ -629,40 +801,67 @@
       const errorInput = el("input", { placeholder:"Last error message (optional)", value: post.errorMessage || "" });
 
       const useDescriptionBtn = el("button", { class:"btn mini", type:"button" }, "Use description");
-      useDescriptionBtn.addEventListener("click", () => {
+
+      const buildPayload = () => ({
+        status: statusInput.value,
+        caption: captionInput.value,
+        postUrl: urlInput.value,
+        externalPostId: externalIdInput.value,
+        errorMessage: errorInput.value
+      });
+
+      const queueAutoSave = (delayMs = 0) => {
+        clearSocialAutoSaveTimer(platformId);
+        const timer = setTimeout(async () => {
+          socialAutoSaveTimers.delete(platformId);
+          socialState.saving.add(platformId);
+          try {
+            await saveSocialPost(platformId, buildPayload());
+            await loadSocialPanel(platformId);
+          } catch (err) {
+            setStatusText(`Social save failed: ${err?.message || err}`, 10000, "error");
+          } finally {
+            socialState.saving.delete(platformId);
+          }
+        }, Math.max(0, Number(delayMs) || 0));
+        socialAutoSaveTimers.set(platformId, timer);
+      };
+
+      statusInput.addEventListener("change", () => queueAutoSave(0));
+      captionInput.addEventListener("blur", () => queueAutoSave(0));
+      urlInput.addEventListener("blur", () => queueAutoSave(0));
+      externalIdInput.addEventListener("blur", () => queueAutoSave(0));
+      errorInput.addEventListener("blur", () => queueAutoSave(0));
+
+      const savingNow = socialState.saving.has(platformId);
+
+      useDescriptionBtn.addEventListener("click", async () => {
         const description = String(a.description || "").trim();
         if (!description) {
           setStatusText("Description is empty. Add or generate a description first.", 10000, "warn");
           return;
         }
-        captionInput.value = description;
-      });
-
-      const savingNow = socialState.saving.has(platformId);
-      const saveBtn = el("button", { class:"btn mini", type:"button", disabled: savingNow ? "" : null }, savingNow ? "Saving..." : "Save");
-      saveBtn.addEventListener("click", async () => {
-        socialState.saving.add(platformId);
-        renderSocialPanel();
-        try {
-          await saveSocialPost(platformId, {
-            status: statusInput.value,
-            caption: captionInput.value,
-            postUrl: urlInput.value,
-            externalPostId: externalIdInput.value,
-            errorMessage: errorInput.value
-          });
-          setStatusText(`Saved ${post.platformName || platformId} social settings.`, 10000, "success");
-          await loadSocialPanel(platformId);
-        } catch (err) {
-          setStatusText(`Social save failed: ${err?.message || err}`, 10000, "error");
-        } finally {
-          socialState.saving.delete(platformId);
-          renderSocialPanel();
+        const currentCaption = String(captionInput.value || "").trim();
+        if (currentCaption) {
+          const ok = await confirmToast(
+            "Replace the existing Caption with the Description text?",
+            { confirmLabel: "Replace", cancelLabel: "Cancel", tone: "warn" }
+          );
+          if (!ok) return;
         }
+        captionInput.value = description;
+        queueAutoSave(120);
       });
 
       const unbindBtn = el("button", { class:"btn mini", type:"button" }, "Unbind");
       unbindBtn.addEventListener("click", async () => {
+        const ok = await confirmToast(
+          `Unbind ${post.platformName || platformId} from this image?`,
+          { confirmLabel: "Unbind", cancelLabel: "Cancel", tone: "warn" }
+        );
+        if (!ok) return;
+
+        clearSocialAutoSaveTimer(platformId);
         socialState.saving.add(platformId);
         renderSocialPanel();
         try {
@@ -680,7 +879,7 @@
         }
       });
 
-      return el("div", { class:"social-posting-row" },
+      return [
         el("div", { class:"social-posting-head" },
           el("strong", {}, post.platformName || platformId),
           post.platformEnabled ? el("span", { class:"pill" }, "Enabled") : el("span", { class:"pill" }, "Disabled"),
@@ -694,40 +893,85 @@
         ),
         buildSocialField("Caption", captionInput),
         el("div", { class:"social-posting-actions" },
-          saveBtn,
           unbindBtn,
           useDescriptionBtn,
-          el("span", { class:"social-posting-muted" }, post.updatedAt ? `Updated ${String(post.updatedAt).slice(0, 19).replace("T", " ")}` : "Not saved yet")
+          el("span", { class:"social-posting-muted" }, savingNow ? "Saving..." : (post.updatedAt ? `Updated ${String(post.updatedAt).slice(0, 19).replace("T", " ")}` : "Not saved yet"))
         )
-      );
+      ];
     }
 
     function renderSocialPanel(){
+      const enabledCount = (socialState.posts || []).filter((p) =>
+        p?.platformEnabled == null ? true : !!p.platformEnabled
+      ).length;
+
       if (socialState.loading) {
         socialSummary.textContent = "Loading social platforms...";
+        socialBindLabel.textContent = "Available platforms";
+        socialBindRow.style.display = "grid";
+        socialBindSelect.style.display = "";
+        socialBindBtnWrap.style.display = "flex";
         socialBindSelect.innerHTML = "";
         socialBindSelect.appendChild(el("option", { value:"" }, "Loading..."));
         socialBindSelect.disabled = true;
         socialBindBtn.disabled = true;
         socialBoundPills.innerHTML = "";
+        socialBoundPills.style.display = "";
+        socialBoundLabel.style.display = "none";
         socialRowsHost.innerHTML = "";
+        socialRowsHost.style.display = "";
+        socialRowsHost.classList.remove("social-posting-row");
         socialRowsHost.appendChild(el("div", { class:"sub" }, "Loading..."));
         return;
       }
 
       if (!socialState.posts.length) {
         socialSummary.textContent = "No social platforms available.";
+        socialBindLabel.textContent = "No active platforms available";
+        socialBindRow.style.display = "grid";
+        socialBindSelect.style.display = "none";
+        socialBindBtnWrap.style.display = "none";
         socialBindSelect.innerHTML = "";
         socialBindSelect.appendChild(el("option", { value:"" }, "No platforms"));
         socialBindSelect.disabled = true;
         socialBindBtn.disabled = true;
         socialBoundPills.innerHTML = "";
+        socialBoundPills.style.display = "none";
+        socialBoundLabel.style.display = "none";
         socialRowsHost.innerHTML = "";
-        socialRowsHost.appendChild(el("div", { class:"sub" }, "No platforms found."));
+        socialRowsHost.style.display = "none";
+        socialRowsHost.classList.remove("social-posting-row");
+        return;
+      }
+
+      if (!enabledCount) {
+        socialSummary.textContent = `${socialState.posts.length} platforms • 0 bound to this image`;
+        socialBindLabel.textContent = "No active platforms available";
+        socialBindRow.style.display = "grid";
+        socialBindSelect.style.display = "none";
+        socialBindBtnWrap.style.display = "none";
+        socialBindSelect.innerHTML = "";
+        socialBindSelect.appendChild(el("option", { value:"" }, "No active platforms"));
+        socialBindSelect.disabled = true;
+        socialBindBtn.disabled = true;
+        socialBoundPills.innerHTML = "";
+        socialBoundPills.style.display = "none";
+        socialBoundLabel.style.display = "none";
+        socialRowsHost.innerHTML = "";
+        socialRowsHost.style.display = "none";
+        socialRowsHost.classList.remove("social-posting-row");
         return;
       }
 
       const { bound, available } = getSocialPartitions();
+      socialBindLabel.textContent = "Available platforms";
+      socialBindRow.style.display = "grid";
+      socialBindSelect.style.display = "";
+      socialBindBtnWrap.style.display = "flex";
+      socialBoundPills.style.display = "";
+      socialRowsHost.style.display = "";
+      socialBoundLabel.style.display = "none";
+      socialRowsHost.classList.remove("social-posting-row");
       socialSummary.textContent = `${socialState.posts.length} platforms • ${bound.length} bound to this image`;
 
       socialBindSelect.innerHTML = "";
@@ -739,15 +983,28 @@
       }
       socialBindSelect.disabled = !available.length || socialState.binding;
       socialBindBtn.disabled = !available.length || !socialBindSelect.value || socialState.binding;
+      socialBindBtnWrap.style.display = socialBindSelect.value ? "flex" : "none";
       socialBindBtn.textContent = socialState.binding ? "Binding..." : "Bind platform";
 
       socialBoundPills.innerHTML = "";
       socialRowsHost.innerHTML = "";
       if (!bound.length) {
+        socialBoundLabel.style.display = "none";
         socialBoundPills.appendChild(el("span", { class:"sub" }, "No social platforms bound yet."));
-        socialRowsHost.appendChild(el("div", { class:"sub" }, "Bind a platform, then click its tab to view details."));
         socialRowsHost.style.setProperty("--social-site-color", "var(--accent)");
+        socialRowsHost.style.display = "none";
+        socialRowsHost.classList.remove("social-posting-row");
       } else {
+        socialBoundLabel.style.display = "";
+        socialRowsHost.style.display = "";
+        const validIds = new Set(bound.map((p) => String(p.platformId || "")).filter(Boolean));
+        if (socialState.selectedBoundPlatformId && !validIds.has(socialState.selectedBoundPlatformId)) {
+          socialState.selectedBoundPlatformId = "";
+        }
+        if (!socialState.selectedBoundPlatformId && bound.length) {
+          socialState.selectedBoundPlatformId = String(bound[0].platformId || "");
+        }
+
         for (const p of bound) {
           const pid = String(p.platformId || "").trim();
           const active = pid && pid === socialState.selectedBoundPlatformId;
@@ -765,23 +1022,23 @@
             btn
           );
         }
-        const validIds = new Set(bound.map((p) => String(p.platformId || "")).filter(Boolean));
-        if (socialState.selectedBoundPlatformId && !validIds.has(socialState.selectedBoundPlatformId)) {
-          socialState.selectedBoundPlatformId = "";
-        }
         const selected = bound.find((p) => String(p.platformId || "") === socialState.selectedBoundPlatformId) || null;
         if (!selected) {
           socialRowsHost.appendChild(el("div", { class:"sub" }, "Click a platform tab to show its detail section."));
           socialRowsHost.style.setProperty("--social-site-color", "var(--accent)");
+          socialRowsHost.classList.remove("social-posting-row");
         } else {
           socialRowsHost.style.setProperty("--social-site-color", colorForPlatformId(selected.platformId));
-          socialRowsHost.appendChild(renderSocialEditor(selected));
+          socialRowsHost.classList.add("social-posting-row");
+          const socialContent = renderSocialEditor(selected);
+          socialContent.forEach((node) => socialRowsHost.appendChild(node));
         }
       }
     }
 
     socialBindSelect.addEventListener("change", () => {
       socialBindBtn.disabled = !socialBindSelect.value || socialState.binding;
+      socialBindBtnWrap.style.display = socialBindSelect.value ? "flex" : "none";
     });
 
     socialBindBtn.addEventListener("click", async () => {
@@ -864,10 +1121,27 @@
       )
     );
 
+    function getSeriesOptions(currentValue = ""){
+      const metaRows = Object.values(state.seriesMeta || {})
+        .filter((row) => row && row.name)
+        .sort((a, b) => {
+          const byOrder = Number(a.sortOrder || 0) - Number(b.sortOrder || 0);
+          if (byOrder !== 0) return byOrder;
+          return String(a.name).localeCompare(String(b.name));
+        })
+        .map((row) => String(row.name).trim())
+        .filter(Boolean);
+
+      // Keep local labels as fallback when no metadata exists yet.
+      const fallbackRows = Array.isArray(state.series) ? state.series : [];
+      const set = new Set([...metaRows, ...fallbackRows, ...(currentValue ? [currentValue] : [])]);
+      return Array.from(set).filter(Boolean);
+    }
+
     const detailsPane = el("div", { class:"edit-tabpane", "data-tab":"details" },
       field("Title", "title", a.title, (v)=>{ a.title=v; scheduleBackendSave(); }),
       field("Year", "year", a.year || "", (v)=>{ a.year=v; scheduleBackendSave(); }),
-      selectField("Series", "series", state.series, a.series || "", (v)=>{
+      selectField("Series", "series", getSeriesOptions(a.series || ""), a.series || "", (v)=>{
         a.series=v;
         if (v && !state.series.includes(v)) state.series.push(v);
         scheduleBackendSave();
@@ -881,7 +1155,10 @@
         { labelAction: descriptionGenerateBtn }
       ),
       el("hr", { class:"sep" }),
-      el("p", { class:"title" }, "Tags"),
+      el("div", { style:"display:flex; align-items:center; gap:10px;" },
+        el("p", { class:"title", style:"margin:0" }, "Tags"),
+        tagsGenerateBtn
+      ),
       tagsEditor(),
       el("hr", { class:"sep" }),
       el("div", { class:"pillrow" },
@@ -907,10 +1184,8 @@
     const socialPane = el("div", { class:"edit-tabpane", "data-tab":"social", hidden:"" },
       el("p", { class:"title" }, "Social posting"),
       socialSummary,
-      el("div", { class:"social-posting-fields", style:"margin-top:10px; grid-template-columns: 1fr auto;" },
-        buildSocialField("Available platforms", socialBindSelect),
-        el("div", { style:"display:flex; align-items:flex-end;" }, socialBindBtn)
-      ),
+      socialBindRow,
+      socialBoundLabel,
       socialBoundPills,
       socialRowsHost,
       el("div", { style:"margin-top:10px" },
@@ -1015,9 +1290,16 @@
         e.preventDefault();
         const t = input.value.trim().toLowerCase();
         if (!t) return;
+
+        const current = normalizeTagList(a.tags || []);
+        const cap = getTagCap();
+        if (!current.includes(t) && current.length >= cap) {
+          setStatusText(`Tag cap reached (${cap}). Remove a tag or raise the cap in Other Settings.`, 10000, "warn");
+          return;
+        }
         input.value = "";
 
-        a.tags = Array.from(new Set([...(a.tags||[]), t]));
+        a.tags = normalizeTagList([...(a.tags||[]), t]);
         upsertTag(state, t);
         scheduleBackendSave();
         renderTags();
@@ -1049,6 +1331,7 @@
         }
       }
 
+      refreshTagsEditorView = renderTags;
       renderTags();
       return wrap;
     }

@@ -1,4 +1,3 @@
-    import { applyBannerLogoBehavior } from "../../assets/js/header.js";
     import {
       loadStateAutoSync, saveState, el,
       setYearFooter, ensureBaseStyles,
@@ -7,7 +6,6 @@
 
     ensureBaseStyles();
     setYearFooter();
-    applyBannerLogoBehavior(document.querySelector("header.header"));
 
     const state = await loadStateAutoSync();
     state.settings ||= {};

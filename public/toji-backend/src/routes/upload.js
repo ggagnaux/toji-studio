@@ -4,7 +4,15 @@ import sharp from "sharp";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { db, nowIso, jsonArray, toJson, ORIGINALS_DIR, VARIANTS_DIR } from "../db.js";
+import {
+  db,
+  nowIso,
+  jsonArray,
+  toJson,
+  ORIGINALS_DIR,
+  VARIANTS_DIR,
+  getImageVariantSettings
+} from "../db.js";
 
 export const uploadRouter = Router();
 
@@ -102,6 +110,24 @@ async function writeVariant({ artworkId, kind, inputBuffer, maxW, quality=82 }) 
   return { servedPath, width: meta2.width, height: meta2.height, sizeBytes: stat.size, meta };
 }
 
+async function writeConfiguredVariants({ artworkId, inputBuffer }) {
+  const settings = getImageVariantSettings();
+  await writeVariant({
+    artworkId,
+    kind: "thumb",
+    inputBuffer,
+    maxW: settings.thumbMaxWidth,
+    quality: settings.thumbQuality
+  });
+  await writeVariant({
+    artworkId,
+    kind: "web",
+    inputBuffer,
+    maxW: settings.webMaxWidth,
+    quality: settings.webQuality
+  });
+}
+
 // Replace the original image for an existing artwork and regenerate variants
 uploadRouter.post("/admin/artworks/:id/replace-image", upload.single("file"), async (req, res) => {
   const artworkId = req.params.id;
@@ -132,8 +158,7 @@ uploadRouter.post("/admin/artworks/:id/replace-image", upload.single("file"), as
   });
 
   // Regenerate variants
-  await writeVariant({ artworkId, kind: "thumb", inputBuffer: f.buffer, maxW: 560, quality: 78 });
-  await writeVariant({ artworkId, kind: "web", inputBuffer: f.buffer, maxW: 1800, quality: 84 });
+  await writeConfiguredVariants({ artworkId, inputBuffer: f.buffer });
 
   const out = db.prepare(`
     SELECT a.*,
@@ -158,8 +183,7 @@ uploadRouter.post("/admin/artworks/:id/regenerate-variants", async (req, res) =>
 
   const buf = fs.readFileSync(cur.originalPath);
 
-  await writeVariant({ artworkId, kind: "thumb", inputBuffer: buf, maxW: 560, quality: 78 });
-  await writeVariant({ artworkId, kind: "web", inputBuffer: buf, maxW: 1800, quality: 84 });
+  await writeConfiguredVariants({ artworkId, inputBuffer: buf });
 
   const out = db.prepare(`
     SELECT a.*,
@@ -177,6 +201,7 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
   if (!files.length) return res.status(400).json({ error: "No files" });
 
   const created = [];
+  const skipped = [];
   const createdAt = nowIso();
   const batchTags = parseTags(req.body?.tags);
   const batchSeries = cleanSeries(req.body?.series);
@@ -185,8 +210,25 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
   const batchPublishedAt = batchStatus === "published" ? createdAt : null;
 
   for (const f of files) {
-    const artworkId = uid("a");
     const base = safeBase(f.originalname);
+
+    // Prevent duplicate uploads by original filename (case-insensitive).
+    const existing = db.prepare(`
+      SELECT id
+      FROM artworks
+      WHERE lower(originalPath) LIKE '%' || '__' || lower(@base)
+      LIMIT 1
+    `).get({ base });
+    if (existing?.id) {
+      skipped.push({
+        filename: base,
+        reason: "duplicate_filename",
+        existingId: String(existing.id)
+      });
+      continue;
+    }
+
+    const artworkId = uid("a");
     const origName = `${artworkId}__${base}`;
     const origPath = path.join(originalsDir, origName);
 
@@ -221,8 +263,7 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
     });
 
     // Create variants (only these are served)
-    await writeVariant({ artworkId, kind: "thumb", inputBuffer: f.buffer, maxW: 560, quality: 78 });
-    await writeVariant({ artworkId, kind: "web", inputBuffer: f.buffer, maxW: 1800, quality: 84 });
+    await writeConfiguredVariants({ artworkId, inputBuffer: f.buffer });
 
     const out = db.prepare(`
       SELECT a.*,
@@ -234,5 +275,5 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
     created.push({ ...out, featured: !!out.featured, tags: jsonArray(out.tags) });
   }
 
-  res.json({ created });
+  res.json({ created, skipped });
 });

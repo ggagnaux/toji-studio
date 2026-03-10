@@ -1,17 +1,15 @@
-  import { applyBannerLogoBehavior } from "../../assets/js/header.js";
-  import {
-    loadStateAutoSync, saveState, el, statusChip,
-    setYearFooter, ensureBaseStyles,
-    sortArtworksManualFirst, ensureSeriesMeta,
-    showToast, confirmToast,
-    getAdminToken,
+import {
+  loadStateAutoSync, saveState, el, statusChip,
+  setYearFooter, ensureBaseStyles,
+  sortArtworksManualFirst, ensureSeriesMeta,
+  showToast, confirmToast,
+  getAdminToken,
     patchArtworkToBackend,
     deleteArtworkFromBackend
   } from "../admin.js";
 
   ensureBaseStyles();
   setYearFooter();
-  applyBannerLogoBehavior(document.querySelector("header.header"));
 
   // Auto-sync on load (token permitting)
   const state = await loadStateAutoSync();
@@ -26,7 +24,7 @@
   let viewMode = localStorage.getItem(DASHBOARD_VIEW_KEY) || "rows";
   let rowSortBy = localStorage.getItem(ROW_SORT_BY_KEY) || "none";
   let rowSortDir = localStorage.getItem(ROW_SORT_DIR_KEY) || "asc";
-  if (!["none", "status", "tags", "series", "year"].includes(rowSortBy)) rowSortBy = "none";
+  if (!["none", "title", "status", "tags", "series", "year"].includes(rowSortBy)) rowSortBy = "none";
   if (!["asc", "desc"].includes(rowSortDir)) rowSortDir = "asc";
 
   const chips = Array.from(document.querySelectorAll("[data-tab]"));
@@ -36,9 +34,7 @@
   const thumbGrid = document.getElementById("thumbGrid");
   const viewModeButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
   const thumbSelectAllToggle = document.getElementById("thumbSelectAllToggle");
-  const rowSortControls = document.getElementById("rowSortControls");
-  const rowSortBySelect = document.getElementById("rowSortBy");
-  const rowSortDirSelect = document.getElementById("rowSortDir");
+  const sortHeaderButtons = Array.from(document.querySelectorAll("[data-sort-header]"));
   // Bulk selection
   const selected = new Set();
 
@@ -74,21 +70,6 @@
     render();
   });
 
-  if (rowSortBySelect) rowSortBySelect.value = rowSortBy;
-  if (rowSortDirSelect) rowSortDirSelect.value = rowSortDir;
-
-  rowSortBySelect?.addEventListener("change", () => {
-    rowSortBy = rowSortBySelect.value || "none";
-    localStorage.setItem(ROW_SORT_BY_KEY, rowSortBy);
-    render();
-  });
-
-  rowSortDirSelect?.addEventListener("change", () => {
-    rowSortDir = rowSortDirSelect.value === "desc" ? "desc" : "asc";
-    localStorage.setItem(ROW_SORT_DIR_KEY, rowSortDir);
-    render();
-  });
-
   let dragId = null;
 
   const counts = () => {
@@ -112,6 +93,7 @@
   }
 
   function rowSortValue(a, key){
+    if (key === "title") return String(a.title || "").toLowerCase();
     if (key === "status") {
       const order = { draft: 0, published: 1, hidden: 2 };
       return order[String(a.status || "").toLowerCase()] ?? 99;
@@ -163,6 +145,18 @@
     thumbSelectAllToggle.disabled = visibleCount === 0;
   }
 
+  function updateRowSortHeaders(){
+    sortHeaderButtons.forEach((btn) => {
+      const key = btn.getAttribute("data-sort-header") || "";
+      const active = key === rowSortBy && rowSortBy !== "none";
+      const th = btn.closest("th");
+      const icon = btn.querySelector(".admin-sort-icon");
+      btn.classList.toggle("is-active", active);
+      if (icon) icon.textContent = active ? (rowSortDir === "asc" ? "↑" : "↓") : "";
+      if (th) th.setAttribute("aria-sort", active ? (rowSortDir === "asc" ? "ascending" : "descending") : "none");
+    });
+  }
+
   function updateBulkUI(){
     const visible = visibleItems();
     const visibleSelected = visible.filter(a => selected.has(a.id)).length;
@@ -173,9 +167,15 @@
     if (selectAll) {
       const allVisibleSelected = visible.length > 0 && visibleSelected === visible.length;
       const noneVisibleSelected = visibleSelected === 0;
-
-      selectAll.checked = allVisibleSelected;
-      selectAll.indeterminate = !allVisibleSelected && !noneVisibleSelected;
+      const isIndeterminate = !allVisibleSelected && !noneVisibleSelected;
+      selectAll.classList.toggle("is-selected", allVisibleSelected);
+      selectAll.classList.toggle("is-indeterminate", isIndeterminate);
+      selectAll.setAttribute("aria-pressed", allVisibleSelected ? "true" : "false");
+      selectAll.setAttribute(
+        "aria-label",
+        allVisibleSelected ? "Clear all visible selections" : "Select all visible"
+      );
+      selectAll.textContent = allVisibleSelected ? "\u2713" : (isIndeterminate ? "\u2212" : "\u25cb");
     }
 
     if (thumbGrid){
@@ -190,13 +190,15 @@
       row.classList.toggle("selected-row", !!id && selected.has(id));
     });
 
+    updateRowSortHeaders();
     refreshThumbSelectAllToggle();
   }
 
-  selectAll?.addEventListener("change", () => {
+  selectAll?.addEventListener("click", () => {
     const visible = visibleItems();
-    if (selectAll.checked) visible.forEach(a => selected.add(a.id));
-    else visible.forEach(a => selected.delete(a.id));
+    const allVisibleSelected = visible.length > 0 && visible.every(a => selected.has(a.id));
+    if (allVisibleSelected) visible.forEach(a => selected.delete(a.id));
+    else visible.forEach(a => selected.add(a.id));
     updateBulkUI();
     render();
   });
@@ -772,16 +774,18 @@
         },
       },
         el("td", {},
-          el("input", {
-            type: "checkbox",
-            checked: selected.has(a.id) ? "" : null,
-            "aria-label": `Select ${a.title || a.id}`,
-            onchange: (e) => {
-              if (e.target.checked) selected.add(a.id);
-              else selected.delete(a.id);
-              updateBulkUI();
+          el("button", {
+            type: "button",
+            class: `admin-row-select${selected.has(a.id) ? " is-selected" : ""}`,
+            "aria-label": `${selected.has(a.id) ? "Deselect" : "Select"} ${a.title || a.id}`,
+            "aria-pressed": selected.has(a.id) ? "true" : "false",
+            onclick: (e) => {
+              e.stopPropagation();
+              if (selected.has(a.id)) selected.delete(a.id);
+              else selected.add(a.id);
+              render();
             }
-          })
+          }, selected.has(a.id) ? "\u2713" : "\u25cb")
         ),
         el("td", {},
           el("div", { style:"display:flex; gap:10px; align-items:center" },
@@ -881,9 +885,9 @@
     if (rowTable) rowTable.style.display = thumbs ? "none" : "";
     if (thumbGrid) thumbGrid.style.display = thumbs ? "grid" : "none";
     if (thumbSelectAllToggle) thumbSelectAllToggle.style.display = thumbs ? "inline-flex" : "none";
-    if (rowSortControls) rowSortControls.style.display = thumbs ? "none" : "inline-flex";
-    if (rowSortBySelect) rowSortBySelect.disabled = thumbs || manualOrderMode;
-    if (rowSortDirSelect) rowSortDirSelect.disabled = thumbs || manualOrderMode;
+    sortHeaderButtons.forEach((btn) => {
+      btn.disabled = thumbs || manualOrderMode;
+    });
 
     viewModeButtons.forEach((btn) => {
       const active = btn.getAttribute("data-view-mode") === viewMode;
@@ -900,6 +904,21 @@
       viewMode = next;
       localStorage.setItem(DASHBOARD_VIEW_KEY, viewMode);
       applyViewModeUI();
+    });
+  });
+
+  sortHeaderButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-sort-header") || "none";
+      if (viewMode !== "rows" || manualOrderMode || key === "none") return;
+      if (rowSortBy === key) rowSortDir = rowSortDir === "asc" ? "desc" : "asc";
+      else {
+        rowSortBy = key;
+        rowSortDir = key === "year" ? "desc" : "asc";
+      }
+      localStorage.setItem(ROW_SORT_BY_KEY, rowSortBy);
+      localStorage.setItem(ROW_SORT_DIR_KEY, rowSortDir);
+      render();
     });
   });
 

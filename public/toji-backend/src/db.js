@@ -56,6 +56,12 @@ CREATE TABLE IF NOT EXISTS variants (
   UNIQUE(artworkId, kind)
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updatedAt TEXT
+);
+
 
 CREATE TABLE IF NOT EXISTS series (
   slug TEXT PRIMARY KEY,               -- stable key
@@ -137,4 +143,64 @@ export function jsonArray(s) {
 }
 export function toJson(v) {
   return JSON.stringify(v ?? []);
+}
+
+export const IMAGE_VARIANT_SETTINGS_KEY = "imageVariantSettings";
+export const DEFAULT_IMAGE_VARIANT_SETTINGS = Object.freeze({
+  thumbMaxWidth: 560,
+  thumbQuality: 78,
+  webMaxWidth: 1800,
+  webQuality: 84
+});
+
+function clampInt(value, fallback, min, max) {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+export function normalizeImageVariantSettings(raw = {}) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  return {
+    thumbMaxWidth: clampInt(input.thumbMaxWidth, DEFAULT_IMAGE_VARIANT_SETTINGS.thumbMaxWidth, 64, 6000),
+    thumbQuality: clampInt(input.thumbQuality, DEFAULT_IMAGE_VARIANT_SETTINGS.thumbQuality, 1, 100),
+    webMaxWidth: clampInt(input.webMaxWidth, DEFAULT_IMAGE_VARIANT_SETTINGS.webMaxWidth, 64, 12000),
+    webQuality: clampInt(input.webQuality, DEFAULT_IMAGE_VARIANT_SETTINGS.webQuality, 1, 100)
+  };
+}
+
+export function getSettingJson(key, fallback) {
+  const row = db.prepare(`SELECT value FROM settings WHERE key=?`).get(String(key));
+  if (!row?.value) return fallback;
+  try {
+    return JSON.parse(row.value);
+  } catch {
+    return fallback;
+  }
+}
+
+export function setSettingJson(key, value) {
+  db.prepare(`
+    INSERT INTO settings (key, value, updatedAt)
+    VALUES (@key, @value, @updatedAt)
+    ON CONFLICT(key) DO UPDATE SET
+      value=excluded.value,
+      updatedAt=excluded.updatedAt
+  `).run({
+    key: String(key),
+    value: JSON.stringify(value ?? null),
+    updatedAt: new Date().toISOString()
+  });
+}
+
+export function getImageVariantSettings() {
+  return normalizeImageVariantSettings(
+    getSettingJson(IMAGE_VARIANT_SETTINGS_KEY, DEFAULT_IMAGE_VARIANT_SETTINGS)
+  );
+}
+
+export function setImageVariantSettings(value) {
+  const normalized = normalizeImageVariantSettings(value);
+  setSettingJson(IMAGE_VARIANT_SETTINGS_KEY, normalized);
+  return normalized;
 }

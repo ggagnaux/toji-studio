@@ -51,3 +51,69 @@
     .setting-toggle input:checked + .slider::after{
       transform: translateX(20px);
     }
+    .settings-grid{
+      display:grid;
+      gap:10px;
+      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .other-settings-tabbar{
+      display:flex;
+      gap:0;
+      flex-wrap:wrap;
+      margin-top:8px;
+      margin-bottom:0;
+      border-bottom:1px solid var(--line);
+    }
+    .other-settings-tabbtn{
+      appearance:none;
+      border:1px solid transparent;
+      border-bottom:1px solid color-mix(in srgb, var(--other-settings-tab-color, var(--accent)) 38%, var(--line));
+      background:transparent;
+      color:var(--muted);
+      border-radius:10px 10px 0 0;
+      padding:8px 12px;
+      font:inherit;
+      font-size:13px;
+      cursor:pointer;
+      margin-bottom:-1px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      transition:border-color .18s ease, background .18s ease, color .18s ease;
+    }
+    .other-settings-tabbtn:hover{
+      color:var(--text);
+    }
+    .other-settings-tabbtn.is-active{
+      color:var(--text);
+      border-color:color-mix(in srgb, var(--other-settings-tab-color, var(--accent)) 88%, var(--line));
+      border-bottom-color:transparent;
+      background:color-mix(in srgb, var(--other-settings-tab-color, var(--accent)) 16%, var(--panel));
+    }
+    .other-settings-tabcontent{
+      display:grid;
+      gap:0;
+      margin-top:0;
+      border:1px solid color-mix(in srgb, var(--other-settings-active-color, var(--accent)) 80%, var(--line));
+      border-top-color:color-mix(in srgb, var(--other-settings-active-color, var(--accent)) 80%, var(--line));
+      border-radius:0 0 10px 10px;
+      background:color-mix(in srgb, var(--other-settings-active-color, var(--accent)) 8%, var(--panel));
+      padding:16px;
+    }
+    .other-settings-tabpane[hidden]{
+      display:none !important;
+    }
+    .other-settings-summary{
+      display:grid;
+      gap:10px;
+      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+      margin-top:12px;
+    }
+    .other-settings-summary-item{
+      display:grid;
+      gap:6px;
+      padding:12px 14px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:color-mix(in srgb, var(--surface) 80%, transparent);
+    }

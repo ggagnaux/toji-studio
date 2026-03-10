@@ -1,9 +1,7 @@
-    import { applyBannerLogoBehavior } from "../../assets/js/header.js";
     import { ensureBaseStyles, setYearFooter, showToast } from "../admin.js";
 
     ensureBaseStyles();
     setYearFooter();
-    applyBannerLogoBehavior(document.querySelector("header.header"));
 
     const HOME_HERO_VISIBLE_KEY = "toji_home_hero_visible_v1";
     const HOME_LATEST_VISIBLE_KEY = "toji_home_latest_visible_v1";

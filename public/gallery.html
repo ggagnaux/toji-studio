@@ -53,7 +53,10 @@
       </div>
 
       <section class="filters" aria-label="Gallery filters">
+        <span class="sub" style="width:100%">Tag Filter:</span>
+        <div id="tagPrefilterChips" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; width:100%; margin-bottom:2px"></div>
         <div id="tagChips" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center"></div>
+        <div id="tagFilterSummary" class="sub" style="width:100%; margin-top:4px"></div>
 
         <div class="search" style="margin-left:auto">
           <span>Search</span>
@@ -83,7 +86,7 @@
       brandLogoSrc: "assets/img/logo.png"
     });
     renderPublicFooter({
-      rightHtml: `<a href="index.html">Home</a> â€¢ <a href="gallery.html">Gallery</a> â€¢ <a href="series.html">Series</a> â€¢ <a href="contact.html">Contact</a> â€¢ <a href="admin/index.html">Studio</a>`
+      rightHtml: `<a href="index.html">Home</a> &bull; <a href="gallery.html">Gallery</a> &bull; <a href="series.html">Series</a> &bull; <a href="contact.html">Contact</a> &bull; <a href="admin/index.html">Studio</a>`
     });
 
     // ---- Gallery data source: Admin localStorage first, fallback to sample JSON ----
@@ -122,7 +125,9 @@
     const seriesCount = document.getElementById("seriesCount");
 
     const grid = document.getElementById("galleryGrid");
+    const tagPrefilterHost = document.getElementById("tagPrefilterChips");
     const chipHost = document.getElementById("tagChips");
+    const tagFilterSummary = document.getElementById("tagFilterSummary");
     const qInput = document.getElementById("q");
     const qClear = document.getElementById("qClear");
     const allWorksWrap = document.getElementById("allWorksWrap");
@@ -146,7 +151,7 @@
         .filter(m => m && m.slug)
         .map(m => [String(m.slug).trim().toLowerCase(), m])
     );
-    let activeTag = "all";
+    const selectedTags = new Set();
     let q = "";
 
     function refreshSearchClear(){
@@ -166,17 +171,69 @@
     syncJumpPillOffset();
     window.addEventListener("resize", syncJumpPillOffset);
 
+    const JUMP_SECTION_ORDER = ["featuredWrap", "seriesWrap", "allWorksWrap"];
+
+    function isSectionVisible(node) {
+      if (!node) return false;
+      return window.getComputedStyle(node).display !== "none";
+    }
+
+    function resolveJumpTarget(targetId) {
+      const requested = targetId ? document.getElementById(targetId) : null;
+      if (isSectionVisible(requested)) return requested;
+
+      // If the requested panel is hidden (for example filtered out), move to the next visible panel.
+      const startIndex = Math.max(0, JUMP_SECTION_ORDER.indexOf(targetId));
+      const ordered = [
+        ...JUMP_SECTION_ORDER.slice(startIndex + 1),
+        ...JUMP_SECTION_ORDER.slice(0, startIndex + 1)
+      ];
+      for (const id of ordered) {
+        const node = document.getElementById(id);
+        if (isSectionVisible(node)) return node;
+      }
+      return requested;
+    }
+
+    function getJumpScrollTop(target) {
+      const header = document.getElementById("siteHeader");
+      const headerHeight = Math.ceil(header?.getBoundingClientRect().height || 0);
+      const jumpRowHeight = Math.ceil(jumpWrap?.getBoundingClientRect().height || 0);
+      const sectionGap = 10;
+      return Math.max(
+        0,
+        window.scrollY + target.getBoundingClientRect().top - (headerHeight + jumpRowHeight + sectionGap)
+      );
+    }
+
+    function scrollToSection(target) {
+      if (!target) return;
+      const initialTop = getJumpScrollTop(target);
+      window.scrollTo({ top: initialTop, behavior: "smooth" });
+
+      // Mobile browsers can shift viewport chrome during smooth scroll; correct final alignment.
+      window.setTimeout(() => {
+        const correctedTop = getJumpScrollTop(target);
+        if (Math.abs(correctedTop - window.scrollY) > 2) {
+          window.scrollTo({ top: correctedTop, behavior: "auto" });
+        }
+      }, 420);
+    }
+
+    function scrollToTopStable() {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Correct for mobile viewport chrome movement after smooth scrolling.
+      window.setTimeout(() => {
+        if (window.scrollY !== 0) window.scrollTo({ top: 0, behavior: "auto" });
+      }, 420);
+    }
+
     sectionJumpButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
         const targetId = btn.getAttribute("data-scroll-target");
-        const target = targetId ? document.getElementById(targetId) : null;
+        const target = resolveJumpTarget(targetId);
         if (!target) return;
-        const header = document.getElementById("siteHeader");
-        const headerHeight = Math.ceil(header?.getBoundingClientRect().height || 0);
-        const jumpRowHeight = Math.ceil(jumpWrap?.getBoundingClientRect().height || 0);
-        const sectionGap = 10;
-        const top = window.scrollY + target.getBoundingClientRect().top - (headerHeight + jumpRowHeight + sectionGap);
-        window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+        scrollToSection(target);
       });
     });
 
@@ -186,10 +243,10 @@
       jumpBackToTopBtn?.classList.toggle("is-visible", show);
     }
     jumpBackToTopBtn?.addEventListener("click", () => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollToTopStable();
     });
     backToTopBtn?.addEventListener("click", () => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollToTopStable();
     });
     window.addEventListener("scroll", syncBackToTopVisibility, { passive: true });
     syncBackToTopVisibility();
@@ -207,26 +264,130 @@
 
     // ---- Render chips ----
     const tags = uniqTags(allItems);
+    const NUMERIC_PREFILTER = "0-9";
+    const alphaLetters = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
+    const prefilterTokens = [...alphaLetters, NUMERIC_PREFILTER];
+    const selectedLetters = new Set();
+
+    function getTagPrefilterKey(tag) {
+      const first = String(tag || "").trim().charAt(0).toUpperCase();
+      if (/^[A-Z]$/.test(first)) return first;
+      if (/^[0-9]$/.test(first)) return NUMERIC_PREFILTER;
+      return null;
+    }
+
+    function getVisibleTagsByLetter() {
+      const allRealTags = tags.filter((t) => t !== "all");
+      if (!selectedLetters.size) return allRealTags;
+      return allRealTags.filter((t) => {
+        const key = getTagPrefilterKey(t);
+        return key ? selectedLetters.has(key) : false;
+      });
+    }
+
+    function renderTagPrefilters() {
+      if (!tagPrefilterHost) return;
+      tagPrefilterHost.innerHTML = "";
+      const usedLetters = new Set(
+        tags
+          .filter((t) => t !== "all")
+          .map((t) => getTagPrefilterKey(t))
+          .filter(Boolean)
+      );
+
+      for (const letter of prefilterTokens) {
+        const active = selectedLetters.has(letter);
+        const enabled = usedLetters.has(letter);
+        const btn = el(
+          "button",
+          {
+            type: "button",
+            class: `chip${active ? " active" : ""}`,
+            "aria-pressed": active ? "true" : "false",
+            disabled: enabled ? null : "",
+            style: `padding:6px 9px; min-width:32px; justify-content:center; ${enabled ? "" : "opacity:.45; cursor:not-allowed;"}`
+          },
+          letter
+        );
+        btn.addEventListener("click", () => {
+          if (!enabled) return;
+          if (selectedLetters.has(letter)) selectedLetters.delete(letter);
+          else selectedLetters.add(letter);
+          renderTagPrefilters();
+          renderChips();
+          renderAll();
+        });
+        tagPrefilterHost.appendChild(btn);
+      }
+    }
+
+    function isChipActive(tag) {
+      if (tag === "all") return selectedTags.size === 0;
+      return selectedTags.has(tag);
+    }
+
+    function toggleTagFilter(tag) {
+      if (tag === "all") {
+        selectedTags.clear();
+        return;
+      }
+      if (selectedTags.has(tag)) selectedTags.delete(tag);
+      else selectedTags.add(tag);
+    }
 
     function renderChips() {
       chipHost.innerHTML = "";
-      tags.forEach(t => {
-        const chip = el("div", { class: "chip" + (t === activeTag ? " active" : ""), role: "button", tabindex: "0" }, t);
+      const visibleTags = getVisibleTagsByLetter();
+      const visibleTagSet = new Set(visibleTags);
+      for (const tag of Array.from(selectedTags)) {
+        if (!visibleTagSet.has(tag)) selectedTags.delete(tag);
+      }
+
+      ["all", ...visibleTags].forEach(t => {
+        const chip = el("div", { class: "chip" + (isChipActive(t) ? " active" : ""), role: "button", tabindex: "0" }, t);
         chip.addEventListener("click", () => {
-          activeTag = t;
+          toggleTagFilter(t);
           renderChips();
           renderAll();
         });
         chip.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            activeTag = t;
+            toggleTagFilter(t);
             renderChips();
             renderAll();
           }
         });
         chipHost.appendChild(chip);
+        if (t === "all" && visibleTags.length > 0) {
+          chipHost.appendChild(el("span", { class: "tag-chip-separator", "aria-hidden": "true" }));
+        }
       });
+      renderTagFilterSummary();
+    }
+
+    function renderTagFilterSummary() {
+      if (!tagFilterSummary) return;
+
+      const selectedLetterList = prefilterTokens.filter((token) => selectedLetters.has(token));
+      const selectedTagList = Array.from(selectedTags);
+
+      const lettersText = selectedLetterList.join(" or ");
+      const tagsText = selectedTagList.join(" AND ");
+
+      if (!selectedLetterList.length && !selectedTagList.length) {
+        tagFilterSummary.textContent = "No filtering";
+        return;
+      }
+      if (selectedLetterList.length && !selectedTagList.length) {
+        tagFilterSummary.textContent = `Filtering tags by ${lettersText}`;
+        return;
+      }
+      if (selectedLetterList.length && selectedTagList.length) {
+        tagFilterSummary.textContent = `Filtering tags by ${lettersText} AND (${tagsText})`;
+        return;
+      }
+      tagFilterSummary.textContent = `Filtering by (${tagsText})`;
     }
 
     // ---- Filtering ----
@@ -237,7 +398,8 @@
     }
 
     function matchesAllWorks(a) {
-      const tagOk = activeTag === "all" || (a.tags || []).map(x => String(x).toLowerCase()).includes(activeTag);
+      const artworkTags = new Set((a.tags || []).map(x => String(x).toLowerCase()));
+      const tagOk = selectedTags.size === 0 || Array.from(selectedTags).every(tag => artworkTags.has(tag));
       const text = `${a.title || ""} ${(a.tags || []).join(" ")} ${a.series || ""} ${a.year || ""}`.toLowerCase();
       const qOk = !q || text.includes(q);
       return tagOk && qOk;
@@ -423,6 +585,7 @@
     });
 
 
+    renderTagPrefilters();
     renderChips();
     renderFeatured();
     renderSeries();

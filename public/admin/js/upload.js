@@ -1,4 +1,3 @@
-    import { applyBannerLogoBehavior } from "../../assets/js/header.js";
     import {
       loadState, saveState, el, setYearFooter, ensureBaseStyles,
       upsertTag,
@@ -9,7 +8,6 @@
 
     ensureBaseStyles();
     setYearFooter();
-    applyBannerLogoBehavior(document.querySelector("header.header"));
 
     const state = await loadState();
     state.artworks ||= [];
@@ -64,6 +62,15 @@
       // Force reflow so the animation restarts on repeated clicks.
       void uploadOriginalsPanel.offsetWidth;
       uploadOriginalsPanel.classList.add("upload-section-flash");
+    }
+    function ensureUploadOriginalsPanelInView(){
+      if (!uploadOriginalsPanel) return;
+      const rect = uploadOriginalsPanel.getBoundingClientRect();
+      const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+      const isFullyVisible = rect.top >= 0 && rect.bottom <= vh;
+      if (!isFullyVisible) {
+        uploadOriginalsPanel.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
+      }
     }
     function setUiLocked(on, title = "Uploading and processing...", sub = "Please wait. Interaction is temporarily disabled."){
       uiLocked = !!on;
@@ -384,6 +391,7 @@
       const arr = Array.from(files.files || []);
       if (!arr.length) {
         setStatus("Pick at least one image.");
+        ensureUploadOriginalsPanelInView();
         flashUploadOriginalsPanel();
         return;
       }
@@ -412,9 +420,15 @@
         setUploadProgress(100);
 
         const created = result?.created || [];
+        const skipped = Array.isArray(result?.skipped) ? result.skipped : [];
+        const skippedDupes = skipped.filter((x) => String(x?.reason || "") === "duplicate_filename");
 
         if (!created.length){
-          setStatus("Upload succeeded, but nothing returned.");
+          if (skippedDupes.length) {
+            setStatus(`Skipped ${skippedDupes.length} duplicate file name(s). No new uploads were created.`, "warn");
+          } else {
+            setStatus("Upload succeeded, but nothing returned.");
+          }
           return;
         }
 
@@ -459,6 +473,10 @@
         // Safety pass: if anything is still missing after upload write-through, patch it.
         const needsPatchPass = uploadTags.length || uploadSeries || uploadYear;
         if (needsPatchPass) await applyBatchToIds(createdIds);
+
+        if (skippedDupes.length) {
+          setStatus(`Uploaded ${createdIds.length} image(s). Skipped ${skippedDupes.length} duplicate file name(s).`, "warn");
+        }
 
       }catch(err){
         setStatus(`Upload failed: ${err?.message || err}`);

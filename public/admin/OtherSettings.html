@@ -8,36 +8,7 @@
   <link rel="stylesheet" href="css/OtherSettings.css" />
 </head>
 <body>
-  <header class="header">
-    <div class="container nav">
-      <a class="brand" href="../index.html">
-        <span class="brand-logo-combo" aria-hidden="true">
-          <span class="brand-logo-icon-stack">
-            <img class="brand-logo-icon-image" src="../assets/img/TojiStudios-Logo.png" alt="" />
-          </span>
-          <span class="brand-logo-wordmark-stack">
-            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark" src="../assets/img/TojiStudios-Light-TextOnly.png" alt="" />
-            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light" src="../assets/img/TojiStudios-Dark-TextOnly.png" alt="" />
-          </span>
-        </span>
-        <span class="sr-only">Toji Studios</span>
-      </a>
-
-      <nav class="navlinks" aria-label="Primary">
-        <a href="../index.html">Public</a>
-        <a class="active" href="index.html">Studio</a>
-      </nav>
-
-      <div class="theme-controls">
-        <div class="segmented" role="group" aria-label="Theme mode">
-          <button type="button" data-theme-mode="system">System</button>
-          <button type="button" data-theme-mode="light">Light</button>
-          <button type="button" data-theme-mode="dark">Dark</button>
-        </div>
-        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
-      </div>
-    </div>
-  </header>
+  <header id="siteHeader"></header>
 
   <main class="container">
     <section class="hero" style="padding-bottom:10px">
@@ -60,78 +31,134 @@
       <section>
         <article class="card">
           <div class="meta">
-            <p class="title" style="margin:0">Splash Screen Animation</p>
-            <p class="sub" style="margin-top:8px">Controls the background animation on the splash screen.</p>
-
-            <div class="field" style="margin-top:12px">
-              <div class="sub">Active animation</div>
-              <select id="splashMode">
-                <option value="random">Randomize each visit</option>
-                <option value="nodes">Nodes and edges (existing)</option>
-                <option value="bezier">Bezier curves (dense)</option>
-                <option value="flock">Flocking triangles (mouse follow)</option>
-                <option value="circles">Outlined circles grid (fill/unfill)</option>
-                <option value="matrix">Matrix digital rain</option>
-                <option value="life">Conway's Game of Life</option>
-                <option value="code">Code writer (neon terminal)</option>
-                <option value="plot">Random x/y function plot</option>
-                <option value="bounce">Bouncing ball + logo deflect</option>
-                <option value="logo3d">Floating logo (3D rotate)</option>
-                <option value="turningcircles">Turning circles + fade trails</option>
-                <option value="asteroids">Asteroids simulation (auto-play)</option>
-                <option value="tempest">Tempest simulation (auto-play)</option>
-                <option value="pi">Pi digits screen fill</option>
-              </select>
+            <div class="other-settings-tabbar" role="tablist" aria-label="Other settings sections">
+              <button class="other-settings-tabbtn is-active" id="otherTabSplash" type="button" role="tab" aria-selected="true" aria-controls="otherPaneSplash" data-settings-tab="splash">Splash</button>
+              <button class="other-settings-tabbtn" id="otherTabBanner" type="button" role="tab" aria-selected="false" aria-controls="otherPaneBanner" data-settings-tab="banner">Banner Logo</button>
+              <button class="other-settings-tabbtn" id="otherTabAi" type="button" role="tab" aria-selected="false" aria-controls="otherPaneAi" data-settings-tab="ai">AI Tags</button>
+              <button class="other-settings-tabbtn" id="otherTabVariants" type="button" role="tab" aria-selected="false" aria-controls="otherPaneVariants" data-settings-tab="variants">Image Variants</button>
             </div>
 
-            <div id="splashRandomOptions" style="display:none; margin-top:12px; border:1px solid var(--line); border-radius:12px; padding:10px;">
-              <label class="setting-toggle" style="cursor:pointer;">
-                <span class="switch">
-                  <input id="splashRandomCycleEnabled" type="checkbox" />
-                  <span class="slider" aria-hidden="true"></span>
-                </span>
-                <span class="sub">Change animation automatically while splash is open</span>
-              </label>
-              <div class="field" style="margin-top:10px">
-                <div class="sub">Change interval (seconds)</div>
-                <input id="splashRandomCycleSeconds" type="number" min="1" step="1" value="12" />
+            <div class="other-settings-tabcontent">
+              <section class="other-settings-tabpane" id="otherPaneSplash" role="tabpanel" aria-labelledby="otherTabSplash" data-settings-pane="splash">
+                <p class="title" style="margin:0">Splash Screen Animation</p>
+                <p class="sub" style="margin-top:8px">Controls the background animation on the splash screen.</p>
+
+                <div class="field" style="margin-top:12px">
+                  <div class="sub">Active animation</div>
+                  <select id="splashMode">
+                    <option value="random">Randomize each visit</option>
+                    <option value="nodes">Nodes and edges (existing)</option>
+                    <option value="bezier">Bezier curves (dense)</option>
+                    <option value="flock">Flocking triangles (mouse follow)</option>
+                    <option value="circles">Outlined circles grid (fill/unfill)</option>
+                    <option value="matrix">Matrix digital rain</option>
+                    <option value="life">Conway's Game of Life</option>
+                    <option value="code">Code writer (neon terminal)</option>
+                    <option value="plot">Random x/y function plot</option>
+                    <option value="bounce">Bouncing ball + logo deflect</option>
+                    <option value="logo3d">Floating logo (3D rotate)</option>
+                    <option value="turningcircles">Turning circles + fade trails</option>
+                    <option value="asteroids">Asteroids simulation (auto-play)</option>
+                    <option value="tempest">Tempest simulation (auto-play)</option>
+                    <option value="pi">Pi digits screen fill</option>
+                  </select>
+                </div>
+
+                <div id="splashRandomOptions" style="display:none; margin-top:12px; border:1px solid var(--line); border-radius:12px; padding:10px;">
+                  <label class="setting-toggle" style="cursor:pointer;">
+                    <span class="switch">
+                      <input id="splashRandomCycleEnabled" type="checkbox" />
+                      <span class="slider" aria-hidden="true"></span>
+                    </span>
+                    <span class="sub">Change animation automatically while splash is open</span>
+                  </label>
+                  <div class="field" style="margin-top:10px">
+                    <div class="sub">Change interval (seconds)</div>
+                    <input id="splashRandomCycleSeconds" type="number" min="1" step="1" value="12" />
+                  </div>
+                </div>
+              </section>
+
+              <section class="other-settings-tabpane" id="otherPaneBanner" role="tabpanel" aria-labelledby="otherTabBanner" data-settings-pane="banner" hidden>
+                <p class="title" style="margin:0">Banner Logo</p>
+                <p class="sub" style="margin-top:8px">Optionally replace the header logo image with an animated canvas.</p>
+                <label class="setting-toggle" style="margin-top:10px; cursor:pointer;">
+                  <span class="switch">
+                    <input id="bannerBezierLogoEnabled" type="checkbox" />
+                    <span class="slider" aria-hidden="true"></span>
+                  </span>
+                  <span class="sub">Use animation for header and splash screen logo</span>
+                </label>
+                <div class="field" style="margin-top:10px">
+                  <div class="sub">Animation style</div>
+                  <select id="bannerLogoAnimationStyle">
+                    <option value="circles">White circles</option>
+                    <option value="plot">x/y function plot (no formula)</option>
+                  </select>
+                </div>
+              </section>
+
+              <section class="other-settings-tabpane" id="otherPaneAi" role="tabpanel" aria-labelledby="otherTabAi" data-settings-pane="ai" hidden>
+                <p class="title" style="margin:0">AI Tag Generation</p>
+                <p class="sub" style="margin-top:8px">Limit how many tags can be stored per artwork.</p>
+                <div class="field" style="margin-top:10px">
+                  <div class="sub">Tag cap per artwork</div>
+                  <input id="tagCap" type="number" min="1" max="120" step="1" value="20" />
+                </div>
+              </section>
+
+              <section class="other-settings-tabpane" id="otherPaneVariants" role="tabpanel" aria-labelledby="otherTabVariants" data-settings-pane="variants" hidden>
+                <p class="title" style="margin:0">Image Variant Settings</p>
+                <p class="sub" style="margin-top:8px">Controls the sizes and JPEG quality used when upload processing creates `thumb` and `web` variants.</p>
+                <div class="settings-grid" style="margin-top:10px">
+                  <div class="field">
+                    <div class="sub">Thumb max width (px)</div>
+                    <input id="thumbMaxWidth" type="number" min="64" max="6000" step="1" value="560" />
+                  </div>
+                  <div class="field">
+                    <div class="sub">Thumb JPEG quality</div>
+                    <input id="thumbQuality" type="number" min="1" max="100" step="1" value="78" />
+                  </div>
+                  <div class="field">
+                    <div class="sub">Web max width (px)</div>
+                    <input id="webMaxWidth" type="number" min="64" max="12000" step="1" value="1800" />
+                  </div>
+                  <div class="field">
+                    <div class="sub">Web JPEG quality</div>
+                    <input id="webQuality" type="number" min="1" max="100" step="1" value="84" />
+                  </div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px">
+                  <button class="btn" id="resetImageVariantsBtn" type="button">Reset to defaults</button>
+                  <span class="sub" id="imageVariantStatus" aria-live="polite"></span>
+                </div>
+              </section>
+            </div>
+
+            <hr class="sep" />
+
+            <div class="other-settings-summary">
+              <div class="other-settings-summary-item">
+                <span class="sub">Splash</span>
+                <span class="sub" id="splashModeCurrent" aria-live="polite"></span>
               </div>
-            </div>
-
-            <hr class="sep" />
-
-            <p class="title" style="margin:0">Banner Logo</p>
-            <p class="sub" style="margin-top:8px">Optionally replace the header logo image with an animated canvas.</p>
-            <label class="setting-toggle" style="margin-top:10px; cursor:pointer;">
-              <span class="switch">
-                <input id="bannerBezierLogoEnabled" type="checkbox" />
-                <span class="slider" aria-hidden="true"></span>
-              </span>
-              <span class="sub">Use animation for header and splash screen logo</span>
-            </label>
-            <div class="field" style="margin-top:10px">
-              <div class="sub">Animation style</div>
-              <select id="bannerLogoAnimationStyle">
-                <option value="circles">White circles</option>
-                <option value="plot">x/y function plot (no formula)</option>
-              </select>
-            </div>
-
-            <hr class="sep" />
-
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px">
-              <span class="sub" id="splashModeCurrent" aria-live="polite"></span>
-              <span class="sub" id="bannerLogoCurrent" aria-live="polite"></span>
+              <div class="other-settings-summary-item">
+                <span class="sub">Banner</span>
+                <span class="sub" id="bannerLogoCurrent" aria-live="polite"></span>
+              </div>
+              <div class="other-settings-summary-item">
+                <span class="sub">AI tags</span>
+                <span class="sub" id="tagCapCurrent" aria-live="polite"></span>
+              </div>
+              <div class="other-settings-summary-item">
+                <span class="sub">Variants</span>
+                <span class="sub" id="imageVariantCurrent" aria-live="polite"></span>
+              </div>
             </div>
           </div>
         </article>
 
-        <footer class="footer">
-          <div class="row">
-            <div>© <span id="y"></span> Toji Studios</div>
-            <div>Other Settings</div>
-          </div>
-        </footer>
+        <footer id="siteFooter"></footer>
       </section>
     </div>
   </main>

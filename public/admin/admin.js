@@ -1,5 +1,7 @@
 import { initThemeSystem } from "../assets/js/site.js";
 import { qs, el, slugifySeries } from "../assets/js/content-utils.js";
+import { renderPublicFooter } from "../assets/js/footer.js";
+import { renderPublicHeader } from "../assets/js/header.js";
 
 const ADMIN_SESSION_KEY = "toji_admin_session_v1";
 const ADMIN_JUST_LOGGED_IN_KEY = "toji_admin_just_logged_in_v1";
@@ -85,6 +87,53 @@ export function statusChip(status) {
 }
 
 export function setYearFooter() {
+  document.body.classList.add("admin-shell");
+
+  const siteHeader = document.getElementById("siteHeader");
+  let syncAdminHeaderHeight = null;
+  if (siteHeader) {
+    renderPublicHeader({
+      active: "studio",
+      linkPrefix: "../",
+      studioHref: "admin/index.html",
+      assetPrefix: "../assets/"
+    });
+
+    syncAdminHeaderHeight = () => {
+      const h = Math.ceil(siteHeader.getBoundingClientRect().height || 0);
+      document.documentElement.style.setProperty("--admin-header-height", `${h || 84}px`);
+    };
+    syncAdminHeaderHeight();
+    window.addEventListener("resize", syncAdminHeaderHeight, { passive: true });
+  }
+
+  const siteFooter = document.getElementById("siteFooter");
+  if (siteFooter) {
+    // Keep admin footer anchored to the page container, not a shifted grid column.
+    const mainHost = document.querySelector("main.container");
+    if (mainHost && siteFooter.parentElement !== mainHost) {
+      mainHost.appendChild(siteFooter);
+    }
+    renderPublicFooter({
+      rightHtml: `<a href="../index.html">Home</a> &bull; <a href="../gallery.html">Gallery</a> &bull; <a href="../series.html">Series</a> &bull; <a href="../contact.html">Contact</a> &bull; <a href="index.html" class="active" aria-current="page">Studio</a>`
+    });
+    siteFooter.classList.add("footer--full-bleed");
+
+    // Keep top and bottom nav active states aligned.
+    if (siteHeader) {
+      const activeFooterLink = siteFooter.querySelector(".row a[aria-current='page'], .row a.active");
+      const activePath = activeFooterLink ? new URL(activeFooterLink.href, window.location.href).pathname : "";
+      siteHeader.querySelectorAll(".navlinks a[data-nav]").forEach((a) => {
+        const linkPath = new URL(a.href, window.location.href).pathname;
+        const isActive = !!activePath && linkPath === activePath;
+        a.classList.toggle("active", isActive);
+        if (isActive) a.setAttribute("aria-current", "page");
+        else a.removeAttribute("aria-current");
+      });
+      syncAdminHeaderHeight?.();
+    }
+    return;
+  }
   const y = document.getElementById("y");
   if (y) y.textContent = new Date().getFullYear();
 }
@@ -593,7 +642,8 @@ export function sortArtworksManualFirst(items){
   });
 }
 
-export function ensureSeriesMeta(state){
+export function ensureSeriesMeta(state, options = {}){
+  const includeDerived = options.includeDerived !== false;
   state.seriesMeta ||= {};
   const normalized = {};
 
@@ -625,10 +675,12 @@ export function ensureSeriesMeta(state){
     ingest(key, row);
   }
 
-  (state.series || []).forEach((name) => ingest("", null, name));
-  (state.artworks || []).forEach((a) => {
-    if (a && a.series) ingest("", null, String(a.series));
-  });
+  if (includeDerived) {
+    (state.series || []).forEach((name) => ingest("", null, name));
+    (state.artworks || []).forEach((a) => {
+      if (a && a.series) ingest("", null, String(a.series));
+    });
+  }
 
   state.seriesMeta = normalized;
 }

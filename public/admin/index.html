@@ -8,36 +8,7 @@
   <link rel="stylesheet" href="css/index.css" />
 </head>
 <body>
-  <header class="header">
-    <div class="container nav">
-      <a class="brand" href="../index.html">
-        <span class="brand-logo-combo" aria-hidden="true">
-          <span class="brand-logo-icon-stack">
-            <img class="brand-logo-icon-image" src="../assets/img/TojiStudios-Logo.png" alt="" />
-          </span>
-          <span class="brand-logo-wordmark-stack">
-            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark" src="../assets/img/TojiStudios-Light-TextOnly.png" alt="" />
-            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light" src="../assets/img/TojiStudios-Dark-TextOnly.png" alt="" />
-          </span>
-        </span>
-        <span class="sr-only">Toji Studios</span>
-      </a>
-
-      <nav class="navlinks" aria-label="Primary">
-        <a href="../index.html">Public</a>
-        <a class="active" href="index.html">Studio</a>
-      </nav>
-
-      <div class="theme-controls">
-        <div class="segmented" role="group" aria-label="Theme mode">
-          <button type="button" data-theme-mode="system">System</button>
-          <button type="button" data-theme-mode="light">Light</button>
-          <button type="button" data-theme-mode="dark">Dark</button>
-        </div>
-        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
-      </div>
-    </div>
-  </header>
+  <header id="siteHeader"></header>
 
   <main class="container">
     <section class="hero" style="padding-bottom:10px">
@@ -86,20 +57,6 @@
             <input id="q" placeholder="title, tag, seriesâ€¦" />
           </div>
 
-          <div id="rowSortControls" style="display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap">
-            <span class="sub">Sort rows</span>
-            <select id="rowSortBy" aria-label="Sort rows by" style="width:auto; min-width:170px">
-              <option value="none">Default order</option>
-              <option value="status">Status</option>
-              <option value="tags">Tags</option>
-              <option value="series">Series</option>
-              <option value="year">Year</option>
-            </select>
-            <select id="rowSortDir" aria-label="Sort direction" style="width:auto; min-width:120px">
-              <option value="asc">Ascending</option>
-              <option value="desc">Descending</option>
-            </select>
-          </div>
 
           <button class="btn" id="toggleOrder" type="button">Manual order: Off</button>
 
@@ -108,14 +65,14 @@
             <span class="sub"><b id="bulkCount">0</b> selected</span>
 
             <select id="bulkAction" aria-label="Bulk action" style="width:auto; min-width:220px">
-              <option value="">Bulk actionâ€¦</option>
+              <option value="">Bulk action...</option>
               <option value="publish">Publish</option>
               <option value="draft">Set Draft</option>
               <option value="hidden">Hide</option>
               <option value="feature">Feature</option>
               <option value="unfeature">Unfeature</option>
-              <option value="tags">Edit tagsâ€¦</option>
-              <option value="series">Assign seriesâ€¦</option>
+              <option value="tags">Edit tags...</option>
+              <option value="series">Assign series...</option>
               <option value="delete">Delete</option>
               <option value="clear">Clear selection</option>
             </select>
@@ -130,10 +87,10 @@
                 <option value="remove">Remove tag</option>
               </select>
 
-              <input id="bulkTagInput" placeholder="tagsâ€¦ (comma-separated)" style="width:auto; min-width:240px" />
+              <input id="bulkTagInput" placeholder="tags... (comma-separated)" style="width:auto; min-width:240px" />
 
               <select id="bulkTagPick" aria-label="Pick existing tag" style="width:auto; min-width:220px">
-                <option value="">Pick existing tagâ€¦</option>
+                <option value="">Pick existing tag...</option>
               </select>
 
               <button class="btn" id="bulkTagApply" type="button">Apply tag</button>
@@ -142,10 +99,10 @@
             <!-- Bulk series assignment (shown only for series action) -->
             <div id="bulkSeriesBox" style="display:none; align-items:center; gap:10px; flex-wrap:wrap">
               <select id="bulkSeriesPick" aria-label="Pick series" style="width:auto; min-width:220px">
-                <option value="">Pick seriesâ€¦</option>
+                <option value="">Pick series...</option>
               </select>
 
-              <input id="bulkSeriesInput" placeholder="or type a new seriesâ€¦" style="width:auto; min-width:240px" />
+              <input id="bulkSeriesInput" placeholder="or type a new series..." style="width:auto; min-width:240px" />
 
               <button class="btn" id="bulkSeriesApply" type="button">Apply series</button>
 
@@ -165,14 +122,24 @@
         <table class="table" id="rowTable" aria-label="Artwork table">
           <thead>
             <tr>
-              <th style="width:36px">
-                <input id="selectAll" type="checkbox" aria-label="Select all visible" />
+              <th style="width:52px">
+                <button class="admin-row-select" id="selectAll" type="button" aria-label="Select all visible" aria-pressed="false">○</button>
               </th>
-              <th>Artwork</th>
-              <th>Status</th>
-              <th>Tags</th>
-              <th>Series</th>
-              <th>Year</th>
+              <th id="sortHeaderArtwork" aria-sort="none">
+                <button class="admin-sort-header" type="button" data-sort-header="title">Artwork<span class="admin-sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th id="sortHeaderStatus" aria-sort="none">
+                <button class="admin-sort-header" type="button" data-sort-header="status">Status<span class="admin-sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th id="sortHeaderTags" aria-sort="none">
+                <button class="admin-sort-header" type="button" data-sort-header="tags">Tags<span class="admin-sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th id="sortHeaderSeries" aria-sort="none">
+                <button class="admin-sort-header" type="button" data-sort-header="series">Series<span class="admin-sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th id="sortHeaderYear" aria-sort="none">
+                <button class="admin-sort-header" type="button" data-sort-header="year">Year<span class="admin-sort-icon" aria-hidden="true"></span></button>
+              </th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -180,12 +147,7 @@
         </table>
         <div id="thumbGrid" class="admin-thumb-grid" style="display:none" aria-label="Artwork thumbnails"></div>
 
-        <footer class="footer">
-          <div class="row">
-            <div>Â© <span id="y"></span> Toji Studios</div>
-            <div>Studio</div>
-          </div>
-        </footer>
+        <footer id="siteFooter"></footer>
       </section>
     </div>
 </main>

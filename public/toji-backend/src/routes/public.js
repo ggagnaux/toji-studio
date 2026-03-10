@@ -3,6 +3,11 @@ import { db, jsonArray } from "../db.js";
 
 export const publicRouter = Router();
 
+publicRouter.get("/public/site-meta", (req, res) => {
+  const version = String(process.env.PUBLIC_SITE_VERSION || "").trim();
+  res.json({ version });
+});
+
 publicRouter.get("/public/artworks", (req, res) => {
   const rows = db.prepare(`
     SELECT a.*, 

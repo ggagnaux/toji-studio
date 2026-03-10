@@ -145,6 +145,7 @@
 - [ ] Environment/setup docs for local + deployed API (`ADMIN_TOKEN`, CORS, storage location)
 - [ ] Basic smoke tests for key API flows (upload, patch, delete, series CRUD)
 - [ ] Backup/restore guidance for SQLite + media storage
+- [ ] Obfuscate markup (id's, classnames, etc.) during build/deploy step (I want to try this)
 
 ---
 

@@ -3,9 +3,27 @@ import path from "node:path";
 import crypto from "node:crypto";
 
 import { Router } from "express";
-import { db, nowIso, jsonArray, toJson, ORIGINALS_DIR, VARIANTS_DIR } from "../db.js";
+import {
+  db,
+  nowIso,
+  jsonArray,
+  toJson,
+  ORIGINALS_DIR,
+  VARIANTS_DIR,
+  getImageVariantSettings,
+  setImageVariantSettings
+} from "../db.js";
 
 export const adminRouter = Router();
+
+adminRouter.get("/admin/settings/image-variants", (req, res) => {
+  res.json(getImageVariantSettings());
+});
+
+adminRouter.put("/admin/settings/image-variants", (req, res) => {
+  const saved = setImageVariantSettings(req.body || {});
+  res.json(saved);
+});
 
 adminRouter.get("/admin/artworks", (req, res) => {
   const rows = db.prepare(`
@@ -98,6 +116,23 @@ function extractTextFromOpenAiResponse(payload) {
     }
   }
   return "";
+}
+
+function parseTagsFromAiText(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return [];
+
+  const parts = raw
+    .split(/[\n,;|]/g)
+    .map((p) => p.replace(/^[-*•\d\.\)\s]+/, "").trim())
+    .map((p) => p.replace(/^#/, "").replace(/["']/g, "").trim())
+    .map((p) => p.toLowerCase())
+    .map((p) => p.replace(/\s+/g, " "))
+    .map((p) => p.replace(/[^a-z0-9 -]/g, "").trim())
+    .filter(Boolean)
+    .filter((p) => p.length <= 32);
+
+  return Array.from(new Set(parts)).slice(0, 15);
 }
 
 function uid(prefix = "sp") {
@@ -282,6 +317,87 @@ adminRouter.post("/admin/ai/describe-artwork", async (req, res) => {
     }
 
     return res.json({ description });
+  } catch (err) {
+    return res.status(500).json({ error: err?.message || "OpenAI request failed." });
+  }
+});
+
+adminRouter.post("/admin/ai/generate-tags", async (req, res) => {
+  const apiKey = String(process.env.OPENAI_API_KEY || "").trim();
+  if (!apiKey) {
+    return res.status(500).json({ error: "OPENAI_API_KEY is not configured." });
+  }
+
+  const body = req.body || {};
+  const artworkId = String(body.artworkId || "").trim();
+  const imageUrl = String(body.imageUrl || "").trim();
+  const title = String(body.title || "").trim();
+  const year = String(body.year || "").trim();
+  const series = String(body.series || "").trim();
+  const alt = String(body.alt || "").trim();
+  const description = String(body.description || "").trim();
+  const existingTags = Array.isArray(body.tags)
+    ? body.tags.map((t) => String(t || "").trim()).filter(Boolean)
+    : [];
+
+  const imageDataUri = resolveArtworkImageDataUri({ artworkId, imageUrl });
+  if (!imageDataUri) {
+    return res.status(400).json({ error: "Unable to locate artwork image for AI tag generation." });
+  }
+
+  const prompt = [
+    "Generate concise tags for a gallery artwork image.",
+    "Return 6-14 tags as plain text only, comma-separated.",
+    "Use lowercase, no hashtags, no numbering, no commentary.",
+    "Prefer visual/style/theme terms over generic words.",
+    `Title: ${title || "Untitled"}`,
+    `Year: ${year || "Unknown"}`,
+    `Series: ${series || "None"}`,
+    `Alt text: ${alt || "None"}`,
+    `Description: ${description || "None"}`,
+    `Existing tags: ${existingTags.length ? existingTags.join(", ") : "None"}`
+  ].join("\n");
+
+  const model = String(process.env.OPENAI_IMAGE_TAGS_MODEL || "gpt-4.1-mini");
+  const maxTokens = Number(process.env.OPENAI_IMAGE_TAGS_MAX_TOKENS || 140);
+
+  try {
+    const aiRes = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        max_output_tokens: Number.isFinite(maxTokens) ? maxTokens : 140,
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: prompt },
+              { type: "input_image", image_url: imageDataUri }
+            ]
+          }
+        ]
+      })
+    });
+
+    let aiJson = null;
+    try { aiJson = await aiRes.json(); } catch {}
+    if (!aiRes.ok) {
+      return res.status(aiRes.status).json({
+        error: aiJson?.error?.message || `OpenAI request failed (${aiRes.status}).`
+      });
+    }
+
+    const raw = extractTextFromOpenAiResponse(aiJson);
+    const tags = parseTagsFromAiText(raw);
+    if (!tags.length) {
+      return res.status(502).json({ error: "OpenAI returned no usable tags." });
+    }
+
+    return res.json({ tags });
   } catch (err) {
     return res.status(500).json({ error: err?.message || "OpenAI request failed." });
   }

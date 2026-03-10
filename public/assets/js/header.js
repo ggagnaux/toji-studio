@@ -10,18 +10,39 @@ export function renderPublicHeader({
   ctaText = "Explore",
   ctaHref = "gallery.html",
   brandLogoSrc = "",
+  linkPrefix = "",
+  studioHref = "admin/index.html",
+  assetPrefix = "assets/",
 } = {}) {
   const headerHost = document.getElementById("siteHeader");
   if (!headerHost) throw new Error('Missing <header id="siteHeader"></header>');
 
+  const normPrefix = String(linkPrefix || "");
+  const normAssetPrefix = String(assetPrefix || "assets/").replace(/\\/g, "/");
+  const toHref = (path) => `${normPrefix}${path}`;
+  const toAsset = (path) => `${normAssetPrefix}${path}`;
+  const resolveActiveNav = () => {
+    const explicit = String(active || "").trim().toLowerCase();
+    if (explicit && ["home", "gallery", "series", "about", "contact", "studio"].includes(explicit)) {
+      return explicit;
+    }
+    const path = String(window.location.pathname || "").toLowerCase();
+    if (path.includes("/admin/")) return "studio";
+    if (path.endsWith("/gallery.html")) return "gallery";
+    if (path.endsWith("/series.html")) return "series";
+    if (path.endsWith("/about.html")) return "about";
+    if (path.endsWith("/contact.html")) return "contact";
+    return "home";
+  };
+
   const brandInner = `
     <span class="brand-logo-combo" aria-hidden="true">
       <span class="brand-logo-icon-stack">
-        <img class="brand-logo-icon-image" src="assets/img/TojiStudios-Logo.png" alt="" />
+        <img class="brand-logo-icon-image" src="${toAsset("img/TojiStudios-Logo.png")}" alt="" />
       </span>
       <span class="brand-logo-wordmark-stack">
-        <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark" src="assets/img/TojiStudios-Light-TextOnly.png" alt="" />
-        <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light" src="assets/img/TojiStudios-Dark-TextOnly.png" alt="" />
+        <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark" src="${toAsset("img/TojiStudios-Light-TextOnly.png")}" alt="" />
+        <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light" src="${toAsset("img/TojiStudios-Dark-TextOnly.png")}" alt="" />
       </span>
     </span>
     <span class="sr-only">Toji Studios</span>
@@ -30,7 +51,7 @@ export function renderPublicHeader({
   headerHost.className = "header";
   headerHost.innerHTML = `
     <div class="container nav">
-      <a class="brand" href="index.html">${brandInner}</a>
+      <a class="brand" href="${toHref("index.html")}">${brandInner}</a>
 
       <button
         class="icon-btn nav-toggle"
@@ -40,16 +61,16 @@ export function renderPublicHeader({
         aria-controls="sitePrimaryNav"
         data-nav-toggle
       >
-        <span aria-hidden="true">☰</span>
+        <span aria-hidden="true">&#9776;</span>
       </button>
 
       <nav class="navlinks" id="sitePrimaryNav" aria-label="Primary">
-        <a href="index.html" data-nav="home">Home</a>
-        <a href="gallery.html" data-nav="gallery">Gallery</a>
-        <a href="series.html" data-nav="series">Series</a>
-        <a href="about.html" data-nav="about">About</a>
-        <a href="contact.html" data-nav="contact">Contact</a>
-        <a href="admin/index.html" data-nav="studio">Studio</a>
+        <a href="${toHref("index.html")}" data-nav="home">Home</a>
+        <a href="${toHref("gallery.html")}" data-nav="gallery">Gallery</a>
+        <a href="${toHref("series.html")}" data-nav="series">Series</a>
+        <a href="${toHref("about.html")}" data-nav="about">About</a>
+        <a href="${toHref("contact.html")}" data-nav="contact">Contact</a>
+        <a href="${toHref(studioHref)}" data-nav="studio">Studio</a>
       </nav>
 
       <div class="theme-controls">
@@ -63,20 +84,142 @@ export function renderPublicHeader({
     </div>
   `;
 
+  const activeNav = resolveActiveNav();
   headerHost.querySelectorAll("[data-nav]").forEach(a => {
-    a.classList.toggle("active", a.getAttribute("data-nav") === active);
+    const isActive = a.getAttribute("data-nav") === activeNav;
+    a.classList.toggle("active", isActive);
+    if (isActive) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
   });
 
   const navRoot = headerHost.querySelector(".nav");
   const navLinks = headerHost.querySelector(".navlinks");
   const navToggle = headerHost.querySelector("[data-nav-toggle]");
   const mobileQuery = window.matchMedia("(max-width: 760px)");
+  const connectorMediaQuery = window.matchMedia("(min-width: 761px)");
+
+  const findPrimaryTitle = () => {
+    const mainContainer = document.querySelector("main.container");
+    if (!mainContainer) return null;
+
+    // Primary target requested: hero title under <section class="hero" id="homeHeroSection">.
+    const homeHeroTitle = mainContainer.querySelector("section.hero#homeHeroSection h1");
+    if (homeHeroTitle && homeHeroTitle.isConnected && homeHeroTitle.getClientRects().length) {
+      return homeHeroTitle;
+    }
+
+    const candidates = Array.from(mainContainer.querySelectorAll("h1"));
+    for (const node of candidates) {
+      if (!node) continue;
+      if (!node.isConnected) continue;
+      if (!node.getClientRects().length) continue;
+      return node;
+    }
+    return null;
+  };
+
+  const findPrimaryHeroSection = () => {
+    const mainContainer = document.querySelector("main.container");
+    if (!mainContainer) return null;
+    const hero = mainContainer.querySelector("section.hero#homeHeroSection");
+    if (hero && hero.isConnected && hero.getClientRects().length) return hero;
+    const anyHero = mainContainer.querySelector("section.hero");
+    if (anyHero && anyHero.isConnected && anyHero.getClientRects().length) return anyHero;
+    return mainContainer;
+  };
+
+  const clearMainConnector = () => {
+    const mainContainer = document.querySelector("main.container");
+    if (!mainContainer) return;
+    mainContainer.classList.remove("main-nav-title-connector");
+    mainContainer.style.removeProperty("--main-connector-x");
+    mainContainer.style.removeProperty("--main-connector-height");
+  };
+
+  const getNodeTextCenterX = (node) => {
+    if (!node) return NaN;
+    try {
+      const r = document.createRange();
+      r.selectNodeContents(node);
+      const textRect = r.getBoundingClientRect();
+      if (textRect && textRect.width > 0) {
+        return textRect.left + (textRect.width / 2);
+      }
+    } catch {}
+    const rect = node.getBoundingClientRect();
+    return rect.left + (rect.width / 2);
+  };
+
+  const syncNavTitleConnector = () => {
+    if (!connectorMediaQuery.matches) {
+      headerHost.classList.remove("nav-title-connector");
+      headerHost.style.removeProperty("--nav-connector-left");
+      headerHost.style.removeProperty("--nav-connector-width");
+      headerHost.style.removeProperty("--nav-connector-end-x");
+      clearMainConnector();
+      return;
+    }
+
+    const activeLink = headerHost.querySelector(".navlinks a.active");
+    const titleNode = findPrimaryTitle();
+    const heroNode = findPrimaryHeroSection();
+    const mainContainer = document.querySelector("main.container");
+    if (!activeLink || !titleNode) {
+      headerHost.classList.remove("nav-title-connector");
+      headerHost.style.removeProperty("--nav-connector-left");
+      headerHost.style.removeProperty("--nav-connector-width");
+      headerHost.style.removeProperty("--nav-connector-end-x");
+      clearMainConnector();
+      return;
+    }
+
+    const headerRect = headerHost.getBoundingClientRect();
+    const activeRect = activeLink.getBoundingClientRect();
+    const titleCenterViewportX = getNodeTextCenterX(titleNode);
+    const activeX = activeRect.left + (activeRect.width / 2) - headerRect.left;
+    const titleX = titleCenterViewportX - headerRect.left;
+    const left = Math.min(activeX, titleX);
+    const width = Math.abs(titleX - activeX);
+
+    if (!(width > 1)) {
+      headerHost.classList.remove("nav-title-connector");
+      headerHost.style.removeProperty("--nav-connector-left");
+      headerHost.style.removeProperty("--nav-connector-width");
+      headerHost.style.removeProperty("--nav-connector-end-x");
+      clearMainConnector();
+      return;
+    }
+
+    headerHost.style.setProperty("--nav-connector-left", `${left}px`);
+    headerHost.style.setProperty("--nav-connector-width", `${width}px`);
+    headerHost.style.setProperty("--nav-connector-end-x", `${titleX}px`);
+    headerHost.classList.add("nav-title-connector");
+
+    if (mainContainer) {
+      const mainRect = mainContainer.getBoundingClientRect();
+      const heroRect = heroNode ? heroNode.getBoundingClientRect() : mainRect;
+      const mainX = titleCenterViewportX - mainRect.left;
+      const mainDrop = Math.max(0, Math.round(heroRect.top - mainRect.top));
+      mainContainer.style.setProperty("--main-connector-x", `${mainX}px`);
+      mainContainer.style.setProperty("--main-connector-height", `${mainDrop}px`);
+      mainContainer.classList.add("main-nav-title-connector");
+    } else {
+      clearMainConnector();
+    }
+  };
+
+  if (typeof headerHost.__syncNavTitleConnector === "function") {
+    window.removeEventListener("resize", headerHost.__syncNavTitleConnector);
+    window.removeEventListener("scroll", headerHost.__syncNavTitleConnector);
+    connectorMediaQuery.removeEventListener("change", headerHost.__syncNavTitleConnector);
+  }
+  headerHost.__syncNavTitleConnector = syncNavTitleConnector;
 
   const setMenuOpen = (open) => {
     if (!navRoot || !navToggle || !navLinks) return;
     navRoot.classList.toggle("nav-open", !!open);
     navToggle.setAttribute("aria-expanded", open ? "true" : "false");
-    navToggle.firstElementChild.textContent = open ? "✕" : "☰";
+    navToggle.firstElementChild.innerHTML = open ? "&#10005;" : "&#9776;";
     navLinks.setAttribute("aria-hidden", open ? "false" : "true");
   };
 
@@ -95,18 +238,24 @@ export function renderPublicHeader({
     if (!e.matches) {
       navRoot?.classList.remove("nav-open");
       navToggle?.setAttribute("aria-expanded", "false");
-      if (navToggle?.firstElementChild) navToggle.firstElementChild.textContent = "☰";
+      if (navToggle?.firstElementChild) navToggle.firstElementChild.innerHTML = "&#9776;";
       navLinks?.removeAttribute("aria-hidden");
       return;
     }
     setMenuOpen(false);
   });
 
+  connectorMediaQuery.addEventListener("change", syncNavTitleConnector);
+  window.addEventListener("resize", syncNavTitleConnector, { passive: true });
+  window.addEventListener("scroll", syncNavTitleConnector, { passive: true });
+
   if (mobileQuery.matches) setMenuOpen(false);
   else navLinks?.removeAttribute("aria-hidden");
 
   initThemeSystem();
   applyBannerLogoBehavior(headerHost);
+  requestAnimationFrame(syncNavTitleConnector);
+  setTimeout(syncNavTitleConnector, 120);
 }
 
 export function applyBannerLogoBehavior(headerHost) {

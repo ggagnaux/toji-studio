@@ -1,4 +1,3 @@
-    import { applyBannerLogoBehavior } from "../../assets/js/header.js";
     import {
       ensureBaseStyles,
       setYearFooter,
@@ -10,7 +9,6 @@
 
     ensureBaseStyles();
     setYearFooter();
-    applyBannerLogoBehavior(document.querySelector("header.header"));
 
     const adminPasswordForm = document.getElementById("adminPasswordForm");
     const currentAdminPassword = document.getElementById("currentAdminPassword");

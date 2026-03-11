@@ -36,6 +36,7 @@
               <button class="other-settings-tabbtn" id="otherTabBanner" type="button" role="tab" aria-selected="false" aria-controls="otherPaneBanner" data-settings-tab="banner">Banner Logo</button>
               <button class="other-settings-tabbtn" id="otherTabAi" type="button" role="tab" aria-selected="false" aria-controls="otherPaneAi" data-settings-tab="ai">AI Tags</button>
               <button class="other-settings-tabbtn" id="otherTabVariants" type="button" role="tab" aria-selected="false" aria-controls="otherPaneVariants" data-settings-tab="variants">Image Variants</button>
+              <button class="other-settings-tabbtn other-settings-tabbtn--export" id="otherTabExport" type="button" role="tab" aria-selected="false" aria-controls="otherPaneExport" data-settings-tab="export">Data Export</button>
             </div>
 
             <div class="other-settings-tabcontent">
@@ -59,6 +60,7 @@
                     <option value="tempest">Tempest simulation (auto-play)</option>
                     <option value="missilecommand">Missile Command simulation (auto-play)</option>
                     <option value="radar">Radar screen sweep</option>
+                    <option value="mountains">Mountain night pan</option>
                   </select>
                 </div>
 
@@ -132,6 +134,15 @@
                   <span class="sub" id="imageVariantStatus" aria-live="polite"></span>
                 </div>
               </section>
+
+              <section class="other-settings-tabpane" id="otherPaneExport" role="tabpanel" aria-labelledby="otherTabExport" data-settings-pane="export" hidden>
+                <p class="title" style="margin:0">Database Export</p>
+                <p class="sub" style="margin-top:8px">Download a JSON snapshot of the current database tables for backup or migration.</p>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px">
+                  <button class="btn" id="exportDatabaseBtn" type="button">Export database JSON</button>
+                  <span class="sub" id="exportDatabaseStatus" aria-live="polite"></span>
+                </div>
+              </section>
             </div>
 
             <hr class="sep" />
@@ -152,6 +163,10 @@
               <div class="other-settings-summary-item">
                 <span class="sub">Variants</span>
                 <span class="sub" id="imageVariantCurrent" aria-live="polite"></span>
+              </div>
+              <div class="other-settings-summary-item">
+                <span class="sub">Export</span>
+                <span class="sub" id="exportDatabaseCurrent" aria-live="polite">Database JSON export available</span>
               </div>
             </div>
           </div>

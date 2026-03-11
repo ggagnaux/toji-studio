@@ -895,6 +895,7 @@ import {
 
     viewModeButtons.forEach((btn) => {
       const active = btn.getAttribute("data-view-mode") === viewMode;
+      btn.disabled = manualOrderMode;
       btn.classList.toggle("active", active);
     });
 

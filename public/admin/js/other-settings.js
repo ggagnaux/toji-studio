@@ -3,6 +3,7 @@ import {
   ensureBaseStyles,
   setYearFooter,
   apiFetch,
+  API_BASE,
   getAdminToken,
   confirmToast
 } from "../admin.js";
@@ -43,6 +44,8 @@ const webQuality = document.getElementById("webQuality");
 const resetImageVariantsBtn = document.getElementById("resetImageVariantsBtn");
 const imageVariantStatus = document.getElementById("imageVariantStatus");
 const imageVariantCurrent = document.getElementById("imageVariantCurrent");
+const exportDatabaseBtn = document.getElementById("exportDatabaseBtn");
+const exportDatabaseStatus = document.getElementById("exportDatabaseStatus");
 const settingsTabButtons = Array.from(document.querySelectorAll("[data-settings-tab]"));
 const settingsTabPanes = Array.from(document.querySelectorAll("[data-settings-pane]"));
 const settingsTabContent = document.querySelector(".other-settings-tabcontent");
@@ -50,7 +53,8 @@ const SETTINGS_TAB_COLORS = {
   splash: "#2a97d4",
   banner: "#2ea97d",
   ai: "#d18b2e",
-  variants: "#8a63d2"
+  variants: "#8a63d2",
+  export: "#7d8f34"
 };
 
 settingsTabButtons.forEach((btn) => {
@@ -73,6 +77,7 @@ function normalizeSplashMode(value){
   if (mode === "tempest") return "tempest";
   if (mode === "missilecommand") return "missilecommand";
   if (mode === "radar") return "radar";
+  if (mode === "mountains") return "mountains";
   return "nodes";
 }
 
@@ -89,6 +94,7 @@ function describeSplashMode(mode){
   if (mode === "tempest") return "Tempest simulation (auto-play)";
   if (mode === "missilecommand") return "Missile Command simulation (auto-play)";
   if (mode === "radar") return "Radar screen sweep";
+  if (mode === "mountains") return "Mountain night pan";
   return "Nodes and edges (existing)";
 }
 
@@ -135,6 +141,22 @@ function setImageVariantStatus(message, tone = "") {
     : tone === "success"
       ? "var(--accent)"
       : "";
+}
+
+function setExportDatabaseStatus(message, tone = "") {
+  if (!exportDatabaseStatus) return;
+  exportDatabaseStatus.textContent = message || "";
+  exportDatabaseStatus.style.color = tone === "error"
+    ? "#d15353"
+    : tone === "success"
+      ? "var(--accent)"
+      : "";
+}
+
+function buildExportTimestamp() {
+  return new Date()
+    .toISOString()
+    .replace(/[:.]/g, "-");
 }
 
 function renderImageVariantSettings(settings) {
@@ -294,6 +316,48 @@ async function saveImageVariantSettings() {
   }
 }
 
+async function exportDatabaseJson() {
+  if (!getAdminToken()) {
+    setExportDatabaseStatus("Set admin token in Upload page to export the database.", "error");
+    return;
+  }
+
+  setExportDatabaseStatus("Preparing export...");
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/export/database.json`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${getAdminToken()}`
+      }
+    });
+
+    if (!res.ok) {
+      let message = `${res.status} ${res.statusText}`;
+      try {
+        const payload = await res.json();
+        if (payload?.error) message = payload.error;
+      } catch {}
+      throw new Error(message);
+    }
+
+    const blob = await res.blob();
+    const disposition = res.headers.get("content-disposition") || "";
+    const filenameMatch = disposition.match(/filename="?([^"]+)"?/i);
+    const filename = filenameMatch?.[1] || `toji-database-export-${buildExportTimestamp()}.json`;
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(blobUrl);
+    setExportDatabaseStatus(`Downloaded ${filename}.`, "success");
+  } catch (error) {
+    setExportDatabaseStatus(`Export failed: ${error?.message || error}`, "error");
+  }
+}
+
 syncSplashModeUI();
 await loadImageVariantSettings();
 setSettingsTab("splash");
@@ -346,4 +410,8 @@ resetImageVariantsBtn?.addEventListener("click", async () => {
   if (!ok) return;
   renderImageVariantSettings(DEFAULT_IMAGE_VARIANTS);
   void saveImageVariantSettings();
+});
+
+exportDatabaseBtn?.addEventListener("click", () => {
+  void exportDatabaseJson();
 });

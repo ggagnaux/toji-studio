@@ -20,7 +20,7 @@ export async function initializeHomeSplash() {
       let splashLogo3dFrame = 0;
       let splashLogoIconP5 = null;
       let splashLogoIconCanvasHost = null;
-      const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "random" | "nodes" | "flock" | "circles" | "matrix" | "life" | "plot" | "bounce" | "turningcircles" | "asteroids" | "tempest" | "missilecommand" | "radar"
+      const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "random" | "nodes" | "flock" | "circles" | "matrix" | "life" | "plot" | "bounce" | "turningcircles" | "asteroids" | "tempest" | "missilecommand" | "radar" | "mountains"
       const SPLASH_RANDOM_CYCLE_ENABLED_KEY = "toji_splash_random_cycle_enabled_v1";
       const SPLASH_RANDOM_CYCLE_SECONDS_KEY = "toji_splash_random_cycle_seconds_v1";
       const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
@@ -40,11 +40,12 @@ export async function initializeHomeSplash() {
         if (mode === "tempest") return "tempest";
         if (mode === "missilecommand") return "missilecommand";
         if (mode === "radar") return "radar";
+        if (mode === "mountains") return "mountains";
         return "nodes";
       }
   
       function pickRandomSplashMode(preferDifferent = false) {
-        const choices = ["nodes", "flock", "circles", "matrix", "life", "plot", "bounce", "turningcircles", "asteroids", "tempest", "missilecommand", "radar"];
+        const choices = ["nodes", "flock", "circles", "matrix", "life", "plot", "bounce", "turningcircles", "asteroids", "tempest", "missilecommand", "radar", "mountains"];
         let picked = choices[Math.floor(Math.random() * choices.length)];
         if (preferDifferent && activeSplashMode && choices.length > 1) {
           let tries = 0;
@@ -91,7 +92,7 @@ export async function initializeHomeSplash() {
         splashLogoCornerTimer = window.setTimeout(() => {
           if (!splashScreen || splashScreen.classList.contains("hidden")) return;
           splashScreen.classList.add("logo-cornered");
-        }, 10000);
+        }, 5000);
       }
   
       let splashLogoNudgeXOffset = 0;
@@ -281,8 +282,7 @@ export async function initializeHomeSplash() {
         activeSplashMode = splashMode;
         if (splashMode === "logo3d") startSplashLogo3dAnimation();
         else stopSplashLogo3dAnimation();
-        if (splashMode === "tempest") startSplashLogoCornerTimer();
-        else clearSplashLogoCornerTimer();
+        startSplashLogoCornerTimer();
   
         splashP5Instance = new window.p5((p) => {
           const nodes = [];
@@ -304,6 +304,13 @@ export async function initializeHomeSplash() {
           const missileDefenseMissiles = [];
           const missileExplosions = [];
           const missileStars = [];
+          const mountainStars = [];
+          const mountainRanges = [];
+          const mountainShootingStars = [];
+          const mountainPeople = [];
+          const mountainApproachPeople = [];
+          const mountainCars = [];
+          const mountainImpactBursts = [];
           const radarBlips = [];
           const radarEchoes = [];
           const dukePlatforms = [];
@@ -364,6 +371,10 @@ export async function initializeHomeSplash() {
           let missileNextDefenseAt = 0;
           let missileWave = 1;
           let missileScore = 0;
+          let mountainPanX = 0;
+          let mountainWorldWidth = 0;
+          let mountainHorizonY = 0;
+          let mountainNextShootingStarAt = 0;
           let radarSweepAngle = 0;
           let radarSweepSpeed = 0.018;
           let radarNextBlipAt = 0;
@@ -1087,6 +1098,209 @@ export async function initializeHomeSplash() {
             }
             nextCircleShuffleAt = p.millis() + p.random(900, 1900);
           };
+
+          const seedMountainScene = () => {
+            mountainStars.length = 0;
+            mountainRanges.length = 0;
+            mountainShootingStars.length = 0;
+            mountainPeople.length = 0;
+            mountainApproachPeople.length = 0;
+            mountainCars.length = 0;
+            mountainImpactBursts.length = 0;
+            mountainPanX = 0;
+            mountainWorldWidth = Math.max(p.width * 2.6, 2200);
+            mountainHorizonY = p.height * 0.75;
+            mountainNextShootingStarAt = p.millis() + p.random(1400, 3600);
+            const starCount = Math.max(36, Math.floor((p.width * p.height) / 42000));
+            for (let i = 0; i < starCount; i += 1) {
+              mountainStars.push({
+                x: p.random(mountainWorldWidth),
+                y: p.random(p.height * 0.62),
+                size: p.random(1.2, 3.2),
+                alpha: p.random(90, 220),
+                twinkle: p.random(Math.PI * 2),
+                twinkleSpeed: p.random(0.004, 0.014)
+              });
+            }
+
+            const rangeConfigs = [
+              { baseY: mountainHorizonY - (p.height * 0.01), amp: p.height * 0.12, stepMin: 96, stepMax: 182, alpha: 72, weight: 1.5, speed: 0.22, freq: 0.009, jagScale: 0.2, ridgePower: 1.28, detailMix: 0.06 },
+              { baseY: mountainHorizonY - (p.height * 0.05), amp: p.height * 0.18, stepMin: 70, stepMax: 134, alpha: 102, weight: 1.9, speed: 0.36, freq: 0.014, jagScale: 0.36, ridgePower: 0.9, detailMix: 0.1 },
+              { baseY: mountainHorizonY - (p.height * 0.1), amp: p.height * 0.26, stepMin: 44, stepMax: 90, alpha: 146, weight: 2.3, speed: 0.54, freq: 0.021, jagScale: 0.58, ridgePower: 0.62, detailMix: 0.18 }
+            ];
+
+            for (const cfg of rangeConfigs) {
+              const points = [];
+              let x = -220;
+              while (x <= mountainWorldWidth + 220) {
+                const noiseY = p.noise((x + 1000) * 0.0022, cfg.baseY * 0.013);
+                const ridge = Math.sign(noiseY - 0.5) * Math.pow(Math.abs((noiseY - 0.5) * 2), cfg.ridgePower);
+                const jag =
+                  (Math.sin(x * cfg.freq + cfg.baseY * 0.03) * cfg.amp * cfg.jagScale) +
+                  (Math.sin(x * cfg.freq * 2.6 + 1.4) * cfg.amp * cfg.detailMix);
+                const y = Math.min(mountainHorizonY, cfg.baseY - (ridge * cfg.amp) - jag);
+                points.push({
+                  x,
+                  y
+                });
+                x += p.random(cfg.stepMin, cfg.stepMax);
+              }
+              mountainRanges.push({
+                points,
+                alpha: cfg.alpha,
+                weight: cfg.weight,
+                speed: cfg.speed
+              });
+            }
+
+            const riderCount = 5;
+            for (let i = 0; i < riderCount; i += 1) {
+              mountainPeople.push({
+                rangeIndex: 0,
+                segmentIndex: 0,
+                progress: 0,
+                slideSpeed: 0,
+                state: "slide",
+                pathMode: "downhill",
+                runDir: 1,
+                x: 0,
+                y: mountainHorizonY,
+                vx: 0,
+                vy: 0,
+                jumpSegmentIndex: -1,
+                highJump: false,
+                anim: p.random(Math.PI * 2),
+                size: p.random(0.95, 1.7)
+              });
+            }
+            for (const rider of mountainPeople) assignMountainPerson(rider, true);
+
+            const approachCount = Math.floor(p.random(4, 8));
+            for (let i = 0; i < approachCount; i += 1) {
+              mountainApproachPeople.push({
+                x: 0,
+                y: 0,
+                progress: p.random(0, 0.95),
+                speed: p.random(0.0026, 0.0058),
+                laneOrigin: p.random(-0.42, 0.42),
+                drift: p.random(-0.18, 0.18),
+                stridePhase: p.random(Math.PI * 2),
+                baseSize: p.random(0.72, 1.08),
+                hitCooldown: 0
+              });
+            }
+
+            const carCount = Math.floor(p.random(5, 10));
+            const depthBands = [
+              { y: mountainHorizonY + p.height * 0.05, scale: 0.72, speedMin: 0.34, speedMax: 0.58, alpha: 120 },
+              { y: mountainHorizonY + p.height * 0.11, scale: 0.92, speedMin: 0.7, speedMax: 1.05, alpha: 164 },
+              { y: mountainHorizonY + p.height * 0.17, scale: 1.15, speedMin: 1.08, speedMax: 1.6, alpha: 220 }
+            ];
+            for (let i = 0; i < carCount; i += 1) {
+              const band = depthBands[Math.floor(p.random(depthBands.length))] || depthBands[1];
+              const dir = p.random() < 0.5 ? -1 : 1;
+              mountainCars.push({
+                x: p.random(-80, p.width + 80),
+                y: band.y + p.random(-6, 6),
+                dir,
+                speed: p.random(band.speedMin, band.speedMax) * dir,
+                scale: band.scale * p.random(0.92, 1.08),
+                alpha: band.alpha,
+                body: p.random(120, 220),
+                wheel: p.random(150, 240)
+              });
+            }
+          };
+
+          const getMountainRangeShift = (range, rangeOffset) => {
+            const firstX = range.points[0]?.x ?? -220;
+            const lastX = range.points[range.points.length - 1]?.x ?? (mountainWorldWidth + 220);
+            let shift = -rangeOffset;
+            while ((firstX + shift) > -260) shift -= mountainWorldWidth;
+            while ((lastX + shift) < (p.width + 260)) shift += mountainWorldWidth;
+            return shift;
+          };
+
+          const assignMountainPerson = (person, initial = false) => {
+            const frontRangeIndex = Math.max(0, mountainRanges.length - 1);
+            const range = mountainRanges[frontRangeIndex];
+            if (!range || range.points.length < 2) return;
+            const downhillCandidates = [];
+            const uphillCandidates = [];
+            for (let i = 0; i < range.points.length - 1; i += 1) {
+              const a = range.points[i];
+              const b = range.points[i + 1];
+              const dx = b.x - a.x;
+              const dy = b.y - a.y;
+              if (dx <= 8) continue;
+              if (dy >= 8 && b.y >= mountainHorizonY - 4) downhillCandidates.push(i);
+              if (dy <= -8 && a.y < mountainHorizonY - 30 && b.y < mountainHorizonY - 54) uphillCandidates.push(i);
+            }
+            const prefersUphill = uphillCandidates.length > 0 && p.random() < 0.38;
+            const segmentPool = prefersUphill ? uphillCandidates : downhillCandidates;
+            const segmentIndex = segmentPool[Math.floor(p.random(segmentPool.length))] ?? Math.floor(p.random(Math.max(1, range.points.length - 1)));
+            const startProgress = prefersUphill
+              ? (initial ? p.random(0.02, 0.38) : p.random(0.02, 0.18))
+              : (initial ? p.random(0.04, 0.82) : p.random(0.02, 0.28));
+            person.rangeIndex = frontRangeIndex;
+            person.segmentIndex = segmentIndex;
+            person.progress = startProgress;
+            person.slideSpeed = p.random(0.0032, 0.0074);
+            person.state = prefersUphill ? "climb" : "slide";
+            person.pathMode = prefersUphill ? "uphill-jump" : "downhill";
+            person.runDir = p.random() < 0.5 ? -1 : 1;
+            person.vx = 0;
+            person.vy = 0;
+            person.jumpSegmentIndex = prefersUphill ? segmentIndex : -1;
+            person.highJump = prefersUphill && p.random() < 0.38;
+            person.anim = p.random(Math.PI * 2);
+            person.size = p.random(0.95, 1.7);
+          };
+
+          const spawnMountainShootingStar = () => {
+            const moveLeft = p.random() < 0.42;
+            const startX = moveLeft
+              ? p.random(p.width * 0.18, p.width * 0.96)
+              : p.random(p.width * 0.04, p.width * 0.82);
+            const startY = p.random(p.height * 0.08, p.height * 0.32);
+            const speed = p.random(5.8, 8.2);
+            const angle = moveLeft ? p.random(2.18, 2.86) : p.random(0.2, 0.92);
+            mountainShootingStars.push({
+              x: startX,
+              y: startY,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              size: p.random(2.1, 3.6),
+              alpha: p.random(180, 245),
+              trail: []
+            });
+          };
+
+          const drawMountainRangeLine = (range, rangeOffset) => {
+            p.stroke(244, 244, 244, range.alpha);
+            p.strokeWeight(range.weight);
+            const shift = getMountainRangeShift(range, rangeOffset);
+
+            p.beginShape();
+            for (const pt of range.points) {
+              p.vertex(pt.x + shift, pt.y);
+            }
+            p.endShape();
+          };
+
+          const drawMountainRangeMask = (range, rangeOffset) => {
+            p.noStroke();
+            p.fill(0, 0, 0, 255);
+            const shift = getMountainRangeShift(range, rangeOffset);
+
+            p.beginShape();
+            p.vertex(-40, mountainHorizonY);
+            for (const pt of range.points) {
+              p.vertex(pt.x + shift, pt.y);
+            }
+            p.vertex(p.width + 40, mountainHorizonY);
+            p.endShape(p.CLOSE);
+          };
   
           const seedMatrixRain = () => {
             matrixDrops.length = 0;
@@ -1627,6 +1841,7 @@ export async function initializeHomeSplash() {
             else if (splashMode === "asteroids") seedAsteroids();
             else if (splashMode === "tempest") seedTempest();
             else if (splashMode === "missilecommand") seedMissileCommand();
+            else if (splashMode === "mountains") seedMountainScene();
             else if (splashMode === "radar") seedRadarScreen();
             else if (splashMode === "dukenukem") seedDukeNukem();
             else if (splashMode === "turningcircles") seedTurningCircles();
@@ -1648,6 +1863,7 @@ export async function initializeHomeSplash() {
             else if (splashMode === "asteroids") seedAsteroids();
             else if (splashMode === "tempest") seedTempest();
             else if (splashMode === "missilecommand") seedMissileCommand();
+            else if (splashMode === "mountains") seedMountainScene();
             else if (splashMode === "radar") seedRadarScreen();
             else if (splashMode === "dukenukem") seedDukeNukem();
             else if (splashMode === "turningcircles") seedTurningCircles();
@@ -2086,6 +2302,278 @@ export async function initializeHomeSplash() {
               p.text(`MISSILE COMMAND`, 18, 14);
               p.textAlign(p.RIGHT, p.TOP);
               p.text(`Wave ${Math.max(1, Math.floor(missileWave))}  Score ${String(missileScore)}`, p.width - 18, 14);
+              return;
+            }
+
+            if (splashMode === "mountains") {
+              p.background(0, 0, 0, 255);
+              const now = p.millis();
+              mountainPanX += 0.28;
+              const baseOffset = ((mountainPanX % mountainWorldWidth) + mountainWorldWidth) % mountainWorldWidth;
+
+              p.noStroke();
+              for (const star of mountainStars) {
+                star.twinkle += star.twinkleSpeed;
+                const parallax = baseOffset * 0.14;
+                let drawX = star.x - parallax;
+                while (drawX < -6) drawX += mountainWorldWidth;
+                while (drawX > p.width + 6) drawX -= mountainWorldWidth;
+                if (drawX < -6 || drawX > p.width + 6) continue;
+                const alpha = star.alpha * (0.72 + (0.28 * Math.sin(star.twinkle)));
+                p.fill(255, 255, 255, alpha);
+                p.circle(drawX, star.y, star.size);
+              }
+
+              if (now >= mountainNextShootingStarAt) {
+                const burstCount = p.random() < 0.54 ? (p.random() < 0.3 ? 3 : 2) : 1;
+                for (let i = 0; i < burstCount; i += 1) spawnMountainShootingStar();
+                mountainNextShootingStarAt = now + p.random(1800, 5200);
+              }
+
+              for (let i = mountainShootingStars.length - 1; i >= 0; i -= 1) {
+                const star = mountainShootingStars[i];
+                star.x += star.vx;
+                star.y += star.vy;
+                star.trail.unshift({
+                  x: star.x,
+                  y: star.y,
+                  alpha: star.alpha
+                });
+                if (star.trail.length > 18) star.trail.length = 18;
+
+                for (let j = star.trail.length - 1; j >= 0; j -= 1) {
+                  star.trail[j].alpha *= 0.88;
+                  if (star.trail[j].alpha < 8) star.trail.splice(j, 1);
+                }
+
+                p.noFill();
+                p.strokeWeight(1.35);
+                for (let j = 1; j < star.trail.length; j += 1) {
+                  const a = star.trail[j - 1];
+                  const b = star.trail[j];
+                  p.stroke(255, 255, 255, b.alpha * (1 - (j / star.trail.length)));
+                  p.line(a.x, a.y, b.x, b.y);
+                }
+
+                p.noStroke();
+                p.fill(255, 255, 255, star.alpha);
+                p.circle(star.x, star.y, star.size);
+
+                if (star.x < -40 || star.x > p.width + 40 || star.y > p.height * 0.76) {
+                  mountainShootingStars.splice(i, 1);
+                }
+              }
+
+              p.noFill();
+              p.strokeJoin(p.ROUND);
+              const orderedRanges = [...mountainRanges].sort((a, b) => a.speed - b.speed);
+              for (let i = 0; i < orderedRanges.length; i += 1) {
+                const range = orderedRanges[i];
+                const rangeOffset = (baseOffset * range.speed) % mountainWorldWidth;
+                drawMountainRangeLine(range, rangeOffset);
+                for (let j = i + 1; j < orderedRanges.length; j += 1) {
+                  const nearerRange = orderedRanges[j];
+                  const nearerOffset = (baseOffset * nearerRange.speed) % mountainWorldWidth;
+                  drawMountainRangeMask(nearerRange, nearerOffset);
+                }
+              }
+
+              for (const rider of mountainPeople) {
+                const range = mountainRanges[rider.rangeIndex];
+                if (!range || range.points.length < 2) continue;
+                const rangeOffset = (baseOffset * range.speed) % mountainWorldWidth;
+                const shift = getMountainRangeShift(range, rangeOffset);
+                rider.anim += rider.state === "run" ? 0.34 : rider.state === "air" ? 0.24 : 0.16;
+
+                if (rider.state === "slide" || rider.state === "climb") {
+                  const a = range.points[rider.segmentIndex];
+                  const b = range.points[Math.min(range.points.length - 1, rider.segmentIndex + 1)];
+                  rider.progress += rider.slideSpeed;
+                  if (rider.progress >= 1) {
+                    rider.segmentIndex += 1;
+                    rider.progress = 0;
+                  }
+                  const nextA = range.points[rider.segmentIndex];
+                  const nextB = range.points[Math.min(range.points.length - 1, rider.segmentIndex + 1)];
+                  const isClimb = rider.state === "climb";
+                  const shouldLeap =
+                    isClimb &&
+                    nextA &&
+                    nextB &&
+                    rider.progress >= 0.56 &&
+                    (
+                      rider.segmentIndex >= rider.jumpSegmentIndex ||
+                      nextB.y >= (nextA.y - 3) ||
+                      rider.segmentIndex >= range.points.length - 2
+                    );
+                  if (shouldLeap) {
+                    rider.state = "air";
+                    rider.x = p.lerp(nextA.x, nextB.x, rider.progress) + shift;
+                    rider.y = p.lerp(nextA.y, nextB.y, rider.progress);
+                    const slopeDx = nextB.x - nextA.x;
+                    rider.vx = (slopeDx < 0 ? -1 : 1) * (rider.highJump ? (1.2 + rider.size * 0.62) : (1.05 + rider.size * 0.5));
+                    rider.vy = rider.highJump
+                      ? -(4.2 + rider.size * 0.85)
+                      : -(1.9 + rider.size * 0.45);
+                    rider.runDir = p.random() < 0.5 ? -1 : 1;
+                    rider.jumpSegmentIndex = -1;
+                  } else if (!nextA || !nextB || nextB.y >= mountainHorizonY - 2 || rider.segmentIndex >= range.points.length - 2) {
+                    rider.state = "run";
+                    rider.x = (nextB?.x ?? b.x) + shift;
+                    rider.y = mountainHorizonY;
+                    const slopeDx = (nextB?.x ?? b.x) - (nextA?.x ?? a.x);
+                    rider.runDir = slopeDx < 0 ? -1 : 1;
+                    if (p.random() < 0.45) rider.runDir *= -1;
+                  } else {
+                    rider.x = p.lerp(nextA.x, nextB.x, rider.progress) + shift;
+                    rider.y = p.lerp(nextA.y, nextB.y, rider.progress);
+                  }
+                } else if (rider.state === "air") {
+                  rider.x += rider.vx;
+                  rider.y += rider.vy;
+                  rider.vy += 0.12;
+                  if (rider.y >= mountainHorizonY) {
+                    rider.state = "run";
+                    rider.y = mountainHorizonY;
+                    if (p.random() < 0.5) rider.runDir *= -1;
+                  }
+                } else {
+                  rider.x += rider.runDir * (1.15 + rider.size * 0.55);
+                  rider.y = mountainHorizonY;
+                  if (rider.x < -30 || rider.x > p.width + 30) {
+                    assignMountainPerson(rider);
+                    continue;
+                  }
+                }
+
+                if (rider.x < -20 || rider.x > p.width + 20) continue;
+                const stride = Math.sin(rider.anim);
+                const bodyH = 7.5 * rider.size;
+                const legLift = 1.8 * rider.size * Math.abs(stride);
+                p.stroke(236, 236, 236, 210);
+                p.strokeWeight(1.1);
+                p.line(rider.x, rider.y - bodyH, rider.x, rider.y - 2.2 * rider.size);
+                p.line(rider.x, rider.y - bodyH + 1.4, rider.x - 2.1 * rider.size, rider.y - bodyH + 4.3 + stride);
+                p.line(rider.x, rider.y - bodyH + 1.4, rider.x + 2.1 * rider.size, rider.y - bodyH + 4.3 - stride);
+                p.line(rider.x, rider.y - 2.2 * rider.size, rider.x - 2.2 * rider.size, rider.y + legLift - 0.8);
+                p.line(rider.x, rider.y - 2.2 * rider.size, rider.x + 2.2 * rider.size, rider.y - legLift - 0.8);
+                p.noStroke();
+                p.fill(252, 252, 252, 225);
+                p.circle(rider.x, rider.y - bodyH - 2.4 * rider.size, 2.8 * rider.size);
+              }
+
+              for (const runner of mountainApproachPeople) {
+                runner.progress += runner.speed;
+                if (runner.progress >= 1) {
+                  runner.progress = p.random(0, 0.08);
+                  runner.laneOrigin = p.random(-0.42, 0.42);
+                  runner.drift = p.random(-0.18, 0.18);
+                  runner.speed = p.random(0.0026, 0.0058);
+                  runner.baseSize = p.random(0.72, 1.08);
+                  runner.hitCooldown = 0;
+                }
+                runner.stridePhase += 0.24 + (runner.progress * 0.16);
+                const t = p.constrain(runner.progress, 0, 1);
+                const spread = p.width * (0.04 + t * 0.3);
+                const laneCenter = (p.width * 0.5) + (runner.laneOrigin * p.width * 0.34);
+                runner.x = laneCenter + (runner.drift * spread);
+                runner.y = p.lerp(mountainHorizonY + 3, p.height - 18, t);
+                const scale = runner.baseSize * p.lerp(0.18, 1.7, t);
+                runner.hitCooldown = Math.max(0, (runner.hitCooldown || 0) - 1);
+                const stride = Math.sin(runner.stridePhase);
+                const bodyH = 10 * scale;
+                const legLift = 2.4 * scale * Math.abs(stride);
+                const armSwing = 2.2 * scale * stride;
+                p.stroke(242, 242, 242, p.lerp(90, 235, t));
+                p.strokeWeight(Math.max(0.9, 1.05 * scale));
+                p.line(runner.x, runner.y - bodyH, runner.x, runner.y - 2.8 * scale);
+                p.line(runner.x, runner.y - bodyH + 1.6 * scale, runner.x - armSwing, runner.y - bodyH + 4.8 * scale);
+                p.line(runner.x, runner.y - bodyH + 1.6 * scale, runner.x + armSwing, runner.y - bodyH + 4.8 * scale);
+                p.line(runner.x, runner.y - 2.8 * scale, runner.x - 2.5 * scale, runner.y + legLift);
+                p.line(runner.x, runner.y - 2.8 * scale, runner.x + 2.5 * scale, runner.y - legLift);
+                p.noStroke();
+                p.fill(252, 252, 252, p.lerp(100, 245, t));
+                p.circle(runner.x, runner.y - bodyH - 2.9 * scale, 3.3 * scale);
+              }
+
+              p.noStroke();
+              p.fill(255, 255, 255, 18);
+              p.rect(0, mountainHorizonY, p.width, p.height - mountainHorizonY);
+              for (const car of mountainCars) {
+                car.x += car.speed;
+                const carW = 18 * car.scale;
+                const carH = 6.5 * car.scale;
+                if (car.dir > 0 && car.x > p.width + 40) car.x = -60 - p.random(0, p.width * 0.3);
+                else if (car.dir < 0 && car.x < -60) car.x = p.width + 60 + p.random(0, p.width * 0.3);
+
+                for (const runner of mountainApproachPeople) {
+                  if ((runner.hitCooldown || 0) > 0) continue;
+                  const runnerScale = runner.baseSize * p.lerp(0.18, 1.7, p.constrain(runner.progress, 0, 1));
+                  const runnerBodyH = 10 * runnerScale;
+                  const runnerHalfW = 3.2 * runnerScale;
+                  const runnerTop = runner.y - runnerBodyH - 5 * runnerScale;
+                  const runnerBottom = runner.y + 1.5 * runnerScale;
+                  const runnerLeft = runner.x - runnerHalfW;
+                  const runnerRight = runner.x + runnerHalfW;
+                  const carLeft = car.x - carW * 0.5;
+                  const carRight = car.x + carW * 0.5;
+                  const carTop = car.y - carH * 1.58;
+                  const carBottom = car.y + 2.2 * car.scale;
+                  const overlaps =
+                    runnerRight >= carLeft &&
+                    runnerLeft <= carRight &&
+                    runnerBottom >= carTop &&
+                    runnerTop <= carBottom;
+                  if (!overlaps) continue;
+                  mountainImpactBursts.push({
+                    x: runner.x,
+                    y: runner.y - runnerBodyH * 0.4,
+                    life: 20,
+                    size: 5.5 * runnerScale
+                  });
+                  runner.progress = p.random(0, 0.08);
+                  runner.laneOrigin = p.random(-0.42, 0.42);
+                  runner.drift = p.random(-0.18, 0.18);
+                  runner.speed = p.random(0.0026, 0.0058);
+                  runner.baseSize = p.random(0.72, 1.08);
+                  runner.hitCooldown = 36;
+                }
+
+                p.noStroke();
+                p.fill(car.body, car.body, car.body, car.alpha);
+                p.rect(car.x - carW * 0.5, car.y - carH, carW, carH, 2);
+                p.rect(car.x - carW * 0.18, car.y - carH * 1.58, carW * 0.4, carH * 0.72, 2);
+                p.fill(255, 255, 255, car.alpha * 0.22);
+                p.rect(car.x - carW * 0.08, car.y - carH * 1.46, carW * 0.12, carH * 0.3, 1);
+                p.fill(car.wheel, car.wheel, car.wheel, car.alpha * 0.9);
+                p.circle(car.x - carW * 0.28, car.y, 4.1 * car.scale);
+                p.circle(car.x + carW * 0.28, car.y, 4.1 * car.scale);
+              }
+
+              for (let i = mountainImpactBursts.length - 1; i >= 0; i -= 1) {
+                const burst = mountainImpactBursts[i];
+                burst.life -= 1;
+                burst.size *= 1.08;
+                if (burst.life <= 0) {
+                  mountainImpactBursts.splice(i, 1);
+                  continue;
+                }
+                const alpha = p.map(burst.life, 0, 20, 0, 230);
+                p.noFill();
+                p.stroke(255, 255, 255, alpha);
+                p.strokeWeight(1.2);
+                p.circle(burst.x, burst.y, burst.size * 1.8);
+                p.stroke(255, 255, 255, alpha * 0.6);
+                p.circle(burst.x, burst.y, burst.size * 2.6);
+              }
+
+              p.stroke(244, 244, 244, 120);
+              p.strokeWeight(1.4);
+              p.line(0, mountainHorizonY, p.width, mountainHorizonY);
+              p.noStroke();
+              p.fill(0, 0, 0, 255);
+              p.rect(-2, 0, 6, p.height);
+              p.rect(p.width - 4, 0, 6, p.height);
               return;
             }
   
@@ -3277,6 +3765,5 @@ export async function initializeHomeSplash() {
         e.stopPropagation();
         closeSplashWithMelt();
       });
-  
       // ---- Data source: Admin localStorage first, fallback JSON ----
 }

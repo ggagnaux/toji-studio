@@ -81,6 +81,9 @@
       gap:8px;
       transition:border-color .18s ease, background .18s ease, color .18s ease;
     }
+    .other-settings-tabbtn--export{
+      margin-left:auto;
+    }
     .other-settings-tabbtn:hover{
       color:var(--text);
     }

@@ -30,6 +30,26 @@ adminRouter.put("/admin/settings/image-variants", (req, res) => {
   res.json(saved);
 });
 
+adminRouter.get("/admin/export/database.json", (req, res) => {
+  const snapshot = {
+    exportedAt: nowIso(),
+    tables: {
+      artworks: db.prepare(`SELECT * FROM artworks ORDER BY updatedAt DESC, createdAt DESC, id ASC`).all(),
+      variants: db.prepare(`SELECT * FROM variants ORDER BY artworkId ASC, kind ASC, id ASC`).all(),
+      settings: db.prepare(`SELECT * FROM settings ORDER BY key ASC`).all(),
+      series: db.prepare(`SELECT * FROM series ORDER BY sortOrder ASC, name COLLATE NOCASE ASC, slug ASC`).all(),
+      external_links: db.prepare(`SELECT * FROM external_links ORDER BY sortOrder ASC, updatedAt DESC, id ASC`).all(),
+      social_platforms: db.prepare(`SELECT * FROM social_platforms ORDER BY id ASC`).all(),
+      artwork_social_posts: db.prepare(`SELECT * FROM artwork_social_posts ORDER BY artworkId ASC, platformId ASC, id ASC`).all()
+    }
+  };
+
+  const filename = `toji-database-export-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send(JSON.stringify(snapshot, null, 2));
+});
+
 adminRouter.get("/admin/artworks", (req, res) => {
   const rows = db.prepare(`
     SELECT a.*,

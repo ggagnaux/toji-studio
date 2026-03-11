@@ -307,6 +307,7 @@ export async function initializeHomeSplash() {
           const mountainStars = [];
           const mountainRanges = [];
           const mountainShootingStars = [];
+          const mountainBirds = [];
           const mountainPeople = [];
           const mountainApproachPeople = [];
           const mountainCars = [];
@@ -1103,6 +1104,7 @@ export async function initializeHomeSplash() {
             mountainStars.length = 0;
             mountainRanges.length = 0;
             mountainShootingStars.length = 0;
+            mountainBirds.length = 0;
             mountainPeople.length = 0;
             mountainApproachPeople.length = 0;
             mountainCars.length = 0;
@@ -1121,6 +1123,37 @@ export async function initializeHomeSplash() {
                 twinkle: p.random(Math.PI * 2),
                 twinkleSpeed: p.random(0.004, 0.014)
               });
+            }
+
+            const birdCount = Math.floor(p.random(6, 12));
+            const birdDepths = [
+              { scale: 0.42, speedMin: 0.22, speedMax: 0.4, alpha: 92 },
+              { scale: 0.68, speedMin: 0.38, speedMax: 0.7, alpha: 138 },
+              { scale: 1.0, speedMin: 0.72, speedMax: 1.18, alpha: 210 }
+            ];
+            for (let i = 0; i < birdCount; i += 1) {
+              const depth = birdDepths[Math.floor(p.random(birdDepths.length))] || birdDepths[1];
+              const dir = p.random() < 0.5 ? -1 : 1;
+              const bird = {
+                x: p.random(-120, p.width + 120),
+                y: p.random(p.height * 0.08, p.height * 0.46),
+                dir,
+                speed: p.random(depth.speedMin, depth.speedMax) * dir,
+                scale: depth.scale * p.random(0.9, 1.12),
+                alpha: depth.alpha,
+                flap: p.random(Math.PI * 2),
+                flapSpeed: p.random(0.14, 0.28),
+                drift: p.random(-0.18, 0.18),
+                mode: "fly",
+                targetRunner: null,
+                carryingRunner: null,
+                vx: 0,
+                vy: 0,
+                carryUntil: 0,
+                dropAltitude: p.height * 0.18
+              };
+              resetMountainBird(bird, true);
+              mountainBirds.push(bird);
             }
 
             const rangeConfigs = [
@@ -1177,7 +1210,7 @@ export async function initializeHomeSplash() {
 
             const approachCount = Math.floor(p.random(4, 8));
             for (let i = 0; i < approachCount; i += 1) {
-              mountainApproachPeople.push({
+              const runner = {
                 x: 0,
                 y: 0,
                 progress: p.random(0, 0.95),
@@ -1186,8 +1219,14 @@ export async function initializeHomeSplash() {
                 drift: p.random(-0.18, 0.18),
                 stridePhase: p.random(Math.PI * 2),
                 baseSize: p.random(0.72, 1.08),
-                hitCooldown: 0
-              });
+                hitCooldown: 0,
+                grabbedBy: null,
+                falling: false,
+                fallVx: 0,
+                fallVy: 0
+              };
+              resetMountainApproachRunner(runner, true);
+              mountainApproachPeople.push(runner);
             }
 
             const carCount = Math.floor(p.random(5, 10));
@@ -1219,6 +1258,39 @@ export async function initializeHomeSplash() {
             while ((firstX + shift) > -260) shift -= mountainWorldWidth;
             while ((lastX + shift) < (p.width + 260)) shift += mountainWorldWidth;
             return shift;
+          };
+
+          const resetMountainBird = (bird, initial = false) => {
+            const dir = p.random() < 0.5 ? -1 : 1;
+            const startBeyond = initial ? p.random(-120, p.width + 120) : (dir > 0 ? -140 : p.width + 140);
+            bird.x = startBeyond;
+            bird.y = p.random(p.height * 0.08, p.height * 0.46);
+            bird.dir = dir;
+            bird.speed = Math.abs(bird.speed || p.random(0.3, 1.1)) * dir;
+            bird.mode = "fly";
+            bird.targetRunner = null;
+            bird.carryingRunner = null;
+            bird.vx = bird.speed;
+            bird.vy = 0;
+            bird.carryUntil = 0;
+            bird.dropAltitude = p.random() < 0.32
+              ? p.random(p.height * 0.04, p.height * 0.11)
+              : p.random(p.height * 0.14, p.height * 0.24);
+          };
+
+          const resetMountainApproachRunner = (runner, initial = false) => {
+            runner.progress = initial ? p.random(0, 0.95) : p.random(0, 0.08);
+            runner.speed = p.random(0.0026, 0.0058);
+            runner.laneOrigin = p.random(-0.42, 0.42);
+            runner.drift = p.random(-0.18, 0.18);
+            runner.baseSize = p.random(0.72, 1.08);
+            runner.hitCooldown = 0;
+            runner.grabbedBy = null;
+            runner.falling = false;
+            runner.fallVx = 0;
+            runner.fallVy = 0;
+            runner.x = 0;
+            runner.y = mountainHorizonY;
           };
 
           const assignMountainPerson = (person, initial = false) => {
@@ -2463,14 +2535,36 @@ export async function initializeHomeSplash() {
               }
 
               for (const runner of mountainApproachPeople) {
+                if (runner.grabbedBy) {
+                  runner.stridePhase += 0.18;
+                  continue;
+                }
+                if (runner.falling) {
+                  runner.x += runner.fallVx;
+                  runner.y += runner.fallVy;
+                  runner.fallVy += 0.14;
+                  runner.stridePhase += 0.18;
+                  const fallScale = runner.baseSize * 1.18;
+                  const fallBodyH = 10 * fallScale;
+                  p.stroke(242, 242, 242, 220);
+                  p.strokeWeight(Math.max(0.9, 1.05 * fallScale));
+                  p.line(runner.x, runner.y - fallBodyH, runner.x, runner.y - 2.8 * fallScale);
+                  p.line(runner.x, runner.y - fallBodyH + 1.4 * fallScale, runner.x - 2.2 * fallScale, runner.y - fallBodyH + 5.2 * fallScale);
+                  p.line(runner.x, runner.y - fallBodyH + 1.4 * fallScale, runner.x + 2.2 * fallScale, runner.y - fallBodyH + 5.2 * fallScale);
+                  p.line(runner.x, runner.y - 2.8 * fallScale, runner.x - 2.6 * fallScale, runner.y + 2.8 * fallScale);
+                  p.line(runner.x, runner.y - 2.8 * fallScale, runner.x + 2.6 * fallScale, runner.y + 2.8 * fallScale);
+                  p.noStroke();
+                  p.fill(252, 252, 252, 225);
+                  p.circle(runner.x, runner.y - fallBodyH - 2.9 * fallScale, 3.3 * fallScale);
+                  if (runner.y > p.height + 24) {
+                    resetMountainApproachRunner(runner);
+                  }
+                  continue;
+                }
+
                 runner.progress += runner.speed;
                 if (runner.progress >= 1) {
-                  runner.progress = p.random(0, 0.08);
-                  runner.laneOrigin = p.random(-0.42, 0.42);
-                  runner.drift = p.random(-0.18, 0.18);
-                  runner.speed = p.random(0.0026, 0.0058);
-                  runner.baseSize = p.random(0.72, 1.08);
-                  runner.hitCooldown = 0;
+                  resetMountainApproachRunner(runner);
                 }
                 runner.stridePhase += 0.24 + (runner.progress * 0.16);
                 const t = p.constrain(runner.progress, 0, 1);
@@ -2494,6 +2588,96 @@ export async function initializeHomeSplash() {
                 p.noStroke();
                 p.fill(252, 252, 252, p.lerp(100, 245, t));
                 p.circle(runner.x, runner.y - bodyH - 2.9 * scale, 3.3 * scale);
+              }
+
+              for (const bird of mountainBirds) {
+                bird.flap += bird.flapSpeed;
+                if (bird.mode === "fly") {
+                  bird.x += bird.speed;
+                  bird.y += Math.sin((now * 0.0014) + bird.x * 0.012) * 0.08 + bird.drift * 0.03;
+                  if (!bird.targetRunner && p.random() < 0.0012) {
+                    const target = mountainApproachPeople.find((runner) =>
+                      !runner.grabbedBy &&
+                      !runner.falling &&
+                      runner.progress > 0.18 &&
+                      runner.progress < 0.82
+                    );
+                    if (target) {
+                      bird.mode = "swoop";
+                      bird.targetRunner = target;
+                    }
+                  }
+                  if (bird.dir > 0 && bird.x > p.width + 120) resetMountainBird(bird);
+                  else if (bird.dir < 0 && bird.x < -140) resetMountainBird(bird);
+                } else if (bird.mode === "swoop") {
+                  const target = bird.targetRunner;
+                  if (!target || target.grabbedBy || target.falling) {
+                    bird.mode = "fly";
+                    bird.targetRunner = null;
+                  } else {
+                    const tx = target.x;
+                    const ty = target.y - 18;
+                    bird.x += (tx - bird.x) * 0.065;
+                    bird.y += (ty - bird.y) * 0.065;
+                    if (Math.hypot(tx - bird.x, ty - bird.y) < 12) {
+                      bird.mode = "carry";
+                      bird.carryingRunner = target;
+                      target.grabbedBy = bird;
+                      bird.carryUntil = now + p.random(1400, 2400);
+                      bird.dir = (bird.speed || 1) < 0 ? -1 : 1;
+                      bird.vx = bird.dir * (0.9 + bird.scale * 0.7);
+                      bird.vy = -(0.55 + bird.scale * 0.2);
+                      bird.targetRunner = null;
+                    }
+                  }
+                } else if (bird.mode === "carry") {
+                  const carried = bird.carryingRunner;
+                  if (!carried) {
+                    bird.mode = "fly";
+                  } else {
+                    bird.x += bird.vx;
+                    bird.y += bird.vy;
+                    carried.x = bird.x;
+                    carried.y = bird.y + (9 * bird.scale);
+                    if (now >= bird.carryUntil || bird.y < bird.dropAltitude) {
+                      carried.grabbedBy = null;
+                      carried.falling = true;
+                      carried.fallVx = bird.vx * 0.7;
+                      carried.fallVy = Math.max(0.8, bird.vy * -0.1);
+                      bird.carryingRunner = null;
+                      bird.mode = "fly";
+                    }
+                  }
+                }
+
+                const birdW = 14 * bird.scale;
+                const wingLift = Math.sin(bird.flap) * (5.5 * bird.scale);
+                p.push();
+                p.translate(bird.x, bird.y);
+                if (bird.dir < 0) p.scale(-1, 1);
+                p.noFill();
+                p.stroke(248, 248, 248, bird.alpha);
+                p.strokeWeight(Math.max(0.8, 1.15 * bird.scale));
+                p.beginShape();
+                p.vertex(-birdW, wingLift);
+                p.vertex(0, 0);
+                p.vertex(birdW, wingLift);
+                p.endShape();
+                if (bird.carryingRunner) {
+                  const carryScale = bird.carryingRunner.baseSize * 0.62;
+                  const carryBodyH = 9 * carryScale;
+                  p.stroke(242, 242, 242, 220);
+                  p.strokeWeight(Math.max(0.75, 0.95 * carryScale));
+                  p.line(0, 8 * bird.scale, 0, 8 * bird.scale + carryBodyH);
+                  p.line(0, 10 * bird.scale, -2.2 * carryScale, 13 * bird.scale);
+                  p.line(0, 10 * bird.scale, 2.2 * carryScale, 13 * bird.scale);
+                  p.line(0, 8 * bird.scale + carryBodyH, -2.2 * carryScale, 8 * bird.scale + carryBodyH + 3 * carryScale);
+                  p.line(0, 8 * bird.scale + carryBodyH, 2.2 * carryScale, 8 * bird.scale + carryBodyH + 3 * carryScale);
+                  p.noStroke();
+                  p.fill(252, 252, 252, 225);
+                  p.circle(0, 8 * bird.scale + carryBodyH - 2.2 * carryScale, 3 * carryScale);
+                }
+                p.pop();
               }
 
               p.noStroke();
@@ -2531,11 +2715,7 @@ export async function initializeHomeSplash() {
                     life: 20,
                     size: 5.5 * runnerScale
                   });
-                  runner.progress = p.random(0, 0.08);
-                  runner.laneOrigin = p.random(-0.42, 0.42);
-                  runner.drift = p.random(-0.18, 0.18);
-                  runner.speed = p.random(0.0026, 0.0058);
-                  runner.baseSize = p.random(0.72, 1.08);
+                  resetMountainApproachRunner(runner);
                   runner.hitCooldown = 36;
                 }
 

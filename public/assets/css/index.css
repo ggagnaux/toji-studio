@@ -178,8 +178,9 @@
       transition: top .6s ease, left .6s ease, transform .6s ease;
     }
     .splash-screen.logo-cornered .splash-logo{
-      top:calc(100% - 14px);
-      left:14px;
+      top:100%;
+      left:20px;
+      transform-origin: 0 100%;
       transform: translate(var(--splash-logo-nudge-x, 0px), calc(-100% + var(--splash-logo-nudge-y, 0px))) rotate(var(--splash-logo-tilt, 0deg)) scale(0.5);
     }
     .splash-logo.is-melting{

@@ -93,6 +93,7 @@ export function setYearFooter() {
   if (mainHost) mainHost.classList.add("page-with-sticky-hero");
 
   const hero = document.querySelector("main.container .hero");
+  const dashboardControls = document.querySelector(".dashboard-controls");
   if (hero) {
     hero.classList.add("hero--sticky");
     initStickyHero({ heroSelector: "main.container .hero--sticky" });
@@ -100,6 +101,7 @@ export function setYearFooter() {
 
   const siteHeader = document.getElementById("siteHeader");
   let syncAdminHeaderHeight = null;
+  let syncAdminStickyOffsets = null;
   if (siteHeader) {
     renderPublicHeader({
       active: "studio",
@@ -112,8 +114,23 @@ export function setYearFooter() {
       const h = Math.ceil(siteHeader.getBoundingClientRect().height || 0);
       document.documentElement.style.setProperty("--admin-header-height", `${h || 84}px`);
     };
+    syncAdminStickyOffsets = () => {
+      const headerHeight = siteHeader.getBoundingClientRect().height || 0;
+      const heroHeight = hero?.getBoundingClientRect().height || 0;
+      const compactGap = (window.scrollY || 0) > 8 ? 8 : 0;
+      const stickyTop = headerHeight + heroHeight + compactGap;
+      document.documentElement.style.setProperty("--admin-sidebar-top", `${stickyTop}px`);
+      document.documentElement.style.setProperty("--admin-table-head-top", `${stickyTop}px`);
+    };
     syncAdminHeaderHeight();
+    syncAdminStickyOffsets();
     window.addEventListener("resize", syncAdminHeaderHeight, { passive: true });
+    window.addEventListener("resize", syncAdminStickyOffsets, { passive: true });
+    window.addEventListener("scroll", syncAdminStickyOffsets, { passive: true });
+    if (dashboardControls && typeof ResizeObserver !== "undefined") {
+      const controlsResizeObserver = new ResizeObserver(() => syncAdminStickyOffsets?.());
+      controlsResizeObserver.observe(dashboardControls);
+    }
   }
 
   const siteFooter = document.getElementById("siteFooter");
@@ -140,6 +157,7 @@ export function setYearFooter() {
         else a.removeAttribute("aria-current");
       });
       syncAdminHeaderHeight?.();
+      syncAdminStickyOffsets?.();
     }
     return;
   }
@@ -151,7 +169,17 @@ export function ensureBaseStyles() {
   const style = document.createElement("style");
   style.textContent = `
     .admin-layout{ display:grid; grid-template-columns: 240px 1fr; gap:16px; }
-    .sidebar{ position:sticky; top:84px; align-self:start; border:1px solid var(--line); border-radius: var(--radius); padding:14px; background: var(--panel); }
+    .sidebar{ position:sticky; top:var(--admin-sidebar-top, 84px); align-self:start; border:1px solid var(--line); border-radius: var(--radius); padding:14px; background: var(--panel); }
+    .dashboard-controls{
+      position:relative;
+      top:auto;
+      align-self:start;
+      z-index:22;
+      margin-bottom:16px;
+      padding-bottom:12px;
+      background:var(--bg);
+      isolation:isolate;
+    }
     .sidebar a{ display:block; padding:10px 10px; border-radius:12px; color:var(--muted); border:1px solid transparent; }
     .sidebar a.active{ color:var(--text); border-color: var(--accent-border); background: var(--accent-soft); }
     .sidebar .logout-btn{
@@ -166,12 +194,38 @@ export function ensureBaseStyles() {
       animation: adminLogoutPulse 1s ease-in-out infinite;
     }
     .kpi{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
-    .kpi .card{ box-shadow:none; }
-    .kpi .meta{ padding:12px; }
-    .kpi b{ font-size:22px; display:block; margin-top:4px; }
-    .table{ width:100%; border-collapse: collapse; overflow:hidden; border-radius: 14px; border:1px solid var(--line); }
+    .kpi .card{ box-shadow:none; background:var(--panel); }
+    .kpi .meta{ padding:8px 12px 9px; }
+    .kpi b{ font-size:22px; display:block; margin-top:2px; line-height:1.05; }
+    .dashboard-controls .filters{ background:var(--bg); }
+    .table-scroll-shell{
+      position:relative;
+      height:calc(100dvh - var(--admin-sidebar-top, 84px) - 32px);
+      min-height:420px;
+      overflow-y:auto;
+      overflow-x:auto;
+      scrollbar-gutter:stable both-edges;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:var(--bg);
+    }
+    .table-scroll-shell .admin-thumb-grid{
+      min-height:100%;
+      align-content:start;
+      padding:12px;
+      margin-top:0;
+    }
+    .table{ width:100%; min-width:100%; border-collapse: separate; border-spacing:0; overflow:visible; border-radius:0; border:0; }
     .table th, .table td{ padding:10px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; }
-    .table th{ color:var(--muted); font-weight:600; font-size:13px; }
+    .table th{
+      color:var(--muted);
+      font-weight:600;
+      font-size:13px;
+      position:sticky;
+      top:0;
+      z-index:21;
+      background:var(--bg);
+    }
     .row-actions{ display:flex; gap:8px; flex-wrap:wrap; }
     .mini{ padding:8px 10px; font-size:13px; }
     .thumbSm{ width:56px; height:44px; border-radius:10px; overflow:hidden; border:1px solid var(--line); background: rgba(255,255,255,.03); }
@@ -345,7 +399,7 @@ export function ensureBaseStyles() {
       to{ opacity:0; transform:translateY(8px); }
     }
     .sep{ border:0; border-top:1px solid var(--line); margin:14px 0; }
-    @media (max-width: 920px){ .admin-layout{ grid-template-columns: 1fr; } .sidebar{ position:relative; top:auto; } .kpi{ grid-template-columns: 1fr; } }
+    @media (max-width: 920px){ .admin-layout{ grid-template-columns: 1fr; } .sidebar, .dashboard-controls{ position:relative; top:auto; } .table-scroll-shell{ height:auto; min-height:0; } .kpi{ grid-template-columns: 1fr; } }
   `;
   document.head.appendChild(style);
   initAdminNavMenu();

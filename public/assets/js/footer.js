@@ -20,13 +20,11 @@ export function renderPublicFooter({
 
   const year = new Date().getFullYear();
   const leftBase = leftText.replace("{year}", String(year));
-  const normalizedRightHtml = ensureCompleteFooterMenu(rightHtml);
 
   host.className = "footer";
   host.innerHTML = `
     <div class="row">
       <div data-footer-left>${escapeHtml(leftBase)}</div>
-      <div>${normalizedRightHtml}</div>
     </div>
   `;
 

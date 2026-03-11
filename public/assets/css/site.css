@@ -140,13 +140,13 @@ img{max-width:100%;display:block}
 
 .header{
   position:sticky; top:0; z-index:50;
-  background: rgba(0,0,0,.18);
+  background: var(--bg);
   backdrop-filter: blur(10px);
   border-bottom:1px solid var(--line);
   transition: background-color .2s ease, border-color .2s ease;
 }
 @supports (background: color-mix(in srgb, black, white)){
-  .header{ background: color-mix(in srgb, var(--bg) 78%, transparent); }
+  .header{ background: color-mix(in srgb, var(--bg) 100%, #000 0%); }
   .card{
     background: linear-gradient(
       180deg,
@@ -381,7 +381,7 @@ html.nav-compact .brand-logo-canvas--icon{
   margin-top: 10px;
   padding-top: 4px;
   padding-bottom: 4px !important;
-  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  background: var(--panel);
   backdrop-filter: blur(8px);
 }
 .hero--sticky.is-scrolled h1{
@@ -509,7 +509,7 @@ html.nav-compact .brand-logo-canvas--icon{
 .theme-controls{
   display:flex;
   align-items:center;
-  gap:10px;
+  gap:8px;
 }
 
 .icon-btn{
@@ -526,64 +526,49 @@ html.nav-compact .brand-logo-canvas--icon{
   border-color: var(--hover-line);
   transform: translateY(-1px);
 }
-.icon-btn[data-theme-mode="light"]{
-  border-color: color-mix(in srgb, var(--accent-border) 72%, var(--line));
-  background: color-mix(in srgb, #ffe7ac 24%, var(--panel));
-}
-.icon-btn[data-theme-mode="dark"]{
-  border-color: color-mix(in srgb, var(--accent-border) 86%, #ffffff 14%);
-  background: color-mix(in srgb, var(--accent) 28%, var(--panel));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 48%, transparent);
-}
-.icon-btn[data-theme-mode="system"]{
-  border-style: dashed;
-}
-
-.icon{
-  width:18px; height:18px;
-  display:block;
-  fill: currentColor;
-}
-
-.segmented{
+.theme-pill-toggle{
+  width:56px;
+  height:30px;
+  padding:3px;
   display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
   border:1px solid var(--line);
   border-radius:999px;
-  overflow:hidden;
-  background: color-mix(in srgb, var(--panel) 88%, transparent);
-  padding:2px;
-  gap:2px;
-}
-.segmented button{
-  border:0;
-  background:transparent;
-  color:var(--muted);
-  padding:6px 10px;
+  background:color-mix(in srgb, var(--panel) 92%, transparent);
   cursor:pointer;
-  font-size:12px;
-  border-radius:999px;
-  font-weight:500;
-  transition: color .18s ease, background-color .18s ease, box-shadow .18s ease;
+  transition:border-color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .12s ease;
 }
-.segmented button:hover{ color:var(--text); }
-.segmented button.active{
-  color:var(--text);
-  background: color-mix(in srgb, var(--accent-soft) 78%, var(--panel) 22%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 74%, transparent);
-  font-weight:700;
+.theme-pill-toggle:hover{
+  border-color:var(--hover-line);
+  transform:translateY(-1px);
 }
-[data-theme="dark"] .segmented{
-  border-color: color-mix(in srgb, var(--line) 52%, #ffffff 48%);
+.theme-pill-toggle[data-theme="dark"]{
+  border-color:#ffffff;
+  background:color-mix(in srgb, #08090c 82%, var(--panel));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, #ffffff 8%, transparent);
 }
-[data-theme="dark"] .segmented button{
-  color: color-mix(in srgb, var(--muted) 72%, #ffffff 28%);
+.theme-pill-toggle[data-theme="light"]{
+  border-color:#111318;
+  background:color-mix(in srgb, #ffffff 84%, #d7dde7 16%);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, #1f232b 10%, transparent);
 }
-[data-theme="dark"] .segmented button.active{
-  color: #fefefe;
-  background: color-mix(in srgb, var(--accent) 34%, #ffffff 6%);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, #ffffff 24%, var(--accent-border) 76%),
-    0 0 0 1px color-mix(in srgb, var(--accent) 36%, transparent);
+.theme-pill-toggle__dot{
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  display:block;
+  background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.22);
+  transform:translateX(0);
+  transition:transform .18s ease, background-color .18s ease, box-shadow .18s ease;
+}
+.theme-pill-toggle[data-theme="light"] .theme-pill-toggle__dot{
+  background:#111318;
+  box-shadow:0 1px 3px rgba(0,0,0,.18);
+}
+.theme-pill-toggle[data-theme="dark"] .theme-pill-toggle__dot{
+  transform:translateX(26px);
 }
 
 .footer{
@@ -595,7 +580,7 @@ html.nav-compact .brand-logo-canvas--icon{
 }
 .footer .row{
   display:flex;
-  justify-content:space-between;
+  justify-content:flex-start;
   align-items:center;
   gap:16px;
   flex-wrap:wrap;
@@ -684,13 +669,6 @@ input, textarea, select{
     gap:6px;
     flex-wrap:wrap;
     justify-content:flex-end;
-  }
-  .theme-controls .segmented{
-    display:inline-flex;
-  }
-  .theme-controls .segmented button{
-    padding:5px 8px;
-    font-size:11px;
   }
   .nav > .btn{display:none}
 }

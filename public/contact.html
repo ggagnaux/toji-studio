@@ -156,13 +156,14 @@
 
   const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
   const FALLBACK_URL = "assets/data/admin.sample.json";
+  const PUBLIC_API_BASE = (localStorage.getItem("toji_api_base") || "http://localhost:5179").replace(/\/+$/, "");
+
   async function loadSiteSettings() {
-    const defaults = { contactEmail: "you@example.com", externalLinks: [] };
+    const defaults = { contactEmail: "you@example.com" };
     const fromState = (data) => {
       const settings = data && typeof data === "object" ? (data.settings || {}) : {};
       return {
-        contactEmail: String(settings.contactEmail || defaults.contactEmail),
-        externalLinks: Array.isArray(settings.externalLinks) ? settings.externalLinks : defaults.externalLinks
+        contactEmail: String(settings.contactEmail || defaults.contactEmail)
       };
     };
 
@@ -180,7 +181,27 @@
     }
   }
 
+  async function loadExternalLinks() {
+    try {
+      const res = await fetch(`${PUBLIC_API_BASE}/api/public/external-links`, { cache: "no-store" });
+      if (!res.ok) throw new Error(String(res.status));
+      const rows = await res.json();
+      return Array.isArray(rows) ? rows : [];
+    } catch {
+      try {
+        const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const settings = parsed && typeof parsed === "object" ? (parsed.settings || {}) : {};
+          return Array.isArray(settings.externalLinks) ? settings.externalLinks : [];
+        }
+      } catch {}
+      return [];
+    }
+  }
+
   const settings = await loadSiteSettings();
+  const externalLinks = await loadExternalLinks();
   const TO_EMAIL = settings.contactEmail;
   const emailEl = document.getElementById("contactEmail");
   const socialLinksEl = document.getElementById("socialLinks");
@@ -227,7 +248,7 @@
     });
   }
 
-  renderSocialLinks(settings.externalLinks);
+  renderSocialLinks(externalLinks);
 
   const form = document.getElementById("contactForm");
   const draftBox = document.getElementById("draftBox");

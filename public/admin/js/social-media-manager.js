@@ -16,9 +16,21 @@ const platformNewIconLocation = document.getElementById("platformNewIconLocation
 const platformCreateStatus = document.getElementById("platformCreateStatus");
 const platformCreateDialogPanel = platformCreateDialog?.querySelector('[role="dialog"]');
 let lastFocusedBeforeDialog = null;
+let allowedPlatformOptions = [];
 
 function cleanText(v) {
   return String(v || "").trim();
+}
+
+function normalizePlatformIconLocation(raw) {
+  const text = cleanText(raw).replace(/\\/g, "/");
+  if (!text) return "";
+  if (/^(https?:)?\/\//i.test(text) || text.startsWith("data:")) return text;
+  if (text.startsWith("/")) return text;
+  const marker = "/assets/";
+  const markerIndex = text.toLowerCase().indexOf(marker);
+  if (markerIndex >= 0) return text.slice(markerIndex);
+  return `/${text.replace(/^\/+/, "")}`;
 }
 
 function cleanSlug(v) {
@@ -44,15 +56,9 @@ const categoryOptions = ["social", "video", "newsletter", "portfolio", "other"];
 let platforms = [];
 let activePlatformId = "";
 const TAB_BORDER_PALETTE = ["#2a97d4", "#2ea97d", "#d18b2e", "#d15353", "#8a63d2", "#cf5ea8", "#3aa5a0", "#7e8c2b"];
-const PLATFORM_TAB_ICON_SRC = {
-  linkedin: "https://s.magecdn.com/social/tc-linkedin.svg"
-};
 
 function getPlatformTabIconSrc(platform) {
-  const configured = cleanText(platform?.config?.iconLocation);
-  if (configured) return configured;
-  const iconKey = cleanSlug(platform?.id || platform?.name);
-  return PLATFORM_TAB_ICON_SRC[iconKey] || "";
+  return normalizePlatformIconLocation(platform?.iconLocation || platform?.config?.iconLocation);
 }
 
 function ensureSocialManagerStyles() {
@@ -85,7 +91,6 @@ function ensureSocialManagerStyles() {
       width: 16px;
       height: 16px;
       border-radius: 4px;
-      border: 1px solid color-mix(in srgb, var(--smm-tab-color, var(--accent)) 72%, var(--line));
       background: color-mix(in srgb, var(--smm-tab-color, var(--accent)) 14%, transparent);
       flex: 0 0 auto;
       display: inline-block;
@@ -199,6 +204,11 @@ openPlatformCreateDialogBtn?.addEventListener("click", () => {
   openPlatformCreateDialog();
 });
 
+platformNewId?.addEventListener("change", () => {
+  const selected = allowedPlatformOptions.find((platform) => platform.id === cleanSlug(platformNewId.value)) || null;
+  if (platformNewName) platformNewName.value = selected?.name || "";
+});
+
 closePlatformCreateDialogBtn?.addEventListener("click", () => {
   closePlatformCreateDialog();
 });
@@ -263,6 +273,28 @@ function input(type, value = "", placeholder = "") {
   return node;
 }
 
+function updateCreateFormOptions() {
+  if (!platformNewId || !platformNewName) return;
+  const existingIds = new Set(platforms.map((platform) => cleanSlug(platform.id)));
+  const availableOptions = allowedPlatformOptions.filter((platform) => !existingIds.has(cleanSlug(platform.id)));
+  const currentValue = cleanSlug(platformNewId.value);
+
+  platformNewId.innerHTML = "";
+  platformNewId.appendChild(new Option("Select a platform...", ""));
+  for (const platform of availableOptions) {
+    platformNewId.appendChild(new Option(platform.name, platform.id));
+  }
+
+  const selectedValue = availableOptions.some((platform) => platform.id === currentValue)
+    ? currentValue
+    : (availableOptions[0]?.id || "");
+  platformNewId.value = selectedValue;
+  const selected = allowedPlatformOptions.find((platform) => platform.id === selectedValue) || null;
+  platformNewName.value = selected?.name || "";
+
+  if (openPlatformCreateDialogBtn) openPlatformCreateDialogBtn.disabled = availableOptions.length === 0;
+}
+
 function textArea(value = "", placeholder = "") {
   const node = document.createElement("textarea");
   node.value = value;
@@ -312,6 +344,7 @@ function platformPanel(platform, accentColor) {
   const postingModeInput = selectOption(["api", "manual", "webhook"], cleanText(config.postingMode) || "api");
   const handleInput = input("text", cleanText(config.accountHandle), "@account");
   const profileUrlInput = input("url", cleanText(config.profileUrl), "https://...");
+  const iconLocationInput = input("text", getPlatformTabIconSrc(platform), "Remote URL or local filesystem path");
   const hashtagsInput = input("text", Array.isArray(config.defaultHashtags) ? config.defaultHashtags.join(", ") : cleanText(config.defaultHashtags), "tag1, tag2");
   const suffixInput = textArea(cleanText(config.defaultCaptionSuffix), "Optional default suffix appended to captions.");
   const notesInput = textArea(cleanText(config.notes), "Setup notes for this platform.");
@@ -366,6 +399,7 @@ function platformPanel(platform, accentColor) {
     buildField("Posting mode", postingModeInput),
     buildField("Account handle", handleInput),
     buildField("Profile URL", profileUrlInput),
+    buildField("Icon location", iconLocationInput),
     buildField("Default hashtags", hashtagsInput),
     buildField("Account/Page ID", accountIdInput)
   );
@@ -399,17 +433,19 @@ function platformPanel(platform, accentColor) {
   let saving = false;
 
   function buildPayload() {
-    return {
-      name: cleanText(nameInput.value) || platform.name,
-      category: cleanText(categoryInput.value) || "social",
-      enabled: !!enabledInput.checked,
-      config: {
-        postingMode: cleanText(postingModeInput.value) || "api",
-        accountHandle: cleanText(handleInput.value),
-        profileUrl: cleanText(profileUrlInput.value),
-        defaultHashtags: parseTagsInput(hashtagsInput.value),
-        defaultCaptionSuffix: cleanText(suffixInput.value),
-        notes: cleanText(notesInput.value)
+      return {
+        name: cleanText(nameInput.value) || platform.name,
+        category: cleanText(categoryInput.value) || "social",
+        enabled: !!enabledInput.checked,
+        iconLocation: normalizePlatformIconLocation(iconLocationInput.value),
+        config: {
+          postingMode: cleanText(postingModeInput.value) || "api",
+          accountHandle: cleanText(handleInput.value),
+          profileUrl: cleanText(profileUrlInput.value),
+          iconLocation: normalizePlatformIconLocation(iconLocationInput.value),
+          defaultHashtags: parseTagsInput(hashtagsInput.value),
+          defaultCaptionSuffix: cleanText(suffixInput.value),
+          notes: cleanText(notesInput.value)
       },
       auth: {
         clientId: cleanText(clientIdInput.value),
@@ -441,11 +477,13 @@ function platformPanel(platform, accentColor) {
       platform.name = payload.name;
       platform.category = payload.category;
       platform.enabled = payload.enabled;
+      platform.iconLocation = payload.iconLocation;
       platform.config = payload.config;
       platform.auth = payload.auth;
 
       lastSavedPayload = payloadJson;
       status.textContent = "Saved.";
+      renderPlatformConfiguration();
     } catch (err) {
       status.textContent = "Save failed.";
       showToast(`Save failed: ${err?.message || err}`, { tone: "error" });
@@ -469,6 +507,7 @@ function platformPanel(platform, accentColor) {
     postingModeInput,
     handleInput,
     profileUrlInput,
+    iconLocationInput,
     hashtagsInput,
     suffixInput,
     notesInput,
@@ -598,8 +637,14 @@ async function loadPlatforms() {
   platformList.innerHTML = "";
   platformSummary.textContent = "Loading...";
   try {
-    platforms = await apiFetch("/api/admin/social/platforms", { method: "GET" });
+    const [nextPlatforms, nextAllowedOptions] = await Promise.all([
+      apiFetch("/api/admin/social/platforms", { method: "GET" }),
+      apiFetch("/api/admin/social/platform-options", { method: "GET" })
+    ]);
+    platforms = Array.isArray(nextPlatforms) ? nextPlatforms : [];
+    allowedPlatformOptions = Array.isArray(nextAllowedOptions) ? nextAllowedOptions : [];
     platformSummary.textContent = `${platforms.length} platform${platforms.length === 1 ? "" : "s"} configured`;
+    updateCreateFormOptions();
     renderPlatformConfiguration();
   } catch (err) {
     platformSummary.textContent = "Failed to load platforms.";
@@ -610,11 +655,12 @@ async function loadPlatforms() {
 platformCreateForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const id = cleanSlug(platformNewId?.value);
-  const name = cleanText(platformNewName?.value);
+  const selectedPlatform = allowedPlatformOptions.find((platform) => platform.id === id) || null;
+  const name = cleanText(selectedPlatform?.name || platformNewName?.value);
   const iconLocation = cleanText(platformNewIconLocation?.value);
   if (!id || !name) {
-    if (platformCreateStatus) platformCreateStatus.textContent = "Provide both id and name.";
-    showToast("Provide both id and name.", { tone: "warn" });
+    if (platformCreateStatus) platformCreateStatus.textContent = "Select a configured platform.";
+    showToast("Select a configured platform.", { tone: "warn" });
     return;
   }
 
@@ -626,10 +672,11 @@ platformCreateForm?.addEventListener("submit", async (e) => {
       body: JSON.stringify({
         id,
         name,
-        category: "social",
+        category: selectedPlatform?.category || "social",
         enabled: true,
+        iconLocation: normalizePlatformIconLocation(iconLocation),
         config: {
-          iconLocation
+          iconLocation: normalizePlatformIconLocation(iconLocation)
         }
       })
     });

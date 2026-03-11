@@ -26,12 +26,33 @@
       background:color-mix(in srgb, var(--panel) 90%, transparent);
     }
     .external-link-row.is-disabled input:not([type="checkbox"]),
-    .external-link-row.is-disabled select,
-    .external-link-row.is-disabled .external-link-toggle .sub{
+    .external-link-row.is-disabled select{
       opacity:.45;
     }
-    .external-link-row.is-disabled .external-link-toggle .sub{
-      color:#d15353;
+    .external-link-toggle-state{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:82px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      font-size:12px;
+      line-height:1;
+      color:var(--muted);
+      background: color-mix(in srgb, var(--panel) 86%, transparent);
+      font-weight:600;
+      letter-spacing:.02em;
+    }
+    .external-link-row.is-enabled .external-link-toggle-state{
+      color: color-mix(in srgb, #46d39a 75%, var(--text));
+      border-color: color-mix(in srgb, #46d39a 45%, var(--line));
+      background: color-mix(in srgb, #46d39a 18%, transparent);
+    }
+    .external-link-row.is-disabled .external-link-toggle-state{
+      color: color-mix(in srgb, #d16d6d 80%, var(--muted));
+      border-color: color-mix(in srgb, #d16d6d 40%, var(--line));
+      background: color-mix(in srgb, #d16d6d 12%, transparent);
       opacity:1;
     }
     .external-link-toggle{

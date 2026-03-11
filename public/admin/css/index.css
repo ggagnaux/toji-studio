@@ -49,11 +49,19 @@
   .table tbody tr.selected-row{
     background: color-mix(in srgb, var(--accent) 22%, var(--panel)) !important;
   }
-  .table thead tr{
+  .table thead th{
+    vertical-align:top;
+    padding:0;
+    line-height:1;
     background: color-mix(in srgb, var(--panel) 76%, var(--accent) 24%);
   }
-  [data-theme="light"] .table thead tr{
+  [data-theme="light"] .table thead th{
     background: color-mix(in srgb, var(--panel) 90%, var(--accent) 10%);
+  }
+  .table thead th:not(:has(.admin-sort-header)):not(:has(.admin-row-select)){
+    padding:10px 10px 8px;
+    vertical-align:top;
+    line-height:1.1;
   }
   .admin-row-select{
     display:inline-flex;
@@ -61,6 +69,7 @@
     justify-content:center;
     min-width:34px;
     height:28px;
+    margin:8px 10px 6px;
     padding:0 10px;
     border-radius:999px;
     border:1px solid var(--line);
@@ -91,11 +100,16 @@
     font-weight:600;
     /* font-size:14px; */
     font-size:21px;
-    padding:0;
-    display:inline-flex;
-    align-items:center;
+    width:100%;
+    margin:0;
+    padding:10px 10px 8px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:flex-start;
+    line-height:1.1;
     gap:6px;
     cursor:pointer;
+    text-align:left;
   }
   .admin-sort-header:hover{
     color:var(--text);

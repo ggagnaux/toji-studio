@@ -62,37 +62,33 @@ settingsTabButtons.forEach((btn) => {
 function normalizeSplashMode(value){
   const mode = String(value || "").toLowerCase();
   if (mode === "random") return "random";
-  if (mode === "bezier") return "bezier";
   if (mode === "flock") return "flock";
   if (mode === "circles") return "circles";
   if (mode === "matrix") return "matrix";
   if (mode === "life") return "life";
-  if (mode === "code") return "code";
   if (mode === "plot") return "plot";
   if (mode === "bounce") return "bounce";
-  if (mode === "logo3d") return "logo3d";
   if (mode === "turningcircles") return "turningcircles";
   if (mode === "asteroids") return "asteroids";
   if (mode === "tempest") return "tempest";
-  if (mode === "pi") return "pi";
+  if (mode === "missilecommand") return "missilecommand";
+  if (mode === "radar") return "radar";
   return "nodes";
 }
 
 function describeSplashMode(mode){
   if (mode === "random") return "Randomize each visit";
-  if (mode === "bezier") return "Bezier curves (dense)";
   if (mode === "flock") return "Flocking triangles (mouse follow)";
   if (mode === "circles") return "Outlined circles grid (fill/unfill)";
   if (mode === "matrix") return "Matrix digital rain";
   if (mode === "life") return "Conway's Game of Life";
-  if (mode === "code") return "Code writer (neon terminal)";
   if (mode === "plot") return "Random x/y function plot";
   if (mode === "bounce") return "Bouncing ball + logo deflect";
-  if (mode === "logo3d") return "Floating logo (3D rotate)";
   if (mode === "turningcircles") return "Turning circles + fade trails";
   if (mode === "asteroids") return "Asteroids simulation (auto-play)";
   if (mode === "tempest") return "Tempest simulation (auto-play)";
-  if (mode === "pi") return "Pi digits screen fill";
+  if (mode === "missilecommand") return "Missile Command simulation (auto-play)";
+  if (mode === "radar") return "Radar screen sweep";
   return "Nodes and edges (existing)";
 }
 
@@ -105,6 +101,7 @@ function normalizeCycleSeconds(value){
 function normalizeBannerLogoAnimationStyle(value){
   const style = String(value || "").toLowerCase();
   if (style === "plot") return "plot";
+  if (style === "radar") return "radar";
   return "circles";
 }
 
@@ -235,7 +232,7 @@ function syncSplashModeUI(){
   }
   if (bannerLogoCurrent) {
     if (!bannerBezierEnabled) bannerLogoCurrent.textContent = "Banner: Static image logo";
-    else bannerLogoCurrent.textContent = `Banner: Animated ${bannerAnimationStyle === "plot" ? "x/y plot" : "circles"} canvas`;
+    else bannerLogoCurrent.textContent = `Banner: Animated ${bannerAnimationStyle === "plot" ? "x/y plot" : bannerAnimationStyle === "radar" ? "radar" : "circles"} canvas`;
   }
   if (tagCapCurrent) tagCapCurrent.textContent = `Tag cap: ${savedTagCap}`;
   updateRandomizeControls();

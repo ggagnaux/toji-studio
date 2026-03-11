@@ -8,6 +8,21 @@ publicRouter.get("/public/site-meta", (req, res) => {
   res.json({ version });
 });
 
+publicRouter.get("/public/external-links", (req, res) => {
+  const rows = db.prepare(`
+    SELECT id, label, url, category, enabled, sortOrder, createdAt, updatedAt
+    FROM external_links
+    WHERE enabled = 1
+    ORDER BY sortOrder ASC, updatedAt ASC, createdAt ASC, id ASC
+  `).all();
+
+  res.json(rows.map((row) => ({
+    ...row,
+    enabled: !!row.enabled,
+    sortOrder: Number(row.sortOrder || 0)
+  })));
+});
+
 publicRouter.get("/public/artworks", (req, res) => {
   const rows = db.prepare(`
     SELECT a.*, 

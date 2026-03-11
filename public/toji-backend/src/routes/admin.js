@@ -13,6 +13,11 @@ import {
   getImageVariantSettings,
   setImageVariantSettings
 } from "../db.js";
+import {
+  ALLOWED_SOCIAL_PLATFORMS,
+  getAllowedSocialPlatform,
+  getAllowedSocialPlatformIds
+} from "../config/social-platforms.js";
 
 export const adminRouter = Router();
 
@@ -156,6 +161,15 @@ function cleanCategory(v) {
   return out || "social";
 }
 
+function cleanExternalLinkCategory(v) {
+  const out = cleanText(v).toLowerCase();
+  return ["social", "portfolio", "shop", "video", "newsletter", "other"].includes(out) ? out : "other";
+}
+
+function cleanExternalLinkUrl(v) {
+  return cleanText(v);
+}
+
 function cleanPostStatus(v) {
   const out = cleanText(v).toLowerCase();
   return ["draft", "queued", "posted", "failed", "skipped"].includes(out) ? out : "draft";
@@ -206,13 +220,206 @@ function mapSocialPostRow(row) {
 }
 
 function mapPlatformRow(row) {
+  const config = parseJsonObject(row.configJson, {});
+  const iconLocation = cleanText(row.iconLocation || config.iconLocation);
   return {
     ...row,
     enabled: !!row.enabled,
-    config: parseJsonObject(row.configJson, {}),
+    iconLocation,
+    config: {
+      ...config,
+      iconLocation
+    },
     auth: parseJsonObject(row.authJson, {})
   };
 }
+
+function mapExternalLinkRow(row) {
+  return {
+    ...row,
+    enabled: !!row.enabled,
+    sortOrder: Number(row.sortOrder || 0)
+  };
+}
+
+function selectExternalLinks() {
+  return db.prepare(`
+    SELECT id, label, url, category, enabled, sortOrder, createdAt, updatedAt
+    FROM external_links
+    ORDER BY sortOrder ASC, updatedAt ASC, createdAt ASC, id ASC
+  `).all();
+}
+
+function reindexExternalLinks() {
+  const rows = selectExternalLinks();
+  const stmt = db.prepare(`
+    UPDATE external_links
+    SET sortOrder=@sortOrder, updatedAt=@updatedAt
+    WHERE id=@id
+  `);
+  const timestamp = nowIso();
+  const tx = db.transaction((items) => {
+    items.forEach((row, index) => {
+      stmt.run({
+        id: row.id,
+        sortOrder: index,
+        updatedAt: timestamp
+      });
+    });
+  });
+  tx(rows);
+}
+
+function validateExternalLinkInput(row, rowLabel = "Link") {
+  const label = cleanText(row?.label);
+  const url = cleanExternalLinkUrl(row?.url);
+  if (!label || !url) {
+    return { error: `${rowLabel} must include both a label and a URL.` };
+  }
+  if (!/^(https?:\/\/|mailto:|tel:)/i.test(url)) {
+    return { error: `${rowLabel} URL must start with https://, http://, mailto:, or tel:.` };
+  }
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      new URL(url);
+    } catch {
+      return { error: `${rowLabel} has an invalid URL.` };
+    }
+  }
+
+  return {
+    value: {
+      id: cleanSlug(row?.id) || uid("lnk"),
+      label,
+      url,
+      category: cleanExternalLinkCategory(row?.category),
+      enabled: toDbBool(row?.enabled, 1),
+      sortOrder: Math.max(0, Math.floor(Number(row?.sortOrder) || 0))
+    }
+  };
+}
+
+adminRouter.get("/admin/external-links", (req, res) => {
+  res.json(selectExternalLinks().map(mapExternalLinkRow));
+});
+
+adminRouter.put("/admin/external-links", (req, res) => {
+  const body = req.body;
+  const input = Array.isArray(body) ? body : body?.links;
+  if (!Array.isArray(input)) {
+    return res.status(400).json({ error: "Request body must be an array of links or an object with a links array." });
+  }
+
+  const normalized = [];
+  const seen = new Set();
+  for (let i = 0; i < input.length; i += 1) {
+    const parsed = validateExternalLinkInput(input[i], `Link ${i + 1}`);
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
+    let id = parsed.value.id;
+    while (seen.has(id)) id = uid("lnk");
+    seen.add(id);
+    normalized.push({
+      ...parsed.value,
+      id,
+      sortOrder: i
+    });
+  }
+
+  const existingMap = new Map(
+    db.prepare(`SELECT id, createdAt FROM external_links`).all().map((row) => [row.id, row.createdAt || nowIso()])
+  );
+  const saveLinksTxn = db.transaction((links) => {
+    db.prepare(`DELETE FROM external_links`).run();
+    const stmt = db.prepare(`
+      INSERT INTO external_links (
+        id, label, url, category, enabled, sortOrder, createdAt, updatedAt
+      ) VALUES (
+        @id, @label, @url, @category, @enabled, @sortOrder, @createdAt, @updatedAt
+      )
+    `);
+    const timestamp = nowIso();
+    for (const link of links) {
+      stmt.run({
+        ...link,
+        createdAt: existingMap.get(link.id) || timestamp,
+        updatedAt: timestamp
+      });
+    }
+  });
+  saveLinksTxn(normalized);
+
+  res.json(selectExternalLinks().map(mapExternalLinkRow));
+});
+
+adminRouter.post("/admin/external-links", (req, res) => {
+  const parsed = validateExternalLinkInput(req.body || {});
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+  const sortOrder = req.body?.sortOrder != null
+    ? Math.max(0, Math.floor(Number(req.body.sortOrder) || 0))
+    : (db.prepare(`SELECT COUNT(*) AS count FROM external_links`).get().count || 0);
+  const now = nowIso();
+  db.prepare(`
+    INSERT INTO external_links (
+      id, label, url, category, enabled, sortOrder, createdAt, updatedAt
+    ) VALUES (
+      @id, @label, @url, @category, @enabled, @sortOrder, @createdAt, @updatedAt
+    )
+  `).run({
+    ...parsed.value,
+    sortOrder,
+    createdAt: now,
+    updatedAt: now
+  });
+
+  const row = db.prepare(`
+    SELECT id, label, url, category, enabled, sortOrder, createdAt, updatedAt
+    FROM external_links
+    WHERE id=?
+  `).get(parsed.value.id);
+
+  res.status(201).json(mapExternalLinkRow(row));
+});
+
+adminRouter.patch("/admin/external-links/:id", (req, res) => {
+  const id = cleanSlug(req.params.id);
+  const cur = db.prepare(`
+    SELECT id, label, url, category, enabled, sortOrder, createdAt, updatedAt
+    FROM external_links
+    WHERE id=?
+  `).get(id);
+  if (!cur) return res.status(404).json({ error: "External link not found." });
+
+  const parsed = validateExternalLinkInput({ ...cur, ...(req.body || {}), id }, "Link");
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+  db.prepare(`
+    UPDATE external_links
+    SET label=@label, url=@url, category=@category, enabled=@enabled, sortOrder=@sortOrder, updatedAt=@updatedAt
+    WHERE id=@id
+  `).run({
+    ...parsed.value,
+    id,
+    sortOrder: parsed.value.sortOrder,
+    updatedAt: nowIso()
+  });
+
+  const row = db.prepare(`
+    SELECT id, label, url, category, enabled, sortOrder, createdAt, updatedAt
+    FROM external_links
+    WHERE id=?
+  `).get(id);
+
+  res.json(mapExternalLinkRow(row));
+});
+
+adminRouter.delete("/admin/external-links/:id", (req, res) => {
+  const id = cleanSlug(req.params.id);
+  const deleted = db.prepare(`DELETE FROM external_links WHERE id=?`).run(id);
+  if (!deleted.changes) return res.status(404).json({ error: "External link not found." });
+  reindexExternalLinks();
+  res.json({ ok: true, id });
+});
 
 function resolveArtworkImageDataUri({ artworkId, imageUrl }) {
   const candidates = [];
@@ -404,45 +611,60 @@ adminRouter.post("/admin/ai/generate-tags", async (req, res) => {
 });
 
 adminRouter.get("/admin/social/platforms", (req, res) => {
+  const allowedIds = getAllowedSocialPlatformIds();
+  const placeholders = allowedIds.map(() => "?").join(", ");
   const rows = db.prepare(`
-    SELECT id, name, category, enabled, configJson, authJson, createdAt, updatedAt
+    SELECT id, name, category, enabled, iconLocation, configJson, authJson, createdAt, updatedAt
     FROM social_platforms
+    WHERE id IN (${placeholders})
     ORDER BY enabled DESC, name COLLATE NOCASE ASC
-  `).all();
+  `).all(...allowedIds);
 
   res.json(rows.map(mapPlatformRow));
+});
+
+adminRouter.get("/admin/social/platform-options", (req, res) => {
+  res.json(ALLOWED_SOCIAL_PLATFORMS);
 });
 
 adminRouter.post("/admin/social/platforms", (req, res) => {
   const body = req.body || {};
   const id = cleanSlug(body.id);
+  const allowedPlatform = getAllowedSocialPlatform(id);
   const name = cleanText(body.name);
   if (!id) return res.status(400).json({ error: "Platform id is required." });
-  if (!name) return res.status(400).json({ error: "Platform name is required." });
+  if (!allowedPlatform) return res.status(400).json({ error: "Platform id is not allowed." });
+  if (name && name !== allowedPlatform.name) {
+    return res.status(400).json({ error: "Platform name must match the configured platform." });
+  }
 
   const exists = db.prepare(`SELECT id FROM social_platforms WHERE id=?`).get(id);
   if (exists) return res.status(409).json({ error: "Platform id already exists." });
 
   const now = nowIso();
+  const config = parseJsonObject(body.config, {});
+  const iconLocation = cleanText(body.iconLocation || config.iconLocation);
+  delete config.iconLocation;
   db.prepare(`
     INSERT INTO social_platforms (
-      id, name, category, enabled, configJson, authJson, createdAt, updatedAt
+      id, name, category, enabled, iconLocation, configJson, authJson, createdAt, updatedAt
     ) VALUES (
-      @id, @name, @category, @enabled, @configJson, @authJson, @createdAt, @updatedAt
+      @id, @name, @category, @enabled, @iconLocation, @configJson, @authJson, @createdAt, @updatedAt
     )
   `).run({
     id,
-    name,
-    category: cleanCategory(body.category),
+    name: allowedPlatform.name,
+    category: allowedPlatform.category,
     enabled: toDbBool(body.enabled, 1),
-    configJson: JSON.stringify(parseJsonObject(body.config, {})),
+    iconLocation,
+    configJson: JSON.stringify(config),
     authJson: JSON.stringify(parseJsonObject(body.auth, {})),
     createdAt: now,
     updatedAt: now
   });
 
   const out = db.prepare(`
-    SELECT id, name, category, enabled, configJson, authJson, createdAt, updatedAt
+    SELECT id, name, category, enabled, iconLocation, configJson, authJson, createdAt, updatedAt
     FROM social_platforms
     WHERE id=?
   `).get(id);
@@ -452,18 +674,27 @@ adminRouter.post("/admin/social/platforms", (req, res) => {
 
 adminRouter.patch("/admin/social/platforms/:id", (req, res) => {
   const id = cleanText(req.params.id);
+  const allowedPlatform = getAllowedSocialPlatform(id);
+  if (!allowedPlatform) return res.status(404).json({ error: "Platform not found." });
   const cur = db.prepare(`SELECT * FROM social_platforms WHERE id=?`).get(id);
   if (!cur) return res.status(404).json({ error: "Platform not found." });
 
   const patch = req.body || {};
+  const nextConfig =
+    patch.config != null
+      ? parseJsonObject(patch.config, {})
+      : parseJsonObject(cur.configJson, {});
+  const nextIconLocation =
+    patch.iconLocation != null || patch.config != null
+      ? cleanText(patch.iconLocation || nextConfig.iconLocation)
+      : cleanText(cur.iconLocation || nextConfig.iconLocation);
+  delete nextConfig.iconLocation;
   const next = {
-    name: patch.name != null ? cleanText(patch.name) : cur.name,
-    category: patch.category != null ? cleanCategory(patch.category) : cur.category,
+    name: allowedPlatform.name,
+    category: allowedPlatform.category,
     enabled: patch.enabled != null ? toDbBool(patch.enabled, !!cur.enabled) : cur.enabled,
-    configJson:
-      patch.config != null
-        ? JSON.stringify(parseJsonObject(patch.config, {}))
-        : (cur.configJson || "{}"),
+    iconLocation: nextIconLocation,
+    configJson: JSON.stringify(nextConfig),
     authJson:
       patch.auth != null
         ? JSON.stringify(parseJsonObject(patch.auth, {}))
@@ -477,6 +708,7 @@ adminRouter.patch("/admin/social/platforms/:id", (req, res) => {
       name=@name,
       category=@category,
       enabled=@enabled,
+      iconLocation=@iconLocation,
       configJson=@configJson,
       authJson=@authJson,
       updatedAt=@updatedAt
@@ -484,7 +716,7 @@ adminRouter.patch("/admin/social/platforms/:id", (req, res) => {
   `).run({ id, ...next });
 
   const out = db.prepare(`
-    SELECT id, name, category, enabled, configJson, authJson, createdAt, updatedAt
+    SELECT id, name, category, enabled, iconLocation, configJson, authJson, createdAt, updatedAt
     FROM social_platforms
     WHERE id=?
   `).get(id);
@@ -530,6 +762,7 @@ adminRouter.get("/admin/social/posts", (req, res) => {
       asp.*,
       sp.name AS platformName,
       sp.category AS platformCategory,
+      sp.iconLocation AS platformIconLocation,
       sp.enabled AS platformEnabled,
       a.title AS artworkTitle
     FROM artwork_social_posts asp
@@ -555,6 +788,7 @@ adminRouter.get("/admin/artworks/:id/social-posts", (req, res) => {
       sp.id AS platformId,
       sp.name AS platformName,
       sp.category AS platformCategory,
+      sp.iconLocation AS platformIconLocation,
       sp.enabled AS platformEnabled,
       asp.id,
       asp.status,
@@ -642,6 +876,7 @@ adminRouter.put("/admin/artworks/:id/social-posts/:platformId", (req, res) => {
       asp.*,
       sp.name AS platformName,
       sp.category AS platformCategory,
+      sp.iconLocation AS platformIconLocation,
       sp.enabled AS platformEnabled
     FROM artwork_social_posts asp
     JOIN social_platforms sp ON sp.id = asp.platformId

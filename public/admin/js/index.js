@@ -31,7 +31,9 @@ import {
   const qInput = document.getElementById("q");
   const rows = document.getElementById("rows");
   const rowTable = document.getElementById("rowTable");
+  const rowTableShell = document.getElementById("rowTableShell");
   const thumbGrid = document.getElementById("thumbGrid");
+  const thumbGridShell = document.getElementById("thumbGridShell");
   const viewModeButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
   const thumbSelectAllToggle = document.getElementById("thumbSelectAllToggle");
   const sortHeaderButtons = Array.from(document.querySelectorAll("[data-sort-header]"));
@@ -882,7 +884,9 @@ import {
 
   function applyViewModeUI(){
     const thumbs = viewMode === "thumbs";
-    if (rowTable) rowTable.style.display = thumbs ? "none" : "";
+    if (rowTableShell) rowTableShell.style.display = thumbs ? "none" : "";
+    else if (rowTable) rowTable.style.display = thumbs ? "none" : "";
+    if (thumbGridShell) thumbGridShell.style.display = thumbs ? "" : "none";
     if (thumbGrid) thumbGrid.style.display = thumbs ? "grid" : "none";
     if (thumbSelectAllToggle) thumbSelectAllToggle.style.display = thumbs ? "inline-flex" : "none";
     sortHeaderButtons.forEach((btn) => {

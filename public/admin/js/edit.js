@@ -76,6 +76,26 @@
           cursor:pointer;
           font-size:13px;
           margin-bottom:-1px;
+          display:inline-flex;
+          align-items:center;
+          gap:8px;
+        }
+        .social-site-tabicon{
+          width:16px;
+          height:16px;
+          border-radius:4px;
+          background:
+            radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--site-color) 78%, white) 0 2px, transparent 2.5px),
+            color-mix(in srgb, var(--site-color) 14%, transparent);
+          flex:0 0 auto;
+          display:inline-block;
+          overflow:hidden;
+        }
+        .social-site-tabicon img{
+          display:block;
+          width:100%;
+          height:100%;
+          object-fit:contain;
         }
         .social-site-tabbtn.is-active{
           border-color: color-mix(in srgb, var(--site-color) 88%, var(--line));
@@ -665,13 +685,14 @@
     });
 
     const SOCIAL_STATUSES = ["draft", "queued", "posted", "failed", "skipped"];
-    const socialState = {
-      posts: [],
-      loading: false,
-      saving: new Set(),
-      binding: false,
-      selectedBoundPlatformId: ""
-    };
+	    const socialState = {
+	      posts: [],
+	      platforms: [],
+	      loading: false,
+	      saving: new Set(),
+	      binding: false,
+	      selectedBoundPlatformId: ""
+	    };
     const socialAutoSaveTimers = new Map();
     const socialBindSelect = el("select", { "aria-label":"Available social platforms" });
     const socialBindBtn = el("button", { class:"btn mini", type:"button" }, "Bind platform");
@@ -739,17 +760,49 @@
       return SOCIAL_COLOR_PALETTE[hashString(key) % SOCIAL_COLOR_PALETTE.length];
     }
 
-    async function fetchSocialPosts(){
-      const token = getAdminToken();
-      if (!token) throw new Error("No admin token - set it in Upload page.");
+	    async function fetchSocialPosts(){
+	      const token = getAdminToken();
+	      if (!token) throw new Error("No admin token - set it in Upload page.");
 
       const res = await fetch(`${API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}/social-posts`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
-      return Array.isArray(json?.posts) ? json.posts : [];
-    }
+	      if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
+	      return Array.isArray(json?.posts) ? json.posts : [];
+	    }
+
+	    async function fetchSocialPlatforms(){
+	      const token = getAdminToken();
+	      if (!token) throw new Error("No admin token - set it in Upload page.");
+
+	      const res = await fetch(`${API_BASE}/api/admin/social/platforms`, {
+	        headers: { "Authorization": `Bearer ${token}` }
+	      });
+	      const json = await res.json().catch(() => ([]));
+	      if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
+	      return Array.isArray(json) ? json : [];
+	    }
+
+	    function mergeSocialPlatformMeta(posts, platforms) {
+	      const byId = new Map(
+	        (Array.isArray(platforms) ? platforms : [])
+	          .map((platform) => [String(platform?.id || "").trim(), platform])
+	          .filter(([id]) => id)
+	      );
+	      return (Array.isArray(posts) ? posts : []).map((post) => {
+	        const platformId = String(post?.platformId || "").trim();
+	        const platform = byId.get(platformId);
+	        if (!platform) return post;
+	        return {
+	          ...post,
+	          platformName: post?.platformName || platform?.name || platformId,
+	          platformCategory: post?.platformCategory || platform?.category || "",
+	          platformEnabled: post?.platformEnabled == null ? !!platform?.enabled : post.platformEnabled,
+	          platformIconLocation: String(post?.platformIconLocation || platform?.iconLocation || "").trim()
+	        };
+	      });
+	    }
 
     async function saveSocialPost(platformId, payload){
       const token = getAdminToken();
@@ -1009,6 +1062,12 @@
           const pid = String(p.platformId || "").trim();
           const active = pid && pid === socialState.selectedBoundPlatformId;
           const tabColor = colorForPlatformId(pid);
+          const icon = el("span", { class:"social-site-tabicon", "aria-hidden":"true" });
+          const iconSrc = String(p.platformIconLocation || "").trim();
+          if (iconSrc) {
+            icon.appendChild(el("img", { src: iconSrc, alt:"", loading:"lazy" }));
+          }
+          const label = el("span", {}, p.platformName || pid);
           const btn = el("button", {
             class: active ? "social-site-tabbtn is-active" : "social-site-tabbtn",
             type:"button",
@@ -1016,7 +1075,7 @@
               socialState.selectedBoundPlatformId = pid;
               renderSocialPanel();
             }
-          }, p.platformName || pid);
+          }, icon, label);
           btn.style.setProperty("--site-color", tabColor);
           socialBoundPills.appendChild(
             btn
@@ -1058,17 +1117,23 @@
       }
     });
 
-    async function loadSocialPanel(preferredPlatformId = ""){
-      socialState.loading = true;
-      renderSocialPanel();
-      try {
-        socialState.posts = await fetchSocialPosts();
-        if (preferredPlatformId) socialState.selectedBoundPlatformId = String(preferredPlatformId || "");
-      } catch (err) {
-        socialState.posts = [];
-        socialSummary.textContent = String(err?.message || err);
-        setStatusText(`Social panel failed to load: ${err?.message || err}`, 10000, "error");
-      } finally {
+	    async function loadSocialPanel(preferredPlatformId = ""){
+	      socialState.loading = true;
+	      renderSocialPanel();
+	      try {
+	        const [posts, platforms] = await Promise.all([
+	          fetchSocialPosts(),
+	          fetchSocialPlatforms()
+	        ]);
+	        socialState.platforms = platforms;
+	        socialState.posts = mergeSocialPlatformMeta(posts, platforms);
+	        if (preferredPlatformId) socialState.selectedBoundPlatformId = String(preferredPlatformId || "");
+	      } catch (err) {
+	        socialState.posts = [];
+	        socialState.platforms = [];
+	        socialSummary.textContent = String(err?.message || err);
+	        setStatusText(`Social panel failed to load: ${err?.message || err}`, 10000, "error");
+	      } finally {
         socialState.loading = false;
         renderSocialPanel();
       }

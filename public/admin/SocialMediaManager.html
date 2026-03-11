@@ -32,7 +32,6 @@
           <div class="meta">
             <div style="display:flex; gap:10px; align-items:center; justify-content:flex-start; flex-wrap:wrap">
               <p class="title" style="margin:0">Platform configuration</p>
-              <button class="btn primary" id="openPlatformCreateDialogBtn" type="button">Add new platform</button>
             </div>
             <p class="sub" id="platformSummary" style="margin-top:8px">Loading...</p>
             <div id="platformList" style="display:grid; gap:12px; margin-top:12px"></div>
@@ -58,11 +57,13 @@
         <form id="platformCreateForm" style="display:grid; gap:10px; margin-top:12px; max-width:680px">
           <div class="field">
             <div class="sub">Platform id (slug)</div>
-            <input id="platformNewId" placeholder="e.g. pinterest or tiktok" />
+            <select id="platformNewId">
+              <option value="">Select a platform...</option>
+            </select>
           </div>
           <div class="field">
             <div class="sub">Display name</div>
-            <input id="platformNewName" placeholder="e.g. Pinterest" />
+            <input id="platformNewName" placeholder="Configured automatically" readonly />
           </div>
           <div class="field">
             <div class="sub">Icon location</div>

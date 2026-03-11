@@ -74,12 +74,7 @@ export function renderPublicHeader({
       </nav>
 
       <div class="theme-controls">
-        <div class="segmented" role="group" aria-label="Theme mode">
-          <button type="button" data-theme-mode="system">System</button>
-          <button type="button" data-theme-mode="light">Light</button>
-          <button type="button" data-theme-mode="dark">Dark</button>
-        </div>
-        <button class="icon-btn" type="button" data-theme-icon aria-label="Toggle theme"></button>
+        <button class="theme-pill-toggle" type="button" data-theme-toggle aria-label="Toggle theme"></button>
       </div>
     </div>
   `;
@@ -142,6 +137,10 @@ export function applyBannerLogoBehavior(headerHost) {
   }
   if (mode === "plot") {
     mountBannerPlotLogo(headerHost);
+    return;
+  }
+  if (mode === "radar") {
+    mountBannerRadarLogo(headerHost);
   }
 }
 
@@ -151,6 +150,7 @@ function getBannerLogoAnimationMode() {
     if (!enabled) return "off";
     const mode = String(localStorage.getItem(BANNER_LOGO_ANIMATION_MODE_KEY) || "").toLowerCase();
     if (mode === "plot") return "plot";
+    if (mode === "radar") return "radar";
     return "circles";
   } catch {
     return "off";
@@ -417,6 +417,192 @@ function mountBannerPlotLogo(headerHost) {
 
         ghostFrames.push({ points, alpha: 118 });
         if (ghostFrames.length > 18) ghostFrames.splice(0, ghostFrames.length - 18);
+      };
+    });
+  };
+
+  if (iconLogo && !iconLogo.complete) {
+    iconLogo.addEventListener("load", run, { once: true });
+    iconLogo.addEventListener("error", run, { once: true });
+    return;
+  }
+  run();
+}
+
+function mountBannerRadarLogo(headerHost) {
+  if (getBannerLogoAnimationMode() !== "radar") return;
+
+  const brand = headerHost.querySelector(".brand");
+  const logoCombo = brand?.querySelector(".brand-logo-combo");
+  const iconStack = logoCombo?.querySelector(".brand-logo-icon-stack");
+  if (!brand || !logoCombo || !iconStack) return;
+
+  const iconLogo = iconStack.querySelector(".brand-logo-icon-image");
+  const run = async () => {
+    if (!iconStack.isConnected) return;
+    const rect = iconStack.getBoundingClientRect();
+    const ratioFromRect = (rect.width > 1 && rect.height > 1) ? (rect.width / rect.height) : 0;
+    const ratioFromImage = (iconLogo?.naturalWidth > 1 && iconLogo?.naturalHeight > 1)
+      ? (iconLogo.naturalWidth / iconLogo.naturalHeight)
+      : 0;
+    const ratio = Math.max(0.6, Math.min(1.8, ratioFromRect || ratioFromImage || 1));
+
+    const canvasHost = document.createElement("span");
+    canvasHost.className = "brand-logo-canvas brand-logo-canvas--icon";
+    canvasHost.setAttribute("aria-hidden", "true");
+    canvasHost.style.setProperty("--brand-logo-ratio", String(ratio));
+    iconStack.replaceWith(canvasHost);
+
+    try {
+      await ensureBannerP5();
+    } catch {
+      return;
+    }
+    if (!window.p5 || !canvasHost.isConnected) return;
+
+    new window.p5((p) => {
+      let cw = 0;
+      let ch = 0;
+      let sweepAngle = 0;
+      let sweepSpeed = 0.025;
+      let rotationDirection = 1;
+      let nextBlipAt = 0;
+      const blips = [];
+      const echoes = [];
+
+      const seedRadar = () => {
+        blips.length = 0;
+        echoes.length = 0;
+        sweepAngle = p.random(Math.PI * 2);
+        rotationDirection = p.random() < 0.5 ? -1 : 1;
+        sweepSpeed = p.random(0.02, 0.032) * rotationDirection;
+        nextBlipAt = p.millis() + p.random(120, 260);
+        const initialCount = Math.floor(p.random(4, 8));
+        for (let i = 0; i < initialCount; i += 1) {
+          blips.push({
+            angle: p.random(Math.PI * 2),
+            radiusRatio: p.random(0.18, 0.94),
+            size: p.random(2.2, 5.6),
+            alpha: p.random(88, 180),
+            pulse: p.random(Math.PI * 2),
+            drift: p.random(-0.005, 0.005),
+            radialDrift: p.random(-0.0018, 0.0018)
+          });
+        }
+      };
+
+      p.setup = () => {
+        cw = Math.max(2, Math.floor(canvasHost.clientWidth || 1));
+        ch = Math.max(2, Math.floor(canvasHost.clientHeight || 1));
+        const canvas = p.createCanvas(cw, ch);
+        canvas.parent(canvasHost);
+        seedRadar();
+        p.clear();
+      };
+
+      p.draw = () => {
+        const now = p.millis();
+        const nw = Math.max(2, Math.floor(canvasHost.clientWidth || 1));
+        const nh = Math.max(2, Math.floor(canvasHost.clientHeight || 1));
+        if (nw !== cw || nh !== ch) {
+          cw = nw;
+          ch = nh;
+          p.resizeCanvas(cw, ch);
+        }
+
+        const cx = cw * 0.5;
+        const cy = ch * 0.5;
+        const radius = Math.max(8, Math.min(cw, ch) * 0.42);
+
+        p.clear();
+        p.blendMode(p.BLEND);
+        p.background(3, 14, 10, 230);
+
+        p.noStroke();
+        p.fill(6, 40, 26, 80);
+        p.circle(cx, cy, radius * 2.18);
+        p.fill(0, 0, 0, 104);
+        p.circle(cx, cy, radius * 1.92);
+
+        p.stroke(184, 40, 40, 82);
+        p.strokeWeight(0.8);
+        for (let ring = 0.25; ring <= 1; ring += 0.25) {
+          p.noFill();
+          p.circle(cx, cy, radius * 2 * ring);
+        }
+        p.line(cx - radius, cy, cx + radius, cy);
+        p.line(cx, cy - radius, cx, cy + radius);
+        p.line(cx - radius * 0.7, cy - radius * 0.7, cx + radius * 0.7, cy + radius * 0.7);
+        p.line(cx + radius * 0.7, cy - radius * 0.7, cx - radius * 0.7, cy + radius * 0.7);
+
+        p.noFill();
+        p.stroke(242, 54, 54, 128);
+        p.strokeWeight(1.5);
+        p.circle(cx, cy, radius * 2);
+
+        sweepAngle += sweepSpeed;
+
+        p.noStroke();
+        for (let i = 10; i >= 0; i -= 1) {
+          const tailAngle = sweepAngle - (i * 0.1 * rotationDirection);
+          const alpha = 8 + i * 7;
+          p.fill(255, 58, 58, alpha);
+          p.arc(cx, cy, radius * 2, radius * 2, tailAngle - 0.06, tailAngle + 0.06, p.PIE);
+        }
+
+        p.stroke(255, 84, 84, 214);
+        p.strokeWeight(1.7);
+        p.line(cx, cy, cx + Math.cos(sweepAngle) * radius, cy + Math.sin(sweepAngle) * radius);
+
+        if (now >= nextBlipAt && blips.length < 10) {
+          blips.push({
+            angle: p.random(Math.PI * 2),
+            radiusRatio: p.random(0.1, 0.96),
+            size: p.random(2.2, 5.4),
+            alpha: p.random(96, 190),
+            pulse: p.random(Math.PI * 2),
+            drift: p.random(-0.005, 0.005),
+            radialDrift: p.random(-0.0018, 0.0018)
+          });
+          nextBlipAt = now + p.random(180, 520);
+        }
+
+        for (let i = echoes.length - 1; i >= 0; i -= 1) {
+          const echo = echoes[i];
+          echo.life *= 0.93;
+          echo.size *= 1.028;
+          if (echo.life < 10) {
+            echoes.splice(i, 1);
+            continue;
+          }
+          p.noFill();
+          p.stroke(255, 118, 118, echo.life);
+          p.strokeWeight(1);
+          p.circle(echo.x, echo.y, echo.size);
+        }
+
+        for (let i = blips.length - 1; i >= 0; i -= 1) {
+          const blip = blips[i];
+          blip.angle += blip.drift;
+          blip.radiusRatio = p.constrain(blip.radiusRatio + blip.radialDrift, 0.06, 0.97);
+          blip.pulse += 0.08;
+          const x = cx + Math.cos(blip.angle) * radius * blip.radiusRatio;
+          const y = cy + Math.sin(blip.angle) * radius * blip.radiusRatio;
+          const delta = Math.atan2(Math.sin(sweepAngle - blip.angle), Math.cos(sweepAngle - blip.angle));
+          const nearSweep = Math.abs(delta) < 0.12;
+          if (nearSweep && (!blip.lastSweepAt || now - blip.lastSweepAt > 180)) {
+            echoes.push({ x, y, size: blip.size * 1.9, life: 150 });
+            blip.lastSweepAt = now;
+          }
+          if (p.random() < 0.0026 && blips.length > 5) {
+            blips.splice(i, 1);
+            continue;
+          }
+          const glow = 0.72 + 0.28 * Math.sin(blip.pulse);
+          p.noStroke();
+          p.fill(255, 72, 72, blip.alpha * glow * (nearSweep ? 1.5 : 0.72));
+          p.circle(x, y, blip.size * (nearSweep ? 1.38 : 1));
+        }
       };
     });
   };

@@ -33,13 +33,14 @@
       </aside>
 
       <section>
-        <div class="kpi">
+        <div class="dashboard-controls">
+          <div class="kpi">
           <div class="card"><div class="meta"><div class="sub">Published</div><b id="kPub">â€”</b></div></div>
           <div class="card"><div class="meta"><div class="sub">Drafts</div><b id="kDraft">â€”</b></div></div>
           <div class="card"><div class="meta"><div class="sub">Hidden</div><b id="kHidden">â€”</b></div></div>
         </div>
 
-        <div class="filters" style="margin-top:18px">
+          <div class="filters" style="margin-top:18px">
           <div class="chip active" data-tab="all">All</div>
           <div class="chip" data-tab="published">Published</div>
           <div class="chip" data-tab="draft">Draft</div>
@@ -117,8 +118,10 @@
 
 
 
+          </div>
         </div>
 
+        <div class="table-scroll-shell" id="rowTableShell">
         <table class="table" id="rowTable" aria-label="Artwork table">
           <thead>
             <tr>
@@ -145,7 +148,10 @@
           </thead>
           <tbody id="rows"></tbody>
         </table>
-        <div id="thumbGrid" class="admin-thumb-grid" style="display:none" aria-label="Artwork thumbnails"></div>
+        </div>
+        <div class="table-scroll-shell" id="thumbGridShell" style="display:none">
+          <div id="thumbGrid" class="admin-thumb-grid" aria-label="Artwork thumbnails"></div>
+        </div>
 
         <footer id="siteFooter"></footer>
       </section>

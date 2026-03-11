@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { ALLOWED_SOCIAL_PLATFORMS } from "./config/social-platforms.js";
 
 const defaultStorageDir = path.join(os.homedir(), ".toji-studios", "storage");
 export const STORAGE_DIR = path.resolve(process.env.TOJI_STORAGE_DIR || defaultStorageDir);
@@ -79,8 +80,20 @@ CREATE TABLE IF NOT EXISTS social_platforms (
   name TEXT NOT NULL,
   category TEXT DEFAULT 'social',      -- social|newsletter|portfolio|other
   enabled INTEGER DEFAULT 1,           -- 1=enabled, 0=disabled
+  iconLocation TEXT DEFAULT '',        -- remote URL or local path for the platform icon
   configJson TEXT DEFAULT '{}',        -- platform posting config (JSON)
   authJson TEXT DEFAULT '{}',          -- platform auth credentials/tokens (JSON)
+  createdAt TEXT,
+  updatedAt TEXT
+);
+
+CREATE TABLE IF NOT EXISTS external_links (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  url TEXT NOT NULL,
+  category TEXT DEFAULT 'social',
+  enabled INTEGER DEFAULT 1,
+  sortOrder INTEGER DEFAULT 0,
   createdAt TEXT,
   updatedAt TEXT
 );
@@ -109,17 +122,8 @@ CREATE INDEX IF NOT EXISTS idx_artwork_social_posts_platform_status
 CREATE INDEX IF NOT EXISTS idx_artwork_social_posts_artwork
   ON artwork_social_posts(artworkId);
 
-INSERT OR IGNORE INTO social_platforms (id, name, category, enabled, createdAt, updatedAt)
-VALUES
-  ('instagram', 'Instagram', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('threads', 'Threads', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('x', 'X', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('facebook', 'Facebook', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('linkedin', 'LinkedIn', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('bluesky', 'Bluesky', 'social', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('youtube', 'YouTube', 'video', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('substack', 'Substack', 'newsletter', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('medium', 'Medium', 'newsletter', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+CREATE INDEX IF NOT EXISTS idx_external_links_sort
+  ON external_links(sortOrder, updatedAt);
 
 
 
@@ -133,6 +137,47 @@ function ensureColumn(table, column, sqlTypeAndDefault) {
 
 ensureColumn("social_platforms", "configJson", "TEXT DEFAULT '{}'");
 ensureColumn("social_platforms", "authJson", "TEXT DEFAULT '{}'");
+ensureColumn("social_platforms", "iconLocation", "TEXT DEFAULT ''");
+
+const socialPlatforms = db.prepare(`
+  SELECT id, iconLocation, configJson
+  FROM social_platforms
+`).all();
+const backfillPlatformIconStmt = db.prepare(`
+  UPDATE social_platforms
+  SET iconLocation=@iconLocation
+  WHERE id=@id
+`);
+for (const platform of socialPlatforms) {
+  if (String(platform.iconLocation || "").trim()) continue;
+  try {
+    const config = JSON.parse(platform.configJson || "{}");
+    const iconLocation = String(config?.iconLocation || "").trim();
+    if (!iconLocation) continue;
+    backfillPlatformIconStmt.run({ id: platform.id, iconLocation });
+  } catch {}
+}
+
+const seedSocialPlatformStmt = db.prepare(`
+  INSERT OR IGNORE INTO social_platforms (id, name, category, enabled, iconLocation, createdAt, updatedAt)
+  VALUES (@id, @name, @category, 1, @iconLocation, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+`);
+const syncSocialPlatformStmt = db.prepare(`
+  UPDATE social_platforms
+  SET name=@name, category=@category, iconLocation=@iconLocation, updatedAt=CURRENT_TIMESTAMP
+  WHERE id=@id
+`);
+for (const platform of ALLOWED_SOCIAL_PLATFORMS) {
+  seedSocialPlatformStmt.run(platform);
+  syncSocialPlatformStmt.run(platform);
+}
+
+const allowedSocialPlatformIds = ALLOWED_SOCIAL_PLATFORMS.map((platform) => platform.id);
+const deleteDisallowedSocialPlatformsStmt = db.prepare(`
+  DELETE FROM social_platforms
+  WHERE id NOT IN (${allowedSocialPlatformIds.map(() => "?").join(", ")})
+`);
+deleteDisallowedSocialPlatformsStmt.run(...allowedSocialPlatformIds);
 
 export function nowIso() {
   return new Date().toISOString();

@@ -157,13 +157,14 @@ img{max-width:100%;display:block}
 }
 
 .nav{
-  display:flex; align-items:center; justify-content:space-between;
+  display:flex; align-items:center; justify-content:flex-start;
   gap:16px;
   transition: gap .2s ease, padding .2s ease;
 }
 .header .container.nav{
   padding-top:12px;
   padding-bottom:12px;
+  position:relative;
 }
 .brand{
   display:flex; align-items:baseline; gap:10px;
@@ -254,7 +255,12 @@ img{max-width:100%;display:block}
   border:0;
 }
 .brand small{color:var(--muted); font-weight:500}
-.navlinks{display:flex; gap:18px; align-items:center}
+.navlinks{
+  display:flex;
+  gap:18px;
+  align-items:center;
+  margin-left:auto;
+}
 .navlinks a{
   color:var(--muted);
   padding:8px 10px;
@@ -288,16 +294,43 @@ img{max-width:100%;display:block}
   border-color:transparent;
 }
 .navlinks a.active::after{
-  content:"";
+  content:none;
+}
+.nav-active-indicator{
   position:absolute;
-  left:50%;
-  bottom:-1px;
-  transform:translateX(-50%);
-  width:0;
-  height:0;
-  border-left:5px solid transparent;
-  border-right:5px solid transparent;
-  border-top:6px solid var(--muted);
+  height:2px;
+  border-radius:999px;
+  background:linear-gradient(
+    90deg,
+    rgba(230, 233, 238, 0) 0%,
+    rgba(230, 233, 238, .62) 18%,
+    rgba(236, 239, 244, .95) 50%,
+    rgba(230, 233, 238, .62) 82%,
+    rgba(230, 233, 238, 0) 100%
+  );
+  bottom:0;
+  pointer-events:none;
+  z-index:2;
+  filter: blur(2.8px);
+  box-shadow:
+    0 0 14px rgba(226, 230, 236, .52),
+    0 0 24px rgba(226, 230, 236, .26),
+    0 1px 0 rgba(255, 255, 255, .24) inset;
+  transition:left .18s ease, width .18s ease;
+}
+[data-theme="light"] .nav-active-indicator{
+  background:linear-gradient(
+    90deg,
+    rgba(96, 106, 120, 0) 0%,
+    rgba(96, 106, 120, .66) 18%,
+    rgba(88, 98, 112, .98) 50%,
+    rgba(96, 106, 120, .66) 82%,
+    rgba(96, 106, 120, 0) 100%
+  );
+  box-shadow:
+    0 0 10px rgba(80, 92, 108, .22),
+    0 0 18px rgba(80, 92, 108, .12),
+    0 1px 0 rgba(255, 255, 255, .34) inset;
 }
 .navlinks a.active:hover::before,
 .navlinks a.active:focus-visible::before,
@@ -310,6 +343,9 @@ img{max-width:100%;display:block}
 .nav-toggle{display:none}
 @media (min-width: 761px){
   .nav-toggle{display:none !important}
+}
+@media (max-width: 760px){
+  .nav-active-indicator{ display:none; }
 }
 
 html.nav-compact .header .container.nav{
@@ -694,6 +730,7 @@ input, textarea, select{
     flex-direction:column;
     align-items:stretch;
     gap:6px;
+    margin-left:0;
     margin-top:10px;
     padding:10px;
     border:1px solid var(--line);

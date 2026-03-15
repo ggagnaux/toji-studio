@@ -14,13 +14,7 @@
     .home-toggle .sub{
       margin:0;
     }
-    .home-toggle-main{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width:0;
-    }
-    .home-toggle-state{
+    .home-toggle .toggle-status-badge{
       display:inline-flex;
       align-items:center;
       justify-content:center;
@@ -40,12 +34,12 @@
       background: color-mix(in srgb, var(--accent-soft) 65%, var(--panel));
       box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent) inset;
     }
-    .home-toggle.is-enabled .home-toggle-state{
+    .home-toggle.is-enabled .toggle-status-badge{
       color: color-mix(in srgb, #46d39a 75%, var(--text));
       border-color: color-mix(in srgb, #46d39a 45%, var(--line));
       background: color-mix(in srgb, #46d39a 18%, transparent);
     }
-    .home-toggle:not(.is-enabled) .home-toggle-state{
+    .home-toggle:not(.is-enabled) .toggle-status-badge{
       color: color-mix(in srgb, #d16d6d 80%, var(--muted));
       border-color: color-mix(in srgb, #d16d6d 40%, var(--line));
       background: color-mix(in srgb, #d16d6d 12%, transparent);
@@ -56,7 +50,6 @@
       height:28px;
       display:inline-flex;
       flex:0 0 auto;
-      order:-1;
     }
     .home-toggle .switch input{
       position:absolute;

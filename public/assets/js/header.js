@@ -87,6 +87,58 @@ export function renderPublicHeader({
     else a.removeAttribute("aria-current");
   });
 
+  const syncActiveNavIndicator = () => {
+    const navContainer = headerHost.querySelector(".container.nav");
+    const navLinksHost = headerHost.querySelector(".navlinks");
+    if (!navContainer || !navLinksHost) return;
+
+    let indicator = navContainer.querySelector(".nav-active-indicator");
+    if (!indicator) {
+      indicator = document.createElement("span");
+      indicator.className = "nav-active-indicator";
+      indicator.setAttribute("aria-hidden", "true");
+      navContainer.appendChild(indicator);
+    }
+
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      indicator.style.display = "none";
+      return;
+    }
+
+    let activeLink = navLinksHost.querySelector("a.active, a[aria-current='page']");
+    if (!activeLink) {
+      const currentPath = String(window.location.pathname || "");
+      const allLinks = Array.from(navLinksHost.querySelectorAll("a[data-nav]"));
+      activeLink = allLinks.find((link) => {
+        try {
+          return new URL(link.href, window.location.href).pathname === currentPath;
+        } catch {
+          return false;
+        }
+      }) || null;
+      if (!activeLink && currentPath.toLowerCase().includes("/admin/")) {
+        activeLink = navLinksHost.querySelector("a[data-nav='studio']");
+      }
+    }
+    if (!activeLink) {
+      indicator.style.display = "none";
+      return;
+    }
+
+    if (!activeLink.classList.contains("active")) activeLink.classList.add("active");
+    if (activeLink.getAttribute("aria-current") !== "page") activeLink.setAttribute("aria-current", "page");
+
+    const navRect = navContainer.getBoundingClientRect();
+    const linkRect = activeLink.getBoundingClientRect();
+    const inset = 10;
+    const width = Math.max(24, linkRect.width - inset * 2);
+    const left = linkRect.left - navRect.left + inset;
+
+    indicator.style.display = "block";
+    indicator.style.width = `${width}px`;
+    indicator.style.left = `${left}px`;
+  };
+
   const navRoot = headerHost.querySelector(".nav");
   const navLinks = headerHost.querySelector(".navlinks");
   const navToggle = headerHost.querySelector("[data-nav-toggle]");
@@ -97,6 +149,7 @@ export function renderPublicHeader({
     navToggle.setAttribute("aria-expanded", open ? "true" : "false");
     navToggle.firstElementChild.innerHTML = open ? "&#10005;" : "&#9776;";
     navLinks.setAttribute("aria-hidden", open ? "false" : "true");
+    syncActiveNavIndicator();
   };
 
   navToggle?.addEventListener("click", () => {
@@ -116,13 +169,19 @@ export function renderPublicHeader({
       navToggle?.setAttribute("aria-expanded", "false");
       if (navToggle?.firstElementChild) navToggle.firstElementChild.innerHTML = "&#9776;";
       navLinks?.removeAttribute("aria-hidden");
+      syncActiveNavIndicator();
       return;
     }
     setMenuOpen(false);
+    syncActiveNavIndicator();
   });
 
   if (mobileQuery.matches) setMenuOpen(false);
   else navLinks?.removeAttribute("aria-hidden");
+
+  syncActiveNavIndicator();
+  window.addEventListener("resize", syncActiveNavIndicator);
+  window.addEventListener("scroll", syncActiveNavIndicator, { passive: true });
 
   initThemeSystem();
   applyBannerLogoBehavior(headerHost);

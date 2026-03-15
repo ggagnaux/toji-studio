@@ -34,18 +34,32 @@
             <div class="other-settings-tabbar" role="tablist" aria-label="Other settings sections">
               <button class="other-settings-tabbtn is-active" id="otherTabSplash" type="button" role="tab" aria-selected="true" aria-controls="otherPaneSplash" data-settings-tab="splash">Splash</button>
               <button class="other-settings-tabbtn" id="otherTabBanner" type="button" role="tab" aria-selected="false" aria-controls="otherPaneBanner" data-settings-tab="banner">Banner Logo</button>
-              <button class="other-settings-tabbtn" id="otherTabAi" type="button" role="tab" aria-selected="false" aria-controls="otherPaneAi" data-settings-tab="ai">AI Tags</button>
+              <button class="other-settings-tabbtn" id="otherTabAiIntegration" type="button" role="tab" aria-selected="false" aria-controls="otherPaneAiIntegration" data-settings-tab="aiIntegration">Ai Integration</button>
               <button class="other-settings-tabbtn" id="otherTabVariants" type="button" role="tab" aria-selected="false" aria-controls="otherPaneVariants" data-settings-tab="variants">Image Variants</button>
               <button class="other-settings-tabbtn other-settings-tabbtn--export" id="otherTabExport" type="button" role="tab" aria-selected="false" aria-controls="otherPaneExport" data-settings-tab="export">Data Export</button>
             </div>
 
             <div class="other-settings-tabcontent">
               <section class="other-settings-tabpane" id="otherPaneSplash" role="tabpanel" aria-labelledby="otherTabSplash" data-settings-pane="splash">
+                <div style="display:flex; align-items:center; justify-content:flex-start; gap:10px; flex-wrap:wrap;">
+                <label class="setting-toggle" style="margin-top:0; cursor:pointer;">
+                  <span class="switch">
+                    <input id="splashAnimationEnabled" type="checkbox" />
+                    <span class="slider" aria-hidden="true"></span>
+                  </span>
+                  <span class="toggle-status-badge" id="splashAnimationToggleBadge" aria-live="polite">Enabled</span>
+                </label>
                 <p class="title" style="margin:0">Splash Screen Animation</p>
+                </div>
+
+                <div id="splashControlsBlock" style="margin-top:12px">
                 <p class="sub" style="margin-top:8px">Controls the background animation on the splash screen.</p>
 
                 <div class="field" style="margin-top:12px">
-                  <div class="sub">Active animation</div>
+                  <div style="display:flex; align-items:center; justify-content:flex-start; gap:10px; flex-wrap:wrap;">
+                    <div class="sub">Active animation</div>
+                    <button class="btn" id="splashPreviewBtn" type="button">Preview</button>
+                  </div>
                   <select id="splashMode">
                     <option value="random">Randomize each visit</option>
                     <option value="nodes">Nodes and edges (existing)</option>
@@ -61,6 +75,8 @@
                     <option value="missilecommand">Missile Command simulation (auto-play)</option>
                     <option value="radar">Radar screen sweep</option>
                     <option value="mountains">Mountain night pan</option>
+                    <option value="serpentinesphere">Serpentine sphere sweep</option>
+                    <option value="orbitalbeams">Black Holes vs Bubbles</option>
                   </select>
                 </div>
 
@@ -77,7 +93,28 @@
                     <input id="splashRandomCycleSeconds" type="number" min="1" step="1" value="12" />
                   </div>
                 </div>
+                </div>
               </section>
+
+              <div class="other-settings-modal" id="splashPreviewModal" hidden>
+                <div class="other-settings-modal__backdrop" data-splash-preview-close></div>
+                <section class="other-settings-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="splashPreviewTitle">
+                  <header class="other-settings-modal__header">
+                    <div class="other-settings-modal__titlewrap">
+                      <h3 id="splashPreviewTitle">Splash Preview</h3>
+                      <span class="sub" id="splashPreviewModeName" aria-live="polite"></span>
+                    </div>
+                    <div class="other-settings-modal__controls">
+                      <button class="btn" id="splashPreviewPrevBtn" type="button" aria-label="Show previous splash animation">Prev</button>
+                      <button class="btn" id="splashPreviewNextBtn" type="button" aria-label="Show next splash animation">Next</button>
+                      <button class="icon-btn" id="splashPreviewCloseBtn" type="button" aria-label="Close splash preview">&#10005;</button>
+                    </div>
+                  </header>
+                  <div class="other-settings-modal__body">
+                    <div class="other-settings-preview-stage" id="splashPreviewMount"></div>
+                  </div>
+                </section>
+              </div>
 
               <section class="other-settings-tabpane" id="otherPaneBanner" role="tabpanel" aria-labelledby="otherTabBanner" data-settings-pane="banner" hidden>
                 <p class="title" style="margin:0">Banner Logo</p>
@@ -87,9 +124,10 @@
                     <input id="bannerBezierLogoEnabled" type="checkbox" />
                     <span class="slider" aria-hidden="true"></span>
                   </span>
-                  <span class="sub">Use animation for header and splash screen logo</span>
+                  <span class="toggle-status-badge" id="bannerBezierToggleBadge" aria-live="polite">Disabled</span>
+                  <span class="sub" id="bannerBezierToggleLabel">Banner Animation</span>
                 </label>
-                <div class="field" style="margin-top:10px">
+                <div class="field banner-animation-style-field" style="margin-top:10px">
                   <div class="sub">Animation style</div>
                   <select id="bannerLogoAnimationStyle">
                     <option value="circles">White circles</option>
@@ -99,12 +137,22 @@
                 </div>
               </section>
 
-              <section class="other-settings-tabpane" id="otherPaneAi" role="tabpanel" aria-labelledby="otherTabAi" data-settings-pane="ai" hidden>
-                <p class="title" style="margin:0">AI Tag Generation</p>
-                <p class="sub" style="margin-top:8px">Limit how many tags can be stored per artwork.</p>
-                <div class="field" style="margin-top:10px">
-                  <div class="sub">Tag cap per artwork</div>
-                  <input id="tagCap" type="number" min="1" max="120" step="1" value="20" />
+              <section class="other-settings-tabpane" id="otherPaneAiIntegration" role="tabpanel" aria-labelledby="otherTabAiIntegration" data-settings-pane="aiIntegration" hidden>
+                <p class="title" style="margin:0">Ai Integration</p>
+                <p class="sub" style="margin-top:8px">Enable or disable AI-powered features across the admin tools.</p>
+                <label class="setting-toggle" style="margin-top:10px; cursor:pointer;">
+                  <span class="switch">
+                    <input id="aiFeaturesEnabled" type="checkbox" />
+                    <span class="slider" aria-hidden="true"></span>
+                  </span>
+                  <span class="toggle-status-badge" id="aiFeaturesToggleBadge" aria-live="polite">Enabled</span>
+                  <span class="sub" id="aiFeaturesToggleLabel">Ai Features</span>
+                </label>
+                <div id="aiControlsBlock" class="other-settings-controls-block" style="margin-top:10px">
+                  <div class="field" style="margin-top:0">
+                    <div class="sub">Tag cap per artwork</div>
+                    <input id="tagCap" type="number" min="1" max="120" step="1" value="20" />
+                  </div>
                 </div>
               </section>
 
@@ -157,8 +205,12 @@
                 <span class="sub" id="bannerLogoCurrent" aria-live="polite"></span>
               </div>
               <div class="other-settings-summary-item">
-                <span class="sub">AI tags</span>
+                <span class="sub">AI tag cap</span>
                 <span class="sub" id="tagCapCurrent" aria-live="polite"></span>
+              </div>
+              <div class="other-settings-summary-item">
+                <span class="sub">Ai Integration</span>
+                <span class="sub" id="aiFeaturesCurrent" aria-live="polite"></span>
               </div>
               <div class="other-settings-summary-item">
                 <span class="sub">Variants</span>

@@ -135,6 +135,31 @@ function ensureSocialManagerStyles() {
       cursor:pointer;
       user-select:none;
     }
+    .smm-toggle-status-badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:82px;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      font-size:12px;
+      line-height:1.35;
+      font-weight:700;
+      letter-spacing:.01em;
+      color:var(--text);
+      background:color-mix(in srgb, var(--panel) 80%, transparent);
+    }
+    .smm-toggle-status-badge.is-enabled{
+      color:#2ea97d;
+      border-color:color-mix(in srgb, #2ea97d 65%, var(--line));
+      background:color-mix(in srgb, #2ea97d 18%, var(--panel));
+    }
+    .smm-toggle-status-badge.is-disabled{
+      color:#d15353;
+      border-color:color-mix(in srgb, #d15353 65%, var(--line));
+      background:color-mix(in srgb, #d15353 14%, var(--panel));
+    }
     .smm-toggle input{
       position:absolute;
       width:1px;
@@ -371,14 +396,15 @@ function platformPanel(platform, accentColor) {
   const enabledSlider = document.createElement("span");
   enabledSlider.className = "smm-toggle-slider";
   enabledSlider.setAttribute("aria-hidden", "true");
-  const enabledLabel = document.createElement("span");
+  const enabledStateBadge = document.createElement("span");
+  enabledStateBadge.className = "smm-toggle-status-badge";
+  enabledStateBadge.setAttribute("aria-live", "polite");
   const detailsBlock = document.createElement("div");
   detailsBlock.className = "smm-details";
   const syncEnabledUi = () => {
-    enabledLabel.textContent = enabledInput.checked ? "Enabled" : "Disabled";
-    enabledLabel.style.color = enabledInput.checked
-      ? "var(--text)"
-      : "color-mix(in srgb, #d15353 84%, var(--text))";
+    enabledStateBadge.textContent = enabledInput.checked ? "Enabled" : "Disabled";
+    enabledStateBadge.classList.toggle("is-enabled", !!enabledInput.checked);
+    enabledStateBadge.classList.toggle("is-disabled", !enabledInput.checked);
     const disabled = !enabledInput.checked;
     detailsBlock.classList.toggle("is-disabled", disabled);
     const controls = detailsBlock.querySelectorAll("input, select, textarea, button");
@@ -387,7 +413,7 @@ function platformPanel(platform, accentColor) {
     });
   };
   enabledInput.addEventListener("change", syncEnabledUi);
-  enabledRow.append(enabledInput, enabledSlider, enabledLabel);
+  enabledRow.append(enabledInput, enabledSlider, enabledStateBadge);
 
   const settingsGrid = document.createElement("div");
   settingsGrid.style.display = "grid";

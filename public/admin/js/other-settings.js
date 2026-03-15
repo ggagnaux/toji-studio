@@ -1,4 +1,5 @@
 import { applyBannerLogoBehavior } from "../../assets/js/header.js";
+import { initializeHomeSplash } from "../../assets/js/splash-runtime.js";
 import {
   ensureBaseStyles,
   setYearFooter,
@@ -14,11 +15,13 @@ const headerHost = document.querySelector("header.header");
 applyBannerLogoBehavior(headerHost);
 
 const SPLASH_MODE_KEY = "toji_splash_animation_mode_v1";
+const SPLASH_ANIMATION_ENABLED_KEY = "toji_splash_animation_enabled_v1";
 const SPLASH_RANDOM_CYCLE_ENABLED_KEY = "toji_splash_random_cycle_enabled_v1";
 const SPLASH_RANDOM_CYCLE_SECONDS_KEY = "toji_splash_random_cycle_seconds_v1";
 const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
 const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
 const TAG_CAP_KEY = "toji_ai_tag_cap_v1";
+const AI_FEATURES_ENABLED_KEY = "toji_ai_features_enabled_v1";
 
 const DEFAULT_IMAGE_VARIANTS = Object.freeze({
   thumbMaxWidth: 560,
@@ -29,14 +32,24 @@ const DEFAULT_IMAGE_VARIANTS = Object.freeze({
 
 const splashMode = document.getElementById("splashMode");
 const splashModeCurrent = document.getElementById("splashModeCurrent");
+const splashAnimationEnabled = document.getElementById("splashAnimationEnabled");
+const splashAnimationToggleBadge = document.getElementById("splashAnimationToggleBadge");
+const splashControlsBlock = document.getElementById("splashControlsBlock");
 const splashRandomOptions = document.getElementById("splashRandomOptions");
 const splashRandomCycleEnabled = document.getElementById("splashRandomCycleEnabled");
 const splashRandomCycleSeconds = document.getElementById("splashRandomCycleSeconds");
 const bannerBezierLogoEnabled = document.getElementById("bannerBezierLogoEnabled");
+const bannerBezierToggleBadge = document.getElementById("bannerBezierToggleBadge");
+const bannerBezierToggleLabel = document.getElementById("bannerBezierToggleLabel");
 const bannerLogoAnimationStyle = document.getElementById("bannerLogoAnimationStyle");
 const bannerLogoCurrent = document.getElementById("bannerLogoCurrent");
 const tagCap = document.getElementById("tagCap");
 const tagCapCurrent = document.getElementById("tagCapCurrent");
+const aiFeaturesEnabled = document.getElementById("aiFeaturesEnabled");
+const aiFeaturesToggleLabel = document.getElementById("aiFeaturesToggleLabel");
+const aiFeaturesToggleBadge = document.getElementById("aiFeaturesToggleBadge");
+const aiControlsBlock = document.getElementById("aiControlsBlock");
+const aiFeaturesCurrent = document.getElementById("aiFeaturesCurrent");
 const thumbMaxWidth = document.getElementById("thumbMaxWidth");
 const thumbQuality = document.getElementById("thumbQuality");
 const webMaxWidth = document.getElementById("webMaxWidth");
@@ -46,16 +59,46 @@ const imageVariantStatus = document.getElementById("imageVariantStatus");
 const imageVariantCurrent = document.getElementById("imageVariantCurrent");
 const exportDatabaseBtn = document.getElementById("exportDatabaseBtn");
 const exportDatabaseStatus = document.getElementById("exportDatabaseStatus");
+const splashPreviewBtn = document.getElementById("splashPreviewBtn");
+const splashPreviewModal = document.getElementById("splashPreviewModal");
+const splashPreviewCloseBtn = document.getElementById("splashPreviewCloseBtn");
+const splashPreviewPrevBtn = document.getElementById("splashPreviewPrevBtn");
+const splashPreviewNextBtn = document.getElementById("splashPreviewNextBtn");
+const splashPreviewModeName = document.getElementById("splashPreviewModeName");
+const splashPreviewMount = document.getElementById("splashPreviewMount");
 const settingsTabButtons = Array.from(document.querySelectorAll("[data-settings-tab]"));
 const settingsTabPanes = Array.from(document.querySelectorAll("[data-settings-pane]"));
 const settingsTabContent = document.querySelector(".other-settings-tabcontent");
 const SETTINGS_TAB_COLORS = {
   splash: "#2a97d4",
   banner: "#2ea97d",
-  ai: "#d18b2e",
+  aiIntegration: "#cc5f2f",
   variants: "#8a63d2",
   export: "#7d8f34"
 };
+
+if (splashPreviewModal && splashPreviewModal.parentElement !== document.body) {
+  document.body.appendChild(splashPreviewModal);
+}
+
+const SPLASH_PREVIEW_MODE_ORDER = Object.freeze([
+  "nodes",
+  "flock",
+  "circles",
+  "matrix",
+  "life",
+  "plot",
+  "bounce",
+  "turningcircles",
+  "asteroids",
+  "tempest",
+  "missilecommand",
+  "radar",
+  "mountains",
+  "serpentinesphere",
+  "orbitalbeams"
+]);
+let splashPreviewModeIndex = 0;
 
 settingsTabButtons.forEach((btn) => {
   const tab = btn.getAttribute("data-settings-tab");
@@ -78,6 +121,8 @@ function normalizeSplashMode(value){
   if (mode === "missilecommand") return "missilecommand";
   if (mode === "radar") return "radar";
   if (mode === "mountains") return "mountains";
+  if (mode === "serpentinesphere") return "serpentinesphere";
+  if (mode === "orbitalbeams") return "orbitalbeams";
   return "nodes";
 }
 
@@ -95,6 +140,8 @@ function describeSplashMode(mode){
   if (mode === "missilecommand") return "Missile Command simulation (auto-play)";
   if (mode === "radar") return "Radar screen sweep";
   if (mode === "mountains") return "Mountain night pan";
+  if (mode === "serpentinesphere") return "Serpentine sphere sweep";
+  if (mode === "orbitalbeams") return "Black Holes vs Bubbles";
   return "Nodes and edges (existing)";
 }
 
@@ -197,14 +244,113 @@ function collectImageVariantSettings() {
   });
 }
 
-function updateRandomizeControls(){
-  const isRandom = normalizeSplashMode(splashMode?.value) === "random";
-  if (splashRandomOptions) splashRandomOptions.style.display = isRandom ? "" : "none";
-  if (splashRandomCycleEnabled) splashRandomCycleEnabled.disabled = !isRandom;
-  if (splashRandomCycleSeconds) {
-    splashRandomCycleSeconds.disabled = !isRandom || !splashRandomCycleEnabled?.checked;
+function renderSplashPreviewMarkup() {
+  if (!splashPreviewMount) return;
+  splashPreviewMount.innerHTML = `
+    <div id="splashScreen" class="splash-screen hidden" aria-label="Splash preview animation">
+      <div id="splashP5" class="splash-p5" aria-hidden="true"></div>
+      <div id="splashCountdown" class="splash-countdown hidden" aria-live="polite"></div>
+    </div>
+  `;
+}
+
+async function openSplashPreviewModal() {
+  if (!splashPreviewModal) return;
+  splashPreviewModal.hidden = false;
+  document.body.classList.add("other-settings-modal-open");
+  const selectedMode = normalizeSplashMode(splashMode?.value);
+  const preferredMode = selectedMode === "random" ? "nodes" : selectedMode;
+  const foundIndex = SPLASH_PREVIEW_MODE_ORDER.indexOf(preferredMode);
+  splashPreviewModeIndex = foundIndex >= 0 ? foundIndex : 0;
+  await showSplashPreviewMode(splashPreviewModeIndex);
+}
+
+function closeSplashPreviewModal() {
+  const splashScreen = document.getElementById("splashScreen");
+  if (splashScreen) {
+    splashScreen.dispatchEvent(new MouseEvent("click", { bubbles: false, cancelable: true }));
   }
-  if (bannerLogoAnimationStyle) bannerLogoAnimationStyle.disabled = !bannerBezierLogoEnabled?.checked;
+  if (splashPreviewModal) splashPreviewModal.hidden = true;
+  if (splashPreviewMount) splashPreviewMount.innerHTML = "";
+  document.body.classList.remove("other-settings-modal-open");
+}
+
+async function showSplashPreviewMode(index) {
+  const modeCount = SPLASH_PREVIEW_MODE_ORDER.length;
+  if (!modeCount) return;
+  splashPreviewModeIndex = ((Number(index) % modeCount) + modeCount) % modeCount;
+
+  const existingSplash = document.getElementById("splashScreen");
+  if (existingSplash) {
+    existingSplash.dispatchEvent(new MouseEvent("click", { bubbles: false, cancelable: true }));
+  }
+  renderSplashPreviewMarkup();
+
+  const previewMode = SPLASH_PREVIEW_MODE_ORDER[splashPreviewModeIndex];
+  localStorage.setItem(SPLASH_MODE_KEY, previewMode);
+  if (splashMode) splashMode.value = previewMode;
+  syncSplashModeUI();
+  if (splashPreviewModeName) {
+    splashPreviewModeName.textContent = `Animation: ${describeSplashMode(previewMode)}`;
+  }
+  await initializeHomeSplash({
+    forceShow: true,
+    bindTopLeftBrand: false,
+    disableMouseInteraction: true,
+    forceMode: previewMode
+  });
+}
+
+function cycleSplashPreviewMode(delta) {
+  if (!splashPreviewModal || splashPreviewModal.hidden) return;
+  void showSplashPreviewMode(splashPreviewModeIndex + Number(delta || 0));
+}
+
+function updateRandomizeControls(){
+  const splashEnabled = !!splashAnimationEnabled?.checked;
+  const isRandom = normalizeSplashMode(splashMode?.value) === "random";
+  if (splashPreviewBtn) {
+    splashPreviewBtn.disabled = !splashEnabled;
+  }
+  if (!splashEnabled && splashPreviewModal && !splashPreviewModal.hidden) {
+    closeSplashPreviewModal();
+  }
+  if (splashControlsBlock) splashControlsBlock.classList.toggle("is-disabled", !splashEnabled);
+  if (splashControlsBlock) splashControlsBlock.classList.add("other-settings-controls-block");
+  if (splashRandomOptions) splashRandomOptions.style.display = isRandom ? "" : "none";
+  if (bannerLogoAnimationStyle) {
+    const bannerStyleEnabled = !!bannerBezierLogoEnabled?.checked;
+    bannerLogoAnimationStyle.disabled = !bannerStyleEnabled;
+    const bannerStyleField = bannerLogoAnimationStyle.closest(".field");
+    bannerStyleField?.classList.toggle("is-disabled-control", !bannerStyleEnabled);
+  }
+
+  const aiEnabled = !!aiFeaturesEnabled?.checked;
+  if (aiControlsBlock) aiControlsBlock.classList.toggle("is-disabled", !aiEnabled);
+  if (aiControlsBlock) {
+    const controls = aiControlsBlock.querySelectorAll("input, select, textarea, button");
+    controls.forEach((control) => {
+      control.disabled = !aiEnabled;
+    });
+  }
+
+  // Hard gate: when splash animation is disabled, every control beneath the toggle is disabled.
+  if (splashControlsBlock) {
+    const controls = splashControlsBlock.querySelectorAll("input, select, textarea, button");
+    controls.forEach((control) => {
+      if (control === splashAnimationEnabled) return;
+      control.disabled = !splashEnabled;
+    });
+  }
+
+  // When enabled, restore per-control logic inside the splash block.
+  if (splashEnabled) {
+    if (splashMode) splashMode.disabled = false;
+    if (splashRandomCycleEnabled) splashRandomCycleEnabled.disabled = !isRandom;
+    if (splashRandomCycleSeconds) {
+      splashRandomCycleSeconds.disabled = !isRandom || !splashRandomCycleEnabled?.checked;
+    }
+  }
 }
 
 function ensureStaticBannerIconMarkup(){
@@ -232,6 +378,7 @@ function ensureStaticBannerIconMarkup(){
 
 function syncSplashModeUI(){
   const mode = normalizeSplashMode(localStorage.getItem(SPLASH_MODE_KEY));
+  const splashEnabled = localStorage.getItem(SPLASH_ANIMATION_ENABLED_KEY) !== "0";
   if (splashMode) splashMode.value = mode;
   const cycleEnabled = localStorage.getItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY) === "1";
   const cycleSeconds = normalizeCycleSeconds(localStorage.getItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY));
@@ -240,23 +387,46 @@ function syncSplashModeUI(){
     localStorage.getItem(BANNER_LOGO_ANIMATION_MODE_KEY)
   );
   const savedTagCap = normalizeTagCap(localStorage.getItem(TAG_CAP_KEY));
+  const aiEnabled = localStorage.getItem(AI_FEATURES_ENABLED_KEY) !== "0";
+  if (splashAnimationEnabled) splashAnimationEnabled.checked = splashEnabled;
   if (splashRandomCycleEnabled) splashRandomCycleEnabled.checked = cycleEnabled;
   if (splashRandomCycleSeconds) splashRandomCycleSeconds.value = String(cycleSeconds);
   if (bannerBezierLogoEnabled) bannerBezierLogoEnabled.checked = bannerBezierEnabled;
   if (bannerLogoAnimationStyle) bannerLogoAnimationStyle.value = bannerAnimationStyle;
   if (tagCap) tagCap.value = String(savedTagCap);
+  if (aiFeaturesEnabled) aiFeaturesEnabled.checked = aiEnabled;
 
   if (splashModeCurrent) {
     const cycleText = mode === "random"
       ? ` | Auto change: ${cycleEnabled ? `On (${cycleSeconds}s)` : "Off"}`
       : "";
-    splashModeCurrent.textContent = `Current: ${describeSplashMode(mode)}${cycleText}`;
+    splashModeCurrent.textContent = splashEnabled
+      ? `Current: ${describeSplashMode(mode)}${cycleText}`
+      : "Current: Disabled";
+  }
+  if (splashAnimationToggleBadge) {
+    splashAnimationToggleBadge.textContent = splashEnabled ? "Enabled" : "Disabled";
+    splashAnimationToggleBadge.classList.toggle("is-enabled", splashEnabled);
+    splashAnimationToggleBadge.classList.toggle("is-disabled", !splashEnabled);
   }
   if (bannerLogoCurrent) {
     if (!bannerBezierEnabled) bannerLogoCurrent.textContent = "Banner: Static image logo";
     else bannerLogoCurrent.textContent = `Banner: Animated ${bannerAnimationStyle === "plot" ? "x/y plot" : bannerAnimationStyle === "radar" ? "radar" : "circles"} canvas`;
   }
+  if (bannerBezierToggleLabel) bannerBezierToggleLabel.style.color = "";
+  if (bannerBezierToggleBadge) {
+    bannerBezierToggleBadge.textContent = bannerBezierEnabled ? "Enabled" : "Disabled";
+    bannerBezierToggleBadge.classList.toggle("is-enabled", bannerBezierEnabled);
+    bannerBezierToggleBadge.classList.toggle("is-disabled", !bannerBezierEnabled);
+  }
   if (tagCapCurrent) tagCapCurrent.textContent = `Tag cap: ${savedTagCap}`;
+  if (aiFeaturesCurrent) aiFeaturesCurrent.textContent = `AI features: ${aiEnabled ? "Enabled" : "Disabled"}`;
+  if (aiFeaturesToggleLabel) aiFeaturesToggleLabel.style.color = "";
+  if (aiFeaturesToggleBadge) {
+    aiFeaturesToggleBadge.textContent = aiEnabled ? "Enabled" : "Disabled";
+    aiFeaturesToggleBadge.classList.toggle("is-enabled", aiEnabled);
+    aiFeaturesToggleBadge.classList.toggle("is-disabled", !aiEnabled);
+  }
   updateRandomizeControls();
 }
 
@@ -276,18 +446,22 @@ async function loadImageVariantSettings() {
 }
 
 function persistSettings({ refreshBanner = false } = {}){
+  const splashEnabled = !!splashAnimationEnabled?.checked;
   const mode = normalizeSplashMode(splashMode?.value);
   const cycleEnabled = !!splashRandomCycleEnabled?.checked;
   const cycleSeconds = normalizeCycleSeconds(splashRandomCycleSeconds?.value);
   const bannerBezierEnabled = !!bannerBezierLogoEnabled?.checked;
   const bannerAnimationStyle = normalizeBannerLogoAnimationStyle(bannerLogoAnimationStyle?.value);
   const savedTagCap = normalizeTagCap(tagCap?.value);
+  const aiEnabled = !!aiFeaturesEnabled?.checked;
+  localStorage.setItem(SPLASH_ANIMATION_ENABLED_KEY, splashEnabled ? "1" : "0");
   localStorage.setItem(SPLASH_MODE_KEY, mode);
   localStorage.setItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY, cycleEnabled ? "1" : "0");
   localStorage.setItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY, String(cycleSeconds));
   localStorage.setItem(BANNER_BEZIER_LOGO_ENABLED_KEY, bannerBezierEnabled ? "1" : "0");
   localStorage.setItem(BANNER_LOGO_ANIMATION_MODE_KEY, bannerAnimationStyle);
   localStorage.setItem(TAG_CAP_KEY, String(savedTagCap));
+  localStorage.setItem(AI_FEATURES_ENABLED_KEY, aiEnabled ? "1" : "0");
   syncSplashModeUI();
   if (refreshBanner) {
     ensureStaticBannerIconMarkup();
@@ -362,6 +536,11 @@ syncSplashModeUI();
 await loadImageVariantSettings();
 setSettingsTab("splash");
 
+splashAnimationEnabled?.addEventListener("change", () => {
+  updateRandomizeControls();
+  persistSettings();
+});
+
 splashMode?.addEventListener("change", () => {
   updateRandomizeControls();
   persistSettings();
@@ -386,6 +565,10 @@ bannerLogoAnimationStyle?.addEventListener("change", () => {
 });
 
 tagCap?.addEventListener("change", () => {
+  persistSettings();
+});
+
+aiFeaturesEnabled?.addEventListener("change", () => {
   persistSettings();
 });
 
@@ -414,4 +597,50 @@ resetImageVariantsBtn?.addEventListener("click", async () => {
 
 exportDatabaseBtn?.addEventListener("click", () => {
   void exportDatabaseJson();
+});
+
+splashPreviewBtn?.addEventListener("click", () => {
+  void openSplashPreviewModal();
+});
+
+splashPreviewCloseBtn?.addEventListener("click", closeSplashPreviewModal);
+
+splashPreviewModal?.querySelector("[data-splash-preview-close]")?.addEventListener("click", closeSplashPreviewModal);
+
+splashPreviewModal?.querySelector(".other-settings-modal__dialog")?.addEventListener("click", (event) => {
+  const target = event.target;
+  if (target instanceof HTMLElement && target.closest("#splashPreviewPrevBtn, #splashPreviewNextBtn, #splashPreviewCloseBtn")) {
+    return;
+  }
+  closeSplashPreviewModal();
+});
+
+splashPreviewPrevBtn?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  cycleSplashPreviewMode(-1);
+});
+
+splashPreviewNextBtn?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  cycleSplashPreviewMode(1);
+});
+
+window.addEventListener("keydown", (event) => {
+  if (!splashPreviewModal || splashPreviewModal.hidden) return;
+
+  if (event.key === "Escape") {
+    closeSplashPreviewModal();
+    return;
+  }
+
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    cycleSplashPreviewMode(-1);
+    return;
+  }
+
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    cycleSplashPreviewMode(1);
+  }
 });

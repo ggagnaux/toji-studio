@@ -182,9 +182,37 @@
           outline-offset: 2px;
         }
         .btn-ai[disabled]{
-          opacity: .75;
+          opacity: .55;
+          filter: grayscale(.25);
           transform: none;
-          cursor: wait;
+          cursor: not-allowed;
+        }
+        .btn-ai[disabled]:hover{
+          transform: none;
+        }
+        .btn-ai[data-tooltip]{
+          position: relative;
+        }
+        .btn-ai[data-tooltip]:hover::after,
+        .btn-ai[data-tooltip]:focus-visible::after{
+          content: attr(data-tooltip);
+          position: absolute;
+          left: 50%;
+          bottom: calc(100% + 8px);
+          transform: translateX(-50%);
+          max-width: 220px;
+          width: max-content;
+          padding: 6px 8px;
+          border-radius: 8px;
+          border: 1px solid color-mix(in srgb, var(--line) 86%, #000);
+          background: color-mix(in srgb, var(--surface) 92%, #000);
+          color: var(--text);
+          font-size: 12px;
+          line-height: 1.25;
+          white-space: normal;
+          text-align: center;
+          pointer-events: none;
+          z-index: 20;
         }
         @media (max-width: 780px){
           .social-posting-fields{
@@ -571,12 +599,44 @@
     }
 
     let generatingDescription = false;
+    const AI_FEATURES_ENABLED_KEY = "toji_ai_features_enabled_v1";
+
+    function isAiFeaturesEnabled(){
+      const raw = localStorage.getItem(AI_FEATURES_ENABLED_KEY);
+      if (raw == null) return true;
+      const value = String(raw).trim().toLowerCase();
+      return value !== "0" && value !== "false" && value !== "off" && value !== "no";
+    }
+
     const descriptionGenerateBtn = el(
       "button",
       { class:"btn mini btn-ai", type:"button", style:"padding:6px 10px; margin-left:auto; margin-bottom:10px;" },
       "🤖 Generate"
     );
+
+    function syncAiGenerateButtons(){
+      const enabled = isAiFeaturesEnabled();
+      descriptionGenerateBtn.disabled = !enabled || generatingDescription;
+      tagsGenerateBtn.disabled = !enabled || generatingTags;
+      const disabledHint = "Enable AI features in Other Settings to use this action.";
+      descriptionGenerateBtn.title = enabled ? "" : disabledHint;
+      tagsGenerateBtn.title = enabled ? "" : disabledHint;
+      if (enabled) {
+        descriptionGenerateBtn.removeAttribute("data-tooltip");
+        tagsGenerateBtn.removeAttribute("data-tooltip");
+      } else {
+        descriptionGenerateBtn.setAttribute("data-tooltip", disabledHint);
+        tagsGenerateBtn.setAttribute("data-tooltip", disabledHint);
+      }
+      descriptionGenerateBtn.setAttribute("aria-disabled", descriptionGenerateBtn.disabled ? "true" : "false");
+      tagsGenerateBtn.setAttribute("aria-disabled", tagsGenerateBtn.disabled ? "true" : "false");
+    }
+
     descriptionGenerateBtn.addEventListener("click", async () => {
+      if (!isAiFeaturesEnabled()) {
+        setStatusText("AI features are disabled in Other Settings.", 10000, "warn");
+        return;
+      }
       if (generatingDescription) return;
 
       const ok = await confirmToast(
@@ -606,7 +666,7 @@
         setStatusText(`Generate failed: ${err?.message || err}`, 10000, "error");
       } finally {
         generatingDescription = false;
-        descriptionGenerateBtn.disabled = false;
+        syncAiGenerateButtons();
         descriptionGenerateBtn.textContent = "🤖 Generate";
       }
     });
@@ -644,7 +704,17 @@
       { class:"btn mini btn-ai", type:"button", style:"padding:6px 10px; margin-left:auto;" },
       "🤖 Generate"
     );
+
+    syncAiGenerateButtons();
+    window.addEventListener("storage", (e) => {
+      if (!e || e.key === AI_FEATURES_ENABLED_KEY) syncAiGenerateButtons();
+    });
+
     tagsGenerateBtn.addEventListener("click", async () => {
+      if (!isAiFeaturesEnabled()) {
+        setStatusText("AI features are disabled in Other Settings.", 10000, "warn");
+        return;
+      }
       if (generatingTags) return;
 
       const ok = await confirmToast(
@@ -679,7 +749,7 @@
         setStatusText(`Generate failed: ${err?.message || err}`, 10000, "error");
       } finally {
         generatingTags = false;
-        tagsGenerateBtn.disabled = false;
+        syncAiGenerateButtons();
         tagsGenerateBtn.textContent = "🤖 Generate";
       }
     });

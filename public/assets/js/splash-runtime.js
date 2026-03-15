@@ -1,7 +1,13 @@
 import { ensureSplashP5 } from "./p5-loader.js";
 import { mountSplashLogoIconAnimation } from "./logo-icon-animation.js";
 
-export async function initializeHomeSplash() {
+export async function initializeHomeSplash(options = {}) {
+  const {
+    forceShow = false,
+    bindTopLeftBrand = true,
+    disableMouseInteraction = false,
+    forceMode = ""
+  } = options || {};
       const splashScreen = document.getElementById("splashScreen");
       const splashP5Host = document.getElementById("splashP5");
       const splashCountdown = document.getElementById("splashCountdown");
@@ -20,13 +26,39 @@ export async function initializeHomeSplash() {
       let splashLogo3dFrame = 0;
       let splashLogoIconP5 = null;
       let splashLogoIconCanvasHost = null;
-      const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "random" | "nodes" | "flock" | "circles" | "matrix" | "life" | "plot" | "bounce" | "turningcircles" | "asteroids" | "tempest" | "missilecommand" | "radar" | "mountains"
+      const SPLASH_ANIMATION_ENABLED_KEY = "toji_splash_animation_enabled_v1";
+      const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "random" | "nodes" | "flock" | "circles" | "matrix" | "life" | "plot" | "bounce" | "turningcircles" | "asteroids" | "tempest" | "missilecommand" | "radar" | "mountains" | "serpentinesphere" | "orbitalbeams"
       const SPLASH_RANDOM_CYCLE_ENABLED_KEY = "toji_splash_random_cycle_enabled_v1";
       const SPLASH_RANDOM_CYCLE_SECONDS_KEY = "toji_splash_random_cycle_seconds_v1";
       const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
       const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
+
+      function isSplashAnimationEnabled() {
+        const raw = localStorage.getItem(SPLASH_ANIMATION_ENABLED_KEY);
+        if (raw == null) return true;
+        const value = String(raw).trim().toLowerCase();
+        return value !== "0" && value !== "false" && value !== "off" && value !== "no";
+      }
   
       function getConfiguredSplashAnimationMode() {
+        const forcedMode = String(forceMode || "").toLowerCase();
+        if (forcedMode === "random") return "random";
+        if (forcedMode === "flock") return "flock";
+        if (forcedMode === "circles") return "circles";
+        if (forcedMode === "matrix") return "matrix";
+        if (forcedMode === "life") return "life";
+        if (forcedMode === "plot") return "plot";
+        if (forcedMode === "bounce") return "bounce";
+        if (forcedMode === "turningcircles") return "turningcircles";
+        if (forcedMode === "asteroids") return "asteroids";
+        if (forcedMode === "tempest") return "tempest";
+        if (forcedMode === "missilecommand") return "missilecommand";
+        if (forcedMode === "radar") return "radar";
+        if (forcedMode === "mountains") return "mountains";
+        if (forcedMode === "serpentinesphere") return "serpentinesphere";
+        if (forcedMode === "orbitalbeams") return "orbitalbeams";
+        if (forcedMode === "nodes") return "nodes";
+
         const mode = String(localStorage.getItem(SPLASH_ANIMATION_MODE_KEY) || "").toLowerCase();
         if (mode === "random") return "random";
         if (mode === "flock") return "flock";
@@ -41,11 +73,13 @@ export async function initializeHomeSplash() {
         if (mode === "missilecommand") return "missilecommand";
         if (mode === "radar") return "radar";
         if (mode === "mountains") return "mountains";
+        if (mode === "serpentinesphere") return "serpentinesphere";
+        if (mode === "orbitalbeams") return "orbitalbeams";
         return "nodes";
       }
   
       function pickRandomSplashMode(preferDifferent = false) {
-        const choices = ["nodes", "flock", "circles", "matrix", "life", "plot", "bounce", "turningcircles", "asteroids", "tempest", "missilecommand", "radar", "mountains"];
+        const choices = ["nodes", "flock", "circles", "matrix", "life", "plot", "bounce", "turningcircles", "asteroids", "tempest", "missilecommand", "radar", "mountains", "serpentinesphere", "orbitalbeams"];
         let picked = choices[Math.floor(Math.random() * choices.length)];
         if (preferDifferent && activeSplashMode && choices.length > 1) {
           let tries = 0;
@@ -76,6 +110,14 @@ export async function initializeHomeSplash() {
         const n = Math.floor(Number(localStorage.getItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY)));
         const seconds = Number.isFinite(n) ? Math.min(600, Math.max(1, n)) : 12;
         return { enabled, seconds };
+      }
+
+      function getSplashCanvasSize() {
+        const hostWidth = Math.floor(Number(splashP5Host?.clientWidth || 0));
+        const hostHeight = Math.floor(Number(splashP5Host?.clientHeight || 0));
+        const width = Math.max(1, hostWidth || window.innerWidth || 1);
+        const height = Math.max(1, hostHeight || window.innerHeight || 1);
+        return { width, height };
       }
   
       function clearSplashLogoCornerTimer() {
@@ -268,6 +310,13 @@ export async function initializeHomeSplash() {
   
       async function initSplashAnimation(forcedMode = null) {
         if (!splashScreen || !splashP5Host || splashP5Instance || splashScreen.classList.contains("hidden")) return;
+        if (!isSplashAnimationEnabled()) {
+          activeSplashMode = "off";
+          stopSplashLogo3dAnimation();
+          clearSplashLogoCornerTimer();
+          splashP5Host.innerHTML = "";
+          return;
+        }
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         if (reduceMotion) {
           stopSplashLogo3dAnimation();
@@ -308,10 +357,17 @@ export async function initializeHomeSplash() {
           const mountainRanges = [];
           const mountainShootingStars = [];
           const mountainBirds = [];
+          const mountainUfos = [];
           const mountainPeople = [];
           const mountainApproachPeople = [];
           const mountainCars = [];
           const mountainImpactBursts = [];
+          const mountainUfoBeams = [];
+          const orbitalBeams = [];
+          const orbitalBubbles = [];
+          const orbitalBlackHoles = [];
+          const orbitalRaiders = [];
+          const orbitalRaiderShots = [];
           const radarBlips = [];
           const radarEchoes = [];
           const dukePlatforms = [];
@@ -320,6 +376,7 @@ export async function initializeHomeSplash() {
           const dukeExplosions = [];
           const dukePickups = [];
           const dukeBackdropBuildings = [];
+          const serpentineTrail = [];
           let radarGridColor = [60, 160, 110];
           let radarRingColor = [72, 220, 146];
           let radarSweepFillColor = [72, 255, 156];
@@ -347,6 +404,20 @@ export async function initializeHomeSplash() {
             { name: "diag-bl-tr", vx: 1, vy: -1 },
             { name: "diag-br-tl", vx: -1, vy: -1 },
             { name: "meander", vx: 0, vy: 0 }
+          ];
+          const orbitalNeonPalette = [
+            [255, 38, 68],
+            [52, 136, 255],
+            [64, 255, 118],
+            [188, 74, 255]
+          ];
+          const serpentineTrailPalette = [
+            [194, 236, 255],
+            [132, 228, 255],
+            [140, 196, 255],
+            [186, 170, 255],
+            [124, 255, 224],
+            [255, 186, 226]
           ];
           let matrixBaseColor = [230, 64, 64];
           let matrixDirection = matrixDirections[0];
@@ -376,6 +447,13 @@ export async function initializeHomeSplash() {
           let mountainWorldWidth = 0;
           let mountainHorizonY = 0;
           let mountainNextShootingStarAt = 0;
+          let mountainNextUfoAt = 0;
+          let orbitalNextShotAt = 0;
+          let orbitalNextRaiderAt = 0;
+          let orbitalNextColorShiftAt = 0;
+          let orbitalOrbAngle = 0;
+          let orbitalOrbSpin = 0.02;
+          let orbitalPhaseBubbleColor = [116, 228, 255];
           let radarSweepAngle = 0;
           let radarSweepSpeed = 0.018;
           let radarNextBlipAt = 0;
@@ -389,6 +467,9 @@ export async function initializeHomeSplash() {
           let dukeScore = 0;
           let dukeLevelLabel = "SHRAPNEL CITY";
           let dukeCycleSeed = 0;
+          let serpentineHead = null;
+          let serpentineTrailEmitAt = 0;
+          let serpentineNextFallAt = 0;
           let piDigitsStream = "";
           let piDigitCursor = 0;
           let piCellCursor = 0;
@@ -560,6 +641,126 @@ export async function initializeHomeSplash() {
                 purple: p.random() < 0.3
               });
             }
+          };
+
+          const seedSerpentineSphere = () => {
+            serpentineTrail.length = 0;
+            const basePad = Math.max(10, Math.min(30, Math.min(p.width, p.height) * 0.03));
+            const radius = Math.max(4, Math.min(12, Math.min(p.width, p.height) * 0.012));
+            const rowStep = Math.max(radius * 3.3, Math.min(54, p.height * 0.08));
+            serpentineHead = {
+              x: basePad,
+              y: basePad,
+              pad: basePad,
+              radius,
+              rowStep,
+              dir: 1,
+              phase: "horizontal",
+              targetY: basePad,
+              speedX: Math.max(1.8, p.width * 0.0036),
+              speedY: Math.max(2.2, p.height * 0.009)
+            };
+            serpentineTrailEmitAt = p.millis();
+            serpentineNextFallAt = p.millis() + p.random(320, 760);
+          };
+
+          const updateSerpentineSphere = () => {
+            if (!serpentineHead) return;
+            const head = serpentineHead;
+            const now = p.millis();
+            const minX = head.pad;
+            const maxX = Math.max(minX, p.width - head.pad);
+            const maxY = Math.max(head.pad, p.height - head.pad);
+
+            if (now >= serpentineTrailEmitAt) {
+              serpentineTrail.push({
+                x: head.x,
+                y: head.y,
+                r: head.radius,
+                alpha: 180,
+                decay: p.random(0.955, 0.975),
+                color: p.random(serpentineTrailPalette) || [194, 236, 255],
+                falling: false,
+                vx: 0,
+                vy: 0,
+                gravity: 0,
+                swirl: 0
+              });
+              serpentineTrailEmitAt = now + 26;
+            }
+
+            if (now >= serpentineNextFallAt && serpentineTrail.length > 12) {
+              const candidates = serpentineTrail.filter((orb) => !orb.falling && orb.alpha > 24);
+              const dropCount = Math.min(candidates.length, Math.max(1, Math.floor(p.random(1, 4))));
+              for (let i = 0; i < dropCount; i += 1) {
+                const pick = candidates[Math.floor(p.random(candidates.length))];
+                if (!pick || pick.falling) continue;
+                pick.falling = true;
+                pick.vx = p.random(-0.22, 0.22);
+                pick.vy = p.random(0.35, 1.05);
+                pick.gravity = p.random(0.028, 0.05);
+                pick.swirl = p.random(-0.03, 0.03);
+              }
+              serpentineNextFallAt = now + p.random(280, 760);
+            }
+
+            if (head.phase === "horizontal") {
+              head.x += head.speedX * head.dir;
+              const reachedRight = head.dir > 0 && head.x >= maxX;
+              const reachedLeft = head.dir < 0 && head.x <= minX;
+              if (reachedRight || reachedLeft) {
+                head.x = reachedRight ? maxX : minX;
+                head.phase = "vertical";
+                head.targetY = head.y + head.rowStep;
+              }
+            } else {
+              head.y += head.speedY;
+              if (head.y >= maxY) {
+                head.x = minX;
+                head.y = head.pad;
+                head.dir = 1;
+                head.phase = "horizontal";
+                head.targetY = head.pad;
+              } else if (head.y >= head.targetY) {
+                head.y = head.targetY;
+                head.phase = "horizontal";
+                head.dir *= -1;
+              }
+            }
+
+            for (let i = serpentineTrail.length - 1; i >= 0; i -= 1) {
+              const orb = serpentineTrail[i];
+              if (orb.falling) {
+                orb.vx += orb.swirl;
+                orb.vx *= 0.994;
+                orb.vy += orb.gravity;
+                orb.x += orb.vx;
+                orb.y += orb.vy;
+                orb.alpha *= (orb.decay * 0.992);
+                orb.r *= 0.996;
+              } else {
+                orb.alpha *= orb.decay;
+                orb.r *= 0.998;
+              }
+              if (orb.alpha < 3 || orb.r < 1.2 || orb.y > p.height + 24) serpentineTrail.splice(i, 1);
+            }
+          };
+
+          const drawSerpentineSphere = () => {
+            updateSerpentineSphere();
+            p.noStroke();
+            for (const orb of serpentineTrail) {
+              const color = orb.color || [194, 236, 255];
+              p.fill(color[0], color[1], color[2], orb.alpha * 0.32);
+              p.circle(orb.x, orb.y, orb.r * 2.8);
+              p.fill(color[0], color[1], color[2], orb.alpha);
+              p.circle(orb.x, orb.y, orb.r * 2);
+            }
+            if (!serpentineHead) return;
+            p.fill(120, 210, 255, 80);
+            p.circle(serpentineHead.x, serpentineHead.y, serpentineHead.radius * 3.2);
+            p.fill(246, 252, 255, 236);
+            p.circle(serpentineHead.x, serpentineHead.y, serpentineHead.radius * 2);
           };
   
         const seedCircleGrid = () => {
@@ -1105,14 +1306,17 @@ export async function initializeHomeSplash() {
             mountainRanges.length = 0;
             mountainShootingStars.length = 0;
             mountainBirds.length = 0;
+            mountainUfos.length = 0;
             mountainPeople.length = 0;
             mountainApproachPeople.length = 0;
             mountainCars.length = 0;
             mountainImpactBursts.length = 0;
+            mountainUfoBeams.length = 0;
             mountainPanX = 0;
             mountainWorldWidth = Math.max(p.width * 2.6, 2200);
             mountainHorizonY = p.height * 0.75;
             mountainNextShootingStarAt = p.millis() + p.random(1400, 3600);
+            mountainNextUfoAt = p.millis() + p.random(9000, 15000);
             const starCount = Math.max(36, Math.floor((p.width * p.height) / 42000));
             for (let i = 0; i < starCount; i += 1) {
               mountainStars.push({
@@ -1346,6 +1550,267 @@ export async function initializeHomeSplash() {
               alpha: p.random(180, 245),
               trail: []
             });
+          };
+
+          const spawnMountainUfo = (initial = false) => {
+            const dir = p.random() < 0.5 ? -1 : 1;
+            const scale = p.random(1.5, 2.4);
+            const startX = initial
+              ? p.random(p.width * 0.14, p.width * 0.86)
+              : (dir > 0 ? -240 : p.width + 240);
+            const flightBandTop = p.height * 0.12;
+            const flightBandBottom = p.height * 0.3;
+            mountainUfos.push({
+              x: startX,
+              y: p.random(flightBandTop, flightBandBottom),
+              dir,
+              speed: p.random(0.36, 0.62) * dir,
+              scale,
+              alpha: p.random(176, 224),
+              bob: p.random(Math.PI * 2),
+              bobSpeed: p.random(0.012, 0.024),
+              drift: p.random(-0.022, 0.022),
+              trail: [],
+              trailEmitAt: 0,
+              trailInterval: p.random(42, 78),
+              nextAttackAt: p.millis() + p.random(3800, 9000),
+              beamBurstRemaining: 0,
+              nextBeamAt: 0
+            });
+          };
+
+          const createOrbitalHoleCandidate = (existingHoles = orbitalBlackHoles) => {
+            const centerX = p.width * 0.5;
+            const centerY = p.height * 0.5;
+            const minFromCenter = Math.min(p.width, p.height) * 0.3;
+            const minBetweenHoles = Math.min(p.width, p.height) * 0.2;
+            for (let attempts = 0; attempts < 80; attempts += 1) {
+              const candidate = {
+                x: p.random(p.width * 0.08, p.width * 0.92),
+                y: p.random(p.height * 0.08, p.height * 0.88),
+                r: p.random(12, 54),
+                vx: p.random(-0.02, 0.02),
+                vy: p.random(-0.02, 0.02)
+              };
+              const distToCenter = Math.hypot(candidate.x - centerX, candidate.y - centerY);
+              if (distToCenter < minFromCenter) continue;
+              let tooCloseToOtherHole = false;
+              for (const hole of existingHoles) {
+                if (Math.hypot(candidate.x - hole.x, candidate.y - hole.y) < minBetweenHoles) {
+                  tooCloseToOtherHole = true;
+                  break;
+                }
+              }
+              if (tooCloseToOtherHole) continue;
+              return candidate;
+            }
+            return {
+              x: p.random(p.width * 0.08, p.width * 0.92),
+              y: p.random(p.height * 0.08, p.height * 0.88),
+              r: p.random(12, 54),
+              vx: p.random(-0.02, 0.02),
+              vy: p.random(-0.02, 0.02)
+            };
+          };
+
+          const placeOrbitalBlackHoles = () => {
+            const holeCount = 10;
+            orbitalBlackHoles.length = 0;
+            for (let i = 0; i < holeCount; i += 1) {
+              orbitalBlackHoles.push(createOrbitalHoleCandidate(orbitalBlackHoles));
+            }
+          };
+
+          const updateOrbitalBlackHoles = () => {
+            if (orbitalBlackHoles.length === 0) return;
+
+            if (orbitalBlackHoles.length >= 2) {
+              let pairA = 0;
+              let pairB = 1;
+              let pairDist = Math.hypot(
+                orbitalBlackHoles[1].x - orbitalBlackHoles[0].x,
+                orbitalBlackHoles[1].y - orbitalBlackHoles[0].y
+              );
+
+              for (let i = 0; i < orbitalBlackHoles.length; i += 1) {
+                for (let j = i + 1; j < orbitalBlackHoles.length; j += 1) {
+                  const d = Math.hypot(
+                    orbitalBlackHoles[j].x - orbitalBlackHoles[i].x,
+                    orbitalBlackHoles[j].y - orbitalBlackHoles[i].y
+                  );
+                  if (d < pairDist) {
+                    pairDist = d;
+                    pairA = i;
+                    pairB = j;
+                  }
+                }
+              }
+
+              const a = orbitalBlackHoles[pairA];
+              const b = orbitalBlackHoles[pairB];
+              const dx = b.x - a.x;
+              const dy = b.y - a.y;
+              const d = Math.max(0.001, Math.hypot(dx, dy));
+              const nx = dx / d;
+              const ny = dy / d;
+              const tx = -ny;
+              const ty = nx;
+              const orbitKick = 0.055;
+              const inward = Math.min(0.12, 48 / d);
+
+              a.vx += tx * orbitKick + nx * inward;
+              a.vy += ty * orbitKick + ny * inward;
+              b.vx -= tx * orbitKick + nx * inward;
+              b.vy -= ty * orbitKick + ny * inward;
+
+              const mergeDist = (a.r + b.r) * 0.9;
+              if (d <= mergeDist) {
+                const aArea = a.r * a.r;
+                const bArea = b.r * b.r;
+                const totalArea = Math.max(0.001, aArea + bArea);
+                const mergedHole = {
+                  x: ((a.x * aArea) + (b.x * bArea)) / totalArea,
+                  y: ((a.y * aArea) + (b.y * bArea)) / totalArea,
+                  r: Math.sqrt(aArea + bArea),
+                  vx: ((a.vx || 0) * aArea + (b.vx || 0) * bArea) / totalArea,
+                  vy: ((a.vy || 0) * aArea + (b.vy || 0) * bArea) / totalArea
+                };
+
+                orbitalBlackHoles.splice(pairB, 1);
+                orbitalBlackHoles.splice(pairA, 1);
+                orbitalBlackHoles.push(mergedHole);
+                orbitalBlackHoles.push(createOrbitalHoleCandidate(orbitalBlackHoles));
+              }
+            }
+
+            while (orbitalBlackHoles.length < 10) {
+              orbitalBlackHoles.push(createOrbitalHoleCandidate(orbitalBlackHoles));
+            }
+
+            for (const hole of orbitalBlackHoles) {
+              hole.vx = (hole.vx || 0) * 0.986;
+              hole.vy = (hole.vy || 0) * 0.986;
+              hole.x += hole.vx;
+              hole.y += hole.vy;
+
+              if (hole.x < hole.r) {
+                hole.x = hole.r;
+                hole.vx = Math.abs(hole.vx || 0) * 0.72;
+              } else if (hole.x > p.width - hole.r) {
+                hole.x = p.width - hole.r;
+                hole.vx = -Math.abs(hole.vx || 0) * 0.72;
+              }
+
+              if (hole.y < hole.r) {
+                hole.y = hole.r;
+                hole.vy = Math.abs(hole.vy || 0) * 0.72;
+              } else if (hole.y > p.height - hole.r) {
+                hole.y = p.height - hole.r;
+                hole.vy = -Math.abs(hole.vy || 0) * 0.72;
+              }
+            }
+          };
+
+          const seedOrbitalBeams = () => {
+            orbitalBeams.length = 0;
+            orbitalBubbles.length = 0;
+            orbitalRaiders.length = 0;
+            orbitalRaiderShots.length = 0;
+            orbitalNextShotAt = p.millis() + p.random(260, 520);
+            orbitalNextRaiderAt = p.millis() + 10000;
+            orbitalNextColorShiftAt = p.millis() + 5000;
+            const seedColor = orbitalNeonPalette[Math.floor(p.random(orbitalNeonPalette.length))] || orbitalNeonPalette[0];
+            orbitalPhaseBubbleColor = [seedColor[0], seedColor[1], seedColor[2]];
+            orbitalOrbAngle = p.random(Math.PI * 2);
+            orbitalOrbSpin = p.random(0.012, 0.026);
+            placeOrbitalBlackHoles();
+          };
+
+          const drawOrbitalWarpGrid = () => {
+            if (orbitalBlackHoles.length === 0) return;
+
+            const spacing = Math.max(26, Math.floor(Math.min(p.width, p.height) / 24));
+            const maxPull = Math.max(16, spacing * 1.45);
+            const sampleStep = Math.max(10, Math.floor(spacing * 0.34));
+
+            const warpPoint = (x, y) => {
+              let wx = x;
+              let wy = y;
+              for (const hole of orbitalBlackHoles) {
+                const dx = x - hole.x;
+                const dy = y - hole.y;
+                const d = Math.max(0.001, Math.hypot(dx, dy));
+                const influence = (hole.r * hole.r * 56) / ((d * d) + 180);
+                const pull = Math.min(maxPull, influence);
+                wx -= (dx / d) * pull;
+                wy -= (dy / d) * pull;
+              }
+              return { x: wx, y: wy };
+            };
+
+            const drawWarpedHLine = (y, xStart, xEnd) => {
+              p.beginShape();
+              for (let x = xStart; x <= xEnd; x += sampleStep) {
+                const pt = warpPoint(x, y);
+                p.vertex(pt.x, pt.y);
+              }
+              if ((xEnd - xStart) % sampleStep !== 0) {
+                const pt = warpPoint(xEnd, y);
+                p.vertex(pt.x, pt.y);
+              }
+              p.endShape();
+            };
+
+            const drawWarpedVLine = (x, yStart, yEnd) => {
+              p.beginShape();
+              for (let y = yStart; y <= yEnd; y += sampleStep) {
+                const pt = warpPoint(x, y);
+                p.vertex(pt.x, pt.y);
+              }
+              if ((yEnd - yStart) % sampleStep !== 0) {
+                const pt = warpPoint(x, yEnd);
+                p.vertex(pt.x, pt.y);
+              }
+              p.endShape();
+            };
+
+            p.noFill();
+            p.strokeWeight(1);
+            p.stroke(214, 226, 255, 16);
+
+            for (let y = 0; y <= p.height + spacing; y += spacing) {
+              drawWarpedHLine(y, 0, p.width + spacing);
+            }
+
+            for (let x = 0; x <= p.width + spacing; x += spacing) {
+              drawWarpedVLine(x, 0, p.height + spacing);
+            }
+
+            // Add local sub-grids with progressively tighter spacing near each black hole.
+            for (const hole of orbitalBlackHoles) {
+              const layers = [
+                { radius: hole.r * 4.8, lineSpacing: Math.max(10, spacing * 0.5), alpha: 12 },
+                { radius: hole.r * 3.2, lineSpacing: Math.max(8, spacing * 0.34), alpha: 16 },
+                { radius: hole.r * 2.1, lineSpacing: Math.max(6, spacing * 0.22), alpha: 22 }
+              ];
+
+              for (const layer of layers) {
+                const left = Math.max(0, hole.x - layer.radius);
+                const right = Math.min(p.width, hole.x + layer.radius);
+                const top = Math.max(0, hole.y - layer.radius);
+                const bottom = Math.min(p.height, hole.y + layer.radius);
+
+                p.stroke(222, 234, 255, layer.alpha);
+
+                for (let y = top; y <= bottom; y += layer.lineSpacing) {
+                  drawWarpedHLine(y, left, right);
+                }
+
+                for (let x = left; x <= right; x += layer.lineSpacing) {
+                  drawWarpedVLine(x, top, bottom);
+                }
+              }
+            }
           };
 
           const drawMountainRangeLine = (range, rangeOffset) => {
@@ -1832,7 +2297,11 @@ export async function initializeHomeSplash() {
             const sensing = 74;
             const avoid = 28;
   
-            const hasMouse = p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height;
+            const hasMouse = !disableMouseInteraction
+              && p.mouseX >= 0
+              && p.mouseX <= p.width
+              && p.mouseY >= 0
+              && p.mouseY <= p.height;
             const target = hasMouse
               ? p.createVector(p.mouseX, p.mouseY)
               : p.createVector(p.width * 0.5, p.height * 0.5);
@@ -1903,7 +2372,8 @@ export async function initializeHomeSplash() {
           };
   
           p.setup = () => {
-            const canvas = p.createCanvas(window.innerWidth, window.innerHeight);
+            const { width, height } = getSplashCanvasSize();
+            const canvas = p.createCanvas(width, height);
             canvas.parent(splashP5Host);
             p.pixelDensity(1);
             if (splashMode === "logo3d") {}
@@ -1914,6 +2384,8 @@ export async function initializeHomeSplash() {
             else if (splashMode === "tempest") seedTempest();
             else if (splashMode === "missilecommand") seedMissileCommand();
             else if (splashMode === "mountains") seedMountainScene();
+            else if (splashMode === "serpentinesphere") seedSerpentineSphere();
+            else if (splashMode === "orbitalbeams") seedOrbitalBeams();
             else if (splashMode === "radar") seedRadarScreen();
             else if (splashMode === "dukenukem") seedDukeNukem();
             else if (splashMode === "turningcircles") seedTurningCircles();
@@ -1927,7 +2399,8 @@ export async function initializeHomeSplash() {
           };
   
           p.windowResized = () => {
-            p.resizeCanvas(window.innerWidth, window.innerHeight);
+            const { width, height } = getSplashCanvasSize();
+            p.resizeCanvas(width, height);
             if (splashMode === "logo3d") {}
             else if (splashMode === "bezier") seedBezierCurves();
             else if (splashMode === "flock") seedFlock();
@@ -1936,6 +2409,8 @@ export async function initializeHomeSplash() {
             else if (splashMode === "tempest") seedTempest();
             else if (splashMode === "missilecommand") seedMissileCommand();
             else if (splashMode === "mountains") seedMountainScene();
+            else if (splashMode === "serpentinesphere") seedSerpentineSphere();
+            else if (splashMode === "orbitalbeams") seedOrbitalBeams();
             else if (splashMode === "radar") seedRadarScreen();
             else if (splashMode === "dukenukem") seedDukeNukem();
             else if (splashMode === "turningcircles") seedTurningCircles();
@@ -1968,6 +2443,11 @@ export async function initializeHomeSplash() {
                 p.strokeWeight(c.weight);
                 p.bezier(c.p0.x, c.p0.y, c.p1.x, c.p1.y, c.p2.x, c.p2.y, c.p3.x, c.p3.y);
               }
+              return;
+            }
+
+            if (splashMode === "serpentinesphere") {
+              drawSerpentineSphere();
               return;
             }
   
@@ -2402,6 +2882,11 @@ export async function initializeHomeSplash() {
                 mountainNextShootingStarAt = now + p.random(1800, 5200);
               }
 
+              if (now >= mountainNextUfoAt) {
+                spawnMountainUfo();
+                mountainNextUfoAt = now + p.random(18000, 24000);
+              }
+
               for (let i = mountainShootingStars.length - 1; i >= 0; i -= 1) {
                 const star = mountainShootingStars[i];
                 star.x += star.vx;
@@ -2433,6 +2918,123 @@ export async function initializeHomeSplash() {
 
                 if (star.x < -40 || star.x > p.width + 40 || star.y > p.height * 0.76) {
                   mountainShootingStars.splice(i, 1);
+                }
+              }
+
+              for (let i = mountainUfos.length - 1; i >= 0; i -= 1) {
+                const ufo = mountainUfos[i];
+                ufo.bob += ufo.bobSpeed;
+                ufo.x += ufo.speed;
+                ufo.y += Math.sin(ufo.bob) * 0.2 + ufo.drift;
+
+                if (now >= ufo.trailEmitAt) {
+                  ufo.trail.unshift({
+                    x: ufo.x - (ufo.dir * (20 * ufo.scale)),
+                    y: ufo.y + (6 * ufo.scale),
+                    w: p.random(13, 24) * ufo.scale,
+                    h: p.random(9, 17) * ufo.scale,
+                    alpha: p.random(132, 198),
+                    decay: p.random(0.982, 0.992),
+                    driftX: p.random(-0.04, 0.04),
+                    driftY: p.random(0.02, 0.055),
+                    tilt: p.random(-0.42, 0.42),
+                    strokeW: p.random(1.05, 1.9),
+                    color: p.random([
+                      [255, 92, 92],
+                      [255, 178, 86],
+                      [255, 235, 104],
+                      [108, 236, 166],
+                      [104, 198, 255],
+                      [202, 148, 255]
+                    ]),
+                    start: p.random(Math.PI * 1.08, Math.PI * 1.28),
+                    end: p.random(Math.PI * 1.72, Math.PI * 1.92)
+                  });
+                  ufo.trailEmitAt = now + ufo.trailInterval;
+                }
+
+                if (ufo.trail.length > 180) ufo.trail.length = 180;
+
+                for (let t = ufo.trail.length - 1; t >= 0; t -= 1) {
+                  const arch = ufo.trail[t];
+                  arch.alpha *= arch.decay;
+                  arch.x += arch.driftX;
+                  arch.y += arch.driftY;
+                  if (arch.alpha < 8) {
+                    ufo.trail.splice(t, 1);
+                    continue;
+                  }
+                  p.noFill();
+                  p.stroke(arch.color[0], arch.color[1], arch.color[2], arch.alpha);
+                  p.strokeWeight(arch.strokeW);
+                  p.push();
+                  p.translate(arch.x, arch.y);
+                  p.rotate(arch.tilt);
+                  p.arc(0, 0, arch.w, arch.h, arch.start, arch.end);
+                  p.pop();
+                }
+
+                if (ufo.beamBurstRemaining <= 0 && now >= ufo.nextAttackAt) {
+                  ufo.beamBurstRemaining = Math.floor(p.random(2, 5));
+                  ufo.nextBeamAt = now + p.random(80, 180);
+                  ufo.nextAttackAt = now + p.random(12000, 22000);
+                }
+
+                if (ufo.beamBurstRemaining > 0 && now >= ufo.nextBeamAt) {
+                  const validRunners = mountainApproachPeople.filter((runner) =>
+                    !runner.grabbedBy && !runner.falling && runner.progress > 0.12
+                  );
+                  const validCars = mountainCars;
+                  const canTargetRunner = validRunners.length > 0;
+                  const canTargetCar = validCars.length > 0;
+
+                  if (canTargetRunner || canTargetCar) {
+                    const chooseRunner = canTargetRunner && (!canTargetCar || p.random() < 0.58);
+                    let target = null;
+                    let targetKind = "runner";
+                    if (chooseRunner) {
+                      target = validRunners[Math.floor(p.random(validRunners.length))];
+                      targetKind = "runner";
+                    } else {
+                      target = validCars[Math.floor(p.random(validCars.length))];
+                      targetKind = "car";
+                    }
+
+                    if (target) {
+                      mountainUfoBeams.push({
+                        source: ufo,
+                        target,
+                        kind: targetKind,
+                        life: Math.floor(p.random(14, 24)),
+                        width: p.random(1.1, 2.1),
+                        alpha: p.random(174, 232)
+                      });
+                    }
+                  }
+                  ufo.beamBurstRemaining -= 1;
+                  ufo.nextBeamAt = now + p.random(120, 220);
+                }
+
+                p.push();
+                p.translate(ufo.x, ufo.y);
+                p.noStroke();
+                p.fill(232, 235, 242, ufo.alpha * 0.28);
+                p.ellipse(0, 8.2 * ufo.scale, 34 * ufo.scale, 9 * ufo.scale);
+                p.fill(240, 242, 248, ufo.alpha);
+                p.ellipse(0, 0, 56 * ufo.scale, 14 * ufo.scale);
+                p.fill(250, 251, 255, ufo.alpha * 0.92);
+                p.ellipse(0, -4.4 * ufo.scale, 23 * ufo.scale, 9.5 * ufo.scale);
+                p.fill(255, 255, 255, ufo.alpha * 0.78);
+                p.circle(-14 * ufo.scale, 0.8 * ufo.scale, 2.3 * ufo.scale);
+                p.circle(0, 1.3 * ufo.scale, 2.5 * ufo.scale);
+                p.circle(14 * ufo.scale, 0.8 * ufo.scale, 2.3 * ufo.scale);
+                p.pop();
+
+                if ((ufo.dir > 0 && ufo.x > p.width + 280) || (ufo.dir < 0 && ufo.x < -280)) {
+                  for (let b = mountainUfoBeams.length - 1; b >= 0; b -= 1) {
+                    if (mountainUfoBeams[b].source === ufo) mountainUfoBeams.splice(b, 1);
+                  }
+                  mountainUfos.splice(i, 1);
                 }
               }
 
@@ -2730,6 +3332,86 @@ export async function initializeHomeSplash() {
                 p.circle(car.x + carW * 0.28, car.y, 4.1 * car.scale);
               }
 
+              for (let i = mountainUfoBeams.length - 1; i >= 0; i -= 1) {
+                const beam = mountainUfoBeams[i];
+                const ufo = beam.source;
+                if (!ufo) {
+                  mountainUfoBeams.splice(i, 1);
+                  continue;
+                }
+
+                let tx = ufo.x;
+                let ty = ufo.y;
+                let targetValid = false;
+
+                if (beam.kind === "runner") {
+                  const runner = beam.target;
+                  if (runner && !runner.grabbedBy && !runner.falling) {
+                    const t = p.constrain(runner.progress, 0, 1);
+                    const scale = runner.baseSize * p.lerp(0.18, 1.7, t);
+                    tx = runner.x;
+                    ty = runner.y - (10 * scale);
+                    targetValid = true;
+                  }
+                } else {
+                  const car = beam.target;
+                  if (car) {
+                    tx = car.x;
+                    ty = car.y - (7.5 * car.scale);
+                    targetValid = true;
+                  }
+                }
+
+                if (!targetValid) {
+                  mountainUfoBeams.splice(i, 1);
+                  continue;
+                }
+
+                const sx = ufo.x + (ufo.dir * 4 * ufo.scale);
+                const sy = ufo.y + (4.2 * ufo.scale);
+                const flicker = 0.82 + (0.18 * Math.sin((now * 0.04) + (i * 1.73)));
+                p.stroke(180, 225, 255, beam.alpha * flicker);
+                p.strokeWeight(beam.width);
+                p.line(sx, sy, tx, ty);
+                p.stroke(255, 255, 255, beam.alpha * 0.46 * flicker);
+                p.strokeWeight(Math.max(0.7, beam.width * 0.45));
+                p.line(sx, sy, tx, ty);
+
+                beam.life -= 1;
+                if (beam.life <= 0) {
+                  if (beam.kind === "runner") {
+                    const runner = beam.target;
+                    if (runner && !runner.grabbedBy && !runner.falling) {
+                      const t = p.constrain(runner.progress, 0, 1);
+                      const scale = runner.baseSize * p.lerp(0.18, 1.7, t);
+                      const rx = runner.x;
+                      const ry = runner.y - (8 * scale);
+                      mountainImpactBursts.push({
+                        x: rx,
+                        y: ry,
+                        life: 24,
+                        size: 7.2 * scale
+                      });
+                      resetMountainApproachRunner(runner);
+                      runner.hitCooldown = 52;
+                    }
+                  } else {
+                    const car = beam.target;
+                    if (car) {
+                      mountainImpactBursts.push({
+                        x: tx,
+                        y: ty,
+                        life: 22,
+                        size: 8.4 * car.scale
+                      });
+                      if (car.dir > 0) car.x = -80 - p.random(0, p.width * 0.35);
+                      else car.x = p.width + 80 + p.random(0, p.width * 0.35);
+                    }
+                  }
+                  mountainUfoBeams.splice(i, 1);
+                }
+              }
+
               for (let i = mountainImpactBursts.length - 1; i >= 0; i -= 1) {
                 const burst = mountainImpactBursts[i];
                 burst.life -= 1;
@@ -2754,6 +3436,456 @@ export async function initializeHomeSplash() {
               p.fill(0, 0, 0, 255);
               p.rect(-2, 0, 6, p.height);
               p.rect(p.width - 4, 0, 6, p.height);
+              return;
+            }
+
+            if (splashMode === "orbitalbeams") {
+              p.background(7, 8, 12, 248);
+              const now = p.millis();
+              const cx = p.width * 0.5;
+              const cy = p.height * 0.5;
+
+              orbitalOrbAngle += orbitalOrbSpin;
+
+              if (now >= orbitalNextColorShiftAt) {
+                let nextColor = orbitalPhaseBubbleColor;
+                let tries = 0;
+                while (
+                  tries < 10 &&
+                  nextColor[0] === orbitalPhaseBubbleColor[0] &&
+                  nextColor[1] === orbitalPhaseBubbleColor[1] &&
+                  nextColor[2] === orbitalPhaseBubbleColor[2]
+                ) {
+                  nextColor = orbitalNeonPalette[Math.floor(p.random(orbitalNeonPalette.length))] || orbitalNeonPalette[0];
+                  tries += 1;
+                }
+                orbitalPhaseBubbleColor = [nextColor[0], nextColor[1], nextColor[2]];
+                for (const bubble of orbitalBubbles) {
+                  bubble.color = [nextColor[0], nextColor[1], nextColor[2]];
+                }
+                orbitalNextColorShiftAt = now + 5000;
+              }
+
+              if (now >= orbitalNextShotAt && orbitalBubbles.length < 5) {
+                const wanderAngle = p.random(Math.PI * 2);
+                const wanderSpeed = p.random(0.35, 1.45);
+                const radiusRoll = p.random();
+                const bubbleRadius = radiusRoll < 0.2
+                  ? p.random(9.2, 16.8)
+                  : radiusRoll < 0.58
+                    ? p.random(4.4, 9.8)
+                    : p.random(1.1, 5.6);
+                orbitalBubbles.push({
+                  x: cx,
+                  y: cy,
+                  vx: Math.cos(wanderAngle) * wanderSpeed,
+                  vy: Math.sin(wanderAngle) * wanderSpeed,
+                  r: bubbleRadius,
+                  color: orbitalPhaseBubbleColor,
+                  wobble: p.random(Math.PI * 2),
+                  ghostTrail: [],
+                  trailMax: Math.floor(p.random(8, 28)),
+                  trailEmitAt: now + p.random(10, 40),
+                  phase: "wander",
+                  orbitAngle: 0,
+                  orbitRadius: 0,
+                  orbitAngularSpeed: (p.random() < 0.5 ? -1 : 1) * p.random(0.014, 0.04),
+                  orbitInwardRate: p.random(0.26, 0.78),
+                  holeIndex: -1
+                });
+                orbitalNextShotAt = now + p.random(240, 520);
+              }
+
+              if (now >= orbitalNextRaiderAt) {
+                const edge = Math.floor(p.random(4));
+                let sx = p.random(p.width);
+                let sy = p.random(p.height);
+                if (edge === 0) {
+                  sx = -16;
+                  sy = p.random(p.height);
+                } else if (edge === 1) {
+                  sx = p.width + 16;
+                  sy = p.random(p.height);
+                } else if (edge === 2) {
+                  sx = p.random(p.width);
+                  sy = -16;
+                } else {
+                  sx = p.random(p.width);
+                  sy = p.height + 16;
+                }
+
+                orbitalRaiders.push({
+                  x: sx,
+                  y: sy,
+                  vx: p.random(-0.4, 0.4),
+                  vy: p.random(-0.4, 0.4),
+                  heading: p.random(Math.PI * 2),
+                  thrusting: false,
+                  nextShotAt: now + p.random(700, 1400),
+                  ttl: Math.floor(p.random(2800, 4200)),
+                  phase: "wander",
+                  holeIndex: -1,
+                  orbitAngle: 0,
+                  orbitRadius: 0,
+                  orbitAngularSpeed: (p.random() < 0.5 ? -1 : 1) * p.random(0.028, 0.07),
+                  orbitInwardRate: p.random(0.22, 0.58)
+                });
+                orbitalNextRaiderAt = now + 10000;
+              }
+
+              const orbPalette = [
+                [230, 28, 52],
+                [32, 120, 255],
+                [30, 232, 116],
+                [172, 68, 255]
+              ];
+              const morphPeriodMs = 2200;
+              const morphPosition = (now / morphPeriodMs) % orbPalette.length;
+              const fromIndex = Math.floor(morphPosition) % orbPalette.length;
+              const toIndex = (fromIndex + 1) % orbPalette.length;
+              const blend = morphPosition - Math.floor(morphPosition);
+              const from = orbPalette[fromIndex];
+              const to = orbPalette[toIndex];
+              const orbR = p.lerp(from[0], to[0], blend);
+              const orbG = p.lerp(from[1], to[1], blend);
+              const orbB = p.lerp(from[2], to[2], blend);
+
+              p.noStroke();
+              p.fill(orbR, orbG, orbB, 34);
+              p.circle(cx, cy, 76);
+              p.push();
+              p.translate(cx, cy);
+              p.rotate(orbitalOrbAngle);
+              p.fill(orbR, orbG, orbB, 236);
+              p.circle(0, 0, 18);
+              p.fill(255, 255, 255, 180);
+              p.ellipse(4, -4, 6, 4);
+              p.stroke(orbR, orbG, orbB, 168);
+              p.strokeWeight(1.4);
+              p.noFill();
+              p.arc(0, 0, 30, 30, 0.24, Math.PI - 0.18);
+              p.pop();
+
+              updateOrbitalBlackHoles();
+              drawOrbitalWarpGrid();
+
+              if (orbitalBlackHoles.length > 0) {
+                for (const hole of orbitalBlackHoles) {
+                  p.noStroke();
+                  p.fill(255, 62, 86, 20);
+                  p.circle(hole.x, hole.y, hole.r * 4.2);
+                  p.fill(255, 72, 96, 32);
+                  p.circle(hole.x, hole.y, hole.r * 2.5);
+                  p.fill(0, 0, 0, 255);
+                  p.circle(hole.x, hole.y, hole.r * 2);
+                  p.stroke(255, 98, 124, 120);
+                  p.strokeWeight(1.1);
+                  p.noFill();
+                  p.circle(hole.x, hole.y, hole.r * 2.2);
+                }
+              }
+
+              for (let i = orbitalRaiders.length - 1; i >= 0; i -= 1) {
+                const ship = orbitalRaiders[i];
+                ship.ttl -= 1;
+                if (ship.ttl <= 0) {
+                  orbitalRaiders.splice(i, 1);
+                  continue;
+                }
+
+                let nearestHole = null;
+                let nearestHoleIdx = -1;
+                let nearestHoleDist = Number.POSITIVE_INFINITY;
+                for (let h = 0; h < orbitalBlackHoles.length; h += 1) {
+                  const hole = orbitalBlackHoles[h];
+                  const d = Math.hypot(ship.x - hole.x, ship.y - hole.y);
+                  if (d < nearestHoleDist) {
+                    nearestHoleDist = d;
+                    nearestHole = hole;
+                    nearestHoleIdx = h;
+                  }
+                }
+
+                if (ship.phase === "orbit" && nearestHole) {
+                  let orbitHole = orbitalBlackHoles[ship.holeIndex];
+                  if (!orbitHole) {
+                    orbitHole = nearestHole;
+                    ship.holeIndex = nearestHoleIdx;
+                    ship.orbitAngle = Math.atan2(ship.y - orbitHole.y, ship.x - orbitHole.x);
+                    ship.orbitRadius = Math.hypot(ship.x - orbitHole.x, ship.y - orbitHole.y);
+                  }
+
+                  ship.orbitAngle += ship.orbitAngularSpeed;
+                  ship.orbitRadius = Math.max(0, ship.orbitRadius - ship.orbitInwardRate);
+                  const tx = orbitHole.x + Math.cos(ship.orbitAngle) * ship.orbitRadius;
+                  const ty = orbitHole.y + Math.sin(ship.orbitAngle) * ship.orbitRadius;
+                  ship.x += (tx - ship.x) * 0.34;
+                  ship.y += (ty - ship.y) * 0.34;
+                  ship.heading = Math.atan2(ty - ship.y, tx - ship.x);
+                  ship.thrusting = false;
+
+                  const dToHole = Math.hypot(orbitHole.x - ship.x, orbitHole.y - ship.y);
+                  if (ship.orbitRadius <= Math.max(5, orbitHole.r * 0.36) || dToHole <= Math.max(5, orbitHole.r * 0.34)) {
+                    orbitalRaiders.splice(i, 1);
+                    continue;
+                  }
+                  // Orbiting ships stop regular wander/attack behavior.
+                  continue;
+                }
+
+                let nearestBubble = null;
+                let nearestDist = Number.POSITIVE_INFINITY;
+                for (const bubble of orbitalBubbles) {
+                  const d = Math.hypot(bubble.x - ship.x, bubble.y - ship.y);
+                  if (d < nearestDist) {
+                    nearestDist = d;
+                    nearestBubble = bubble;
+                  }
+                }
+
+                if (nearestBubble) {
+                  const desired = Math.atan2(nearestBubble.y - ship.y, nearestBubble.x - ship.x);
+                  const turn = p.constrain(angleDelta(ship.heading, desired), -0.04, 0.04);
+                  ship.heading += turn;
+                  ship.thrusting = Math.abs(turn) < 0.65;
+                } else {
+                  ship.heading += p.random(-0.03, 0.03);
+                  ship.thrusting = p.random() < 0.58;
+                }
+
+                if (ship.thrusting) {
+                  ship.vx += Math.cos(ship.heading) * 0.03;
+                  ship.vy += Math.sin(ship.heading) * 0.03;
+                }
+
+                ship.vx += p.random(-0.01, 0.01);
+                ship.vy += p.random(-0.01, 0.01);
+                ship.vx *= 0.992;
+                ship.vy *= 0.992;
+                ship.vx = p.constrain(ship.vx, -2.2, 2.2);
+                ship.vy = p.constrain(ship.vy, -2.2, 2.2);
+                ship.x += ship.vx;
+                ship.y += ship.vy;
+
+                if (ship.x < -14) ship.x = p.width + 14;
+                else if (ship.x > p.width + 14) ship.x = -14;
+                if (ship.y < -14) ship.y = p.height + 14;
+                else if (ship.y > p.height + 14) ship.y = -14;
+
+                if (nearestHole && nearestHoleDist <= (nearestHole.r * 3.9)) {
+                  ship.phase = "orbit";
+                  ship.holeIndex = nearestHoleIdx;
+                  ship.orbitAngle = Math.atan2(ship.y - nearestHole.y, ship.x - nearestHole.x);
+                  ship.orbitRadius = Math.max(nearestHole.r * 1.8, nearestHoleDist);
+                  ship.orbitAngularSpeed = ((ship.vx * -Math.sin(ship.orbitAngle)) + (ship.vy * Math.cos(ship.orbitAngle))) >= 0
+                    ? Math.abs(ship.orbitAngularSpeed)
+                    : -Math.abs(ship.orbitAngularSpeed);
+                  continue;
+                }
+
+                if (nearestBubble && now >= ship.nextShotAt) {
+                  const desired = Math.atan2(nearestBubble.y - ship.y, nearestBubble.x - ship.x);
+                  const aimErr = Math.abs(angleDelta(ship.heading, desired));
+                  if (aimErr < 0.45) {
+                    const shotHeading = ship.heading + p.random(-0.08, 0.08);
+                    orbitalRaiderShots.push({
+                      x: ship.x + Math.cos(shotHeading) * 10,
+                      y: ship.y + Math.sin(shotHeading) * 10,
+                      vx: Math.cos(shotHeading) * 4.6 + ship.vx * 0.3,
+                      vy: Math.sin(shotHeading) * 4.6 + ship.vy * 0.3,
+                      ttl: 120
+                    });
+                  }
+                  ship.nextShotAt = now + p.random(350, 750);
+                }
+              }
+
+              for (let i = orbitalRaiderShots.length - 1; i >= 0; i -= 1) {
+                const shot = orbitalRaiderShots[i];
+                shot.x += shot.vx;
+                shot.y += shot.vy;
+                shot.ttl -= 1;
+
+                if (shot.x < -6) shot.x = p.width + 6;
+                else if (shot.x > p.width + 6) shot.x = -6;
+                if (shot.y < -6) shot.y = p.height + 6;
+                else if (shot.y > p.height + 6) shot.y = -6;
+
+                if (shot.ttl <= 0) {
+                  orbitalRaiderShots.splice(i, 1);
+                  continue;
+                }
+
+                let hit = false;
+                for (let b = orbitalBubbles.length - 1; b >= 0; b -= 1) {
+                  const bubble = orbitalBubbles[b];
+                  if (Math.hypot(shot.x - bubble.x, shot.y - bubble.y) <= (bubble.r + 2.8)) {
+                    orbitalBubbles.splice(b, 1);
+                    hit = true;
+                    break;
+                  }
+                }
+                if (hit) orbitalRaiderShots.splice(i, 1);
+              }
+
+              p.noStroke();
+              p.fill(255, 182, 122, 220);
+              for (const shot of orbitalRaiderShots) p.circle(shot.x, shot.y, 2.8);
+
+              for (const ship of orbitalRaiders) {
+                p.push();
+                p.translate(ship.x, ship.y);
+                p.rotate(ship.heading);
+                p.noFill();
+                p.stroke(228, 236, 248, 224);
+                p.strokeWeight(1.4);
+                p.triangle(9, 0, -6, -5, -5, 5);
+                p.line(2, 0, -3, 0);
+                if (ship.thrusting) {
+                  p.stroke(255, 168, 96, 210);
+                  p.line(-5, 0, -10 - p.random(2, 4), 0);
+                }
+                p.pop();
+              }
+
+              for (let i = orbitalBubbles.length - 1; i >= 0; i -= 1) {
+                const bubble = orbitalBubbles[i];
+                bubble.wobble += 0.06;
+                const orbitTrailPhase = bubble.phase === "orbit";
+
+                if (now >= (bubble.trailEmitAt || 0)) {
+                  bubble.ghostTrail.push({
+                    x: bubble.x,
+                    y: bubble.y,
+                    r: Math.max(0.65, bubble.r * (orbitTrailPhase ? p.random(0.1, 0.24) : p.random(0.16, 0.34))),
+                    alpha: orbitTrailPhase ? p.random(116, 224) : p.random(54, 108),
+                    decay: orbitTrailPhase ? p.random(0.975, 0.992) : p.random(0.94, 0.976)
+                  });
+                  bubble.trailEmitAt = now + (orbitTrailPhase ? p.random(8, 20) : p.random(24, 64));
+                }
+
+                const maxTrailLength = orbitTrailPhase ? Math.max(28, bubble.trailMax * 3) : bubble.trailMax;
+                if (bubble.ghostTrail.length > maxTrailLength) {
+                  bubble.ghostTrail.splice(0, bubble.ghostTrail.length - maxTrailLength);
+                }
+
+                for (let t = bubble.ghostTrail.length - 1; t >= 0; t -= 1) {
+                  const ghost = bubble.ghostTrail[t];
+                  ghost.alpha *= ghost.decay;
+                  if (ghost.alpha < (orbitTrailPhase ? 1.4 : 3.5)) {
+                    bubble.ghostTrail.splice(t, 1);
+                    continue;
+                  }
+                  p.noStroke();
+                  if (orbitTrailPhase) {
+                    p.fill(bubble.color[0], bubble.color[1], bubble.color[2], ghost.alpha * 0.24);
+                    p.circle(ghost.x, ghost.y, ghost.r * 6.2);
+                    p.fill(bubble.color[0], bubble.color[1], bubble.color[2], ghost.alpha * 0.56);
+                    p.circle(ghost.x, ghost.y, ghost.r * 3.8);
+                    p.fill(bubble.color[0], bubble.color[1], bubble.color[2], ghost.alpha * 1.06);
+                    p.circle(ghost.x, ghost.y, ghost.r * 2.1);
+                  } else {
+                    p.fill(bubble.color[0], bubble.color[1], bubble.color[2], ghost.alpha * 0.32);
+                    p.circle(ghost.x, ghost.y, ghost.r * 4);
+                    p.fill(bubble.color[0], bubble.color[1], bubble.color[2], ghost.alpha);
+                    p.circle(ghost.x, ghost.y, ghost.r * 2);
+                  }
+                }
+
+                let closestHole = null;
+                let closestIdx = -1;
+                let closestDist = Number.POSITIVE_INFINITY;
+                for (let h = 0; h < orbitalBlackHoles.length; h += 1) {
+                  const hole = orbitalBlackHoles[h];
+                  const d = Math.hypot(bubble.x - hole.x, bubble.y - hole.y);
+                  if (d < closestDist) {
+                    closestDist = d;
+                    closestHole = hole;
+                    closestIdx = h;
+                  }
+                }
+
+                if (bubble.phase === "wander") {
+                  // Brownian-style wandering before entering any black hole orbit.
+                  bubble.vx += p.random(-0.08, 0.08);
+                  bubble.vy += p.random(-0.08, 0.08);
+                  const wanderMaxSpeed = 1.85;
+                  const speed = Math.hypot(bubble.vx, bubble.vy);
+                  if (speed > wanderMaxSpeed) {
+                    bubble.vx = (bubble.vx / speed) * wanderMaxSpeed;
+                    bubble.vy = (bubble.vy / speed) * wanderMaxSpeed;
+                  }
+                  bubble.x += bubble.vx;
+                  bubble.y += bubble.vy;
+
+                  // Wrap around screen edges for seamless toroidal wandering.
+                  if (bubble.x < -bubble.r) bubble.x = p.width + bubble.r;
+                  else if (bubble.x > p.width + bubble.r) bubble.x = -bubble.r;
+                  if (bubble.y < -bubble.r) bubble.y = p.height + bubble.r;
+                  else if (bubble.y > p.height + bubble.r) bubble.y = -bubble.r;
+
+                  if (closestHole && closestDist <= (closestHole.r * 4.6)) {
+                    bubble.phase = "orbit";
+                    bubble.holeIndex = closestIdx;
+                    bubble.orbitAngle = Math.atan2(bubble.y - closestHole.y, bubble.x - closestHole.x);
+                    bubble.orbitRadius = Math.max(closestHole.r * 2.1, closestDist);
+                    const radialX = Math.cos(bubble.orbitAngle);
+                    const radialY = Math.sin(bubble.orbitAngle);
+                    const tangentX = -radialY;
+                    const tangentY = radialX;
+                    const speed = Math.max(0.1, Math.hypot(bubble.vx, bubble.vy));
+                    const tangentSign = ((bubble.vx * tangentX) + (bubble.vy * tangentY)) >= 0 ? 1 : -1;
+                    const targetAngular = p.constrain(speed / Math.max(1, bubble.orbitRadius), 0.01, 0.045) * tangentSign;
+                    bubble.orbitAngularSpeed = p.lerp(bubble.orbitAngularSpeed || targetAngular, targetAngular, 0.72);
+                    bubble.captureBlend = 0;
+                  }
+                } else if (bubble.phase === "orbit" && closestHole) {
+                  let orbitHole = orbitalBlackHoles[bubble.holeIndex];
+                  if (!orbitHole) {
+                    orbitHole = closestHole;
+                    bubble.holeIndex = closestIdx;
+                    bubble.orbitAngle = Math.atan2(bubble.y - orbitHole.y, bubble.x - orbitHole.x);
+                    bubble.orbitRadius = Math.max(orbitHole.r * 2.1, Math.hypot(bubble.x - orbitHole.x, bubble.y - orbitHole.y));
+                    bubble.captureBlend = 0;
+                  }
+
+                  bubble.orbitAngle += bubble.orbitAngularSpeed || 0.05;
+                  bubble.orbitRadius = Math.max(0, (bubble.orbitRadius || Math.hypot(bubble.x - orbitHole.x, bubble.y - orbitHole.y)) - (bubble.orbitInwardRate || 0.45));
+                  const tx = orbitHole.x + Math.cos(bubble.orbitAngle) * bubble.orbitRadius;
+                  const ty = orbitHole.y + Math.sin(bubble.orbitAngle) * bubble.orbitRadius;
+                  const toOrbitX = tx - bubble.x;
+                  const toOrbitY = ty - bubble.y;
+                  bubble.captureBlend = Math.min(1, (bubble.captureBlend || 0) + 0.085);
+                  const blend = bubble.captureBlend;
+                  const desiredVx = toOrbitX * 0.18;
+                  const desiredVy = toOrbitY * 0.18;
+                  bubble.vx = p.lerp(bubble.vx || 0, desiredVx, 0.22 * blend);
+                  bubble.vy = p.lerp(bubble.vy || 0, desiredVy, 0.22 * blend);
+                  bubble.x += bubble.vx;
+                  bubble.y += bubble.vy;
+                  bubble.r *= 0.995;
+                  const dToHole = Math.hypot(orbitHole.x - bubble.x, orbitHole.y - bubble.y);
+                  if (bubble.orbitRadius <= Math.max(6, orbitHole.r * 0.42) || dToHole <= Math.max(6, orbitHole.r * 0.38) || bubble.r < 0.28) {
+                    orbitalBubbles.splice(i, 1);
+                    continue;
+                  }
+                }
+
+                p.noStroke();
+                p.fill(bubble.color[0], bubble.color[1], bubble.color[2], 16);
+                p.circle(bubble.x, bubble.y, bubble.r * 4.8);
+                p.fill(bubble.color[0], bubble.color[1], bubble.color[2], 28);
+                p.circle(bubble.x, bubble.y, bubble.r * 3.4);
+                p.fill(bubble.color[0], bubble.color[1], bubble.color[2], 84);
+                p.circle(bubble.x, bubble.y, bubble.r * 2.2);
+                p.stroke(246, 252, 255, 196);
+                p.strokeWeight(1);
+                p.fill(255, 255, 255, 22);
+                p.circle(bubble.x, bubble.y, bubble.r * 2);
+                p.noStroke();
+                p.fill(255, 255, 255, 128);
+                p.circle(bubble.x - bubble.r * 0.28, bubble.y - bubble.r * 0.34, bubble.r * 0.58);
+              }
               return;
             }
   
@@ -3838,6 +4970,7 @@ export async function initializeHomeSplash() {
       async function rotateSplashAnimation() {
         if (splashSwitching) return;
         if (!splashScreen || splashScreen.classList.contains("hidden")) return;
+        if (!isSplashAnimationEnabled()) return;
         splashSwitching = true;
         try {
           const nextMode = pickRandomSplashMode(true);
@@ -3850,6 +4983,7 @@ export async function initializeHomeSplash() {
   
       function startSplashRotationIfNeeded() {
         stopSplashRotation();
+        if (!isSplashAnimationEnabled()) return;
         if (getConfiguredSplashAnimationMode() !== "random") return;
         const { enabled, seconds } = getRandomCycleConfig();
         if (!enabled) return;
@@ -3864,12 +4998,15 @@ export async function initializeHomeSplash() {
           updateSplashCountdown();
         }, splashRotationSeconds * 1000);
       }
-      let showSplash = true;
-      try {
-        const ref = document.referrer ? new URL(document.referrer) : null;
-        showSplash = !(ref && ref.origin === location.origin);
-      } catch {
+      let showSplash = !!forceShow;
+      if (!forceShow) {
         showSplash = true;
+        try {
+          const ref = document.referrer ? new URL(document.referrer) : null;
+          showSplash = !(ref && ref.origin === location.origin);
+        } catch {
+          showSplash = true;
+        }
       }
   
       if (showSplash) {
@@ -3894,22 +5031,24 @@ export async function initializeHomeSplash() {
         destroySplashAnimation();
       }
   
-      topLeftBrand?.addEventListener("click", async (e) => {
-        e.preventDefault();
-        splashClosing = false;
-        splashLogo?.classList.remove("is-melting");
-        resetSplashLogoImpactVisual();
-        splashScreen?.classList.remove("hidden");
-        document.body.classList.add("splash-active");
-        ({ splashLogoIconP5, splashLogoIconCanvasHost } = await mountSplashLogoIconAnimation({
-          splashLogo,
-          getBannerLogoAnimationMode,
-          currentInstance: splashLogoIconP5,
-          currentCanvasHost: splashLogoIconCanvasHost
-        }));
-        initSplashAnimation();
-        startSplashRotationIfNeeded();
-      });
+      if (bindTopLeftBrand) {
+        topLeftBrand?.addEventListener("click", async (e) => {
+          e.preventDefault();
+          splashClosing = false;
+          splashLogo?.classList.remove("is-melting");
+          resetSplashLogoImpactVisual();
+          splashScreen?.classList.remove("hidden");
+          document.body.classList.add("splash-active");
+          ({ splashLogoIconP5, splashLogoIconCanvasHost } = await mountSplashLogoIconAnimation({
+            splashLogo,
+            getBannerLogoAnimationMode,
+            currentInstance: splashLogoIconP5,
+            currentCanvasHost: splashLogoIconCanvasHost
+          }));
+          initSplashAnimation();
+          startSplashRotationIfNeeded();
+        });
+      }
   
       const closeSplash = () => {
         if (splashClosing) return;

@@ -219,6 +219,85 @@
       width:min(52vw, 360px);
       height:auto;
     }
+    .splash-logo--tojistudios{
+      width:min(92vw, 1240px);
+      padding:0;
+    }
+    .splash-wordmark-stage{
+      position:relative;
+      display:inline-block;
+      min-width:min(92vw, 1240px);
+      padding: clamp(42px, 9vh, 110px) clamp(12px, 1.8vw, 24px) clamp(28px, 5vh, 52px);
+    }
+    .splash-wordmark-line{
+      position:relative;
+      z-index:1;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      gap: 0;
+      color: color-mix(in srgb, var(--text) 88%, #4a4c52 12%);
+      font-family: "Franklin Gothic Medium Cond", "Bahnschrift Condensed", "DIN Condensed", "Arial Narrow", "Helvetica Neue", sans-serif;
+      font-size: clamp(52px, 11.4vw, 178px);
+      font-weight: 500;
+      font-stretch: condensed;
+      letter-spacing: -.034em;
+      line-height: .88;
+      text-transform:none;
+      user-select:none;
+      white-space:nowrap;
+      text-rendering: geometricPrecision;
+    }
+    .splash-wordmark-letter{
+      position:relative;
+      display:inline-block;
+    }
+    .splash-wordmark-letter-glyph{
+      display:block;
+    }
+    .splash-wordmark-letter-glyph--j{
+      clip-path: inset(18% 0 0 0);
+    }
+    .splash-wordmark-letter--masked{
+      z-index:1;
+    }
+    .splash-wordmark-bar,
+    .splash-wordmark-projectile,
+    .splash-wordmark-dot-mask{
+      position:absolute;
+      left:0;
+      top:0;
+      pointer-events:none;
+      will-change:transform;
+    }
+    .splash-wordmark-bar{
+      z-index:2;
+      border-radius:999px;
+      background:
+        linear-gradient(90deg,
+          color-mix(in srgb, var(--text) 84%, transparent) 0%,
+          var(--text) 45%,
+          color-mix(in srgb, var(--text) 88%, transparent) 100%);
+      box-shadow: 0 0 18px color-mix(in srgb, var(--text) 22%, transparent);
+      opacity:0;
+    }
+    .splash-wordmark-projectile{
+      z-index:4;
+      border-radius:0;
+      background: var(--text);
+      box-shadow: 0 0 18px color-mix(in srgb, var(--text) 26%, transparent);
+      opacity:0;
+    }
+    .splash-wordmark-dot-mask{
+      z-index:3;
+      border-radius:999px;
+      background: var(--bg);
+      box-shadow: 0 0 0 1px var(--bg);
+    }
+    .splash-logo.is-melting .splash-wordmark-stage{
+      animation: splashLogoMelt .72s ease-in forwards;
+      transform-origin: 50% 50%;
+    }
     @keyframes splashLogoMelt{
       0%{
         opacity:1;
@@ -294,4 +373,16 @@
       transform-style: preserve-3d;
       will-change: transform;
       filter: drop-shadow(0 12px 26px rgba(0,0,0,.42));
+    }
+    @media (max-width: 720px){
+      .splash-logo--tojistudios{
+        width:min(96vw, 760px);
+      }
+      .splash-wordmark-stage{
+        min-width:min(96vw, 760px);
+        padding-top: clamp(34px, 8vh, 70px);
+      }
+      .splash-wordmark-line{
+        font-size: clamp(34px, 12vw, 90px);
+      }
     }

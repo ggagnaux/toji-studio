@@ -11,7 +11,7 @@ export async function initializeHomeSplash(options = {}) {
       const splashScreen = document.getElementById("splashScreen");
       const splashP5Host = document.getElementById("splashP5");
       const splashCountdown = document.getElementById("splashCountdown");
-      const splashLogo = document.getElementById("splashLogo");
+      let splashLogo = document.getElementById("splashLogo");
       const topLeftBrand = document.querySelector("#siteHeader .brand");
       let splashP5Instance = null;
       let splashRotationTimer = null;
@@ -26,12 +26,454 @@ export async function initializeHomeSplash(options = {}) {
       let splashLogo3dFrame = 0;
       let splashLogoIconP5 = null;
       let splashLogoIconCanvasHost = null;
+      let splashForegroundCleanup = null;
       const SPLASH_ANIMATION_ENABLED_KEY = "toji_splash_animation_enabled_v1";
       const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "random" | "nodes" | "flock" | "circles" | "matrix" | "life" | "plot" | "bounce" | "turningcircles" | "asteroids" | "tempest" | "missilecommand" | "radar" | "mountains" | "serpentinesphere" | "orbitalbeams"
       const SPLASH_RANDOM_CYCLE_ENABLED_KEY = "toji_splash_random_cycle_enabled_v1";
       const SPLASH_RANDOM_CYCLE_SECONDS_KEY = "toji_splash_random_cycle_seconds_v1";
       const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
       const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
+      const DEFAULT_SPLASH_LOGO_MARKUP = `
+        <span class="brand-logo-combo splash-logo-combo" aria-hidden="true">
+          <span class="brand-logo-icon-stack">
+            <img class="brand-logo-icon-image splash-logo-combo-image" src="assets/img/TojiStudios-Logo.png" alt="" />
+          </span>
+          <span class="brand-logo-wordmark-stack">
+            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark splash-logo-combo-image" src="assets/img/TojiStudios-Light-TextOnly.png" alt="" />
+            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light splash-logo-combo-image" src="assets/img/TojiStudios-Dark-TextOnly.png" alt="" />
+          </span>
+        </span>
+        <span class="sr-only">Toji Studios</span>
+      `;
+      const TOJI_STUDIOS_WORD = "tojistudios";
+
+      function isTojiStudiosSplashMode(mode) {
+        return String(mode || "").toLowerCase() === "tojistudios";
+      }
+
+      function buildTojiStudiosSplashMarkup() {
+        const letters = Array.from(TOJI_STUDIOS_WORD)
+          .map((letter, index) => {
+            const mask = index === 2 || index === 3;
+            const displayLetter = index === 3 ? "&#305;" : letter;
+            const glyphClass = index === 2
+              ? "splash-wordmark-letter-glyph splash-wordmark-letter-glyph--j"
+              : "splash-wordmark-letter-glyph";
+            return `<span class="splash-wordmark-letter${mask ? " splash-wordmark-letter--masked" : ""}" data-letter-index="${index}" data-letter="${letter}"><span class="${glyphClass}">${displayLetter}</span></span>`;
+          })
+          .join("");
+        return `
+          <span class="splash-wordmark-stage" aria-hidden="true">
+            <span class="splash-wordmark-line">${letters}</span>
+            <span class="splash-wordmark-bar"></span>
+            <span class="splash-wordmark-projectile splash-wordmark-projectile--primary"></span>
+            <span class="splash-wordmark-projectile splash-wordmark-projectile--secondary"></span>
+            <span class="splash-wordmark-dot-mask splash-wordmark-dot-mask--i"></span>
+            <span class="splash-wordmark-dot-mask splash-wordmark-dot-mask--j"></span>
+          </span>
+          <span class="sr-only">Toji Studios</span>
+        `;
+      }
+
+      function ensureSplashLogoButton() {
+        if (!splashScreen) return null;
+        if (!splashLogo || !splashScreen.contains(splashLogo)) {
+          splashLogo = document.createElement("button");
+          splashLogo.id = "splashLogo";
+          splashLogo.className = "splash-logo";
+          splashLogo.type = "button";
+          splashLogo.setAttribute("aria-label", "Enter site");
+          splashScreen.appendChild(splashLogo);
+        }
+        return splashLogo;
+      }
+
+      function stopSplashForegroundAnimation() {
+        if (typeof splashForegroundCleanup === "function") splashForegroundCleanup();
+        splashForegroundCleanup = null;
+      }
+
+      function renderSplashLogoForeground(mode) {
+        const button = ensureSplashLogoButton();
+        if (!button) return null;
+        stopSplashForegroundAnimation();
+        const nextMode = isTojiStudiosSplashMode(mode) ? "tojistudios" : "default";
+        if (button.dataset.foregroundMode !== nextMode) {
+          button.innerHTML = nextMode === "tojistudios"
+            ? buildTojiStudiosSplashMarkup()
+            : DEFAULT_SPLASH_LOGO_MARKUP;
+          button.dataset.foregroundMode = nextMode;
+        }
+        button.classList.toggle("splash-logo--tojistudios", nextMode === "tojistudios");
+        return button;
+      }
+
+      function startTojiStudiosSplashForegroundAnimation() {
+        const button = ensureSplashLogoButton();
+        const stage = button?.querySelector(".splash-wordmark-stage");
+        const letters = stage ? Array.from(stage.querySelectorAll("[data-letter-index]")) : [];
+        const bar = stage?.querySelector(".splash-wordmark-bar");
+        const primaryDot = stage?.querySelector(".splash-wordmark-projectile--primary");
+        const secondaryDot = stage?.querySelector(".splash-wordmark-projectile--secondary");
+        const firstIMask = stage?.querySelector(".splash-wordmark-dot-mask--i");
+        const jMask = stage?.querySelector(".splash-wordmark-dot-mask--j");
+        if (!stage || letters.length !== TOJI_STUDIOS_WORD.length || !bar || !primaryDot || !secondaryDot || !firstIMask || !jMask) return;
+
+        const animations = [];
+        const timeouts = [];
+        let resizeTimer = 0;
+        const introDuration = 1450;
+        const barIntroDelay = introDuration + 180;
+        const primaryLaunchDelay = introDuration + 1180;
+        const secondaryLaunchDelay = introDuration + 2200;
+
+        const cancelAll = () => {
+          animations.splice(0).forEach((animation) => animation?.cancel?.());
+          timeouts.splice(0).forEach((timer) => clearTimeout(timer));
+          if (resizeTimer) {
+            clearTimeout(resizeTimer);
+            resizeTimer = 0;
+          }
+        };
+
+        const resetAnimatedElements = () => {
+          letters.forEach((letter) => {
+            letter.style.opacity = "1";
+            letter.style.transform = "translate3d(0, 0, 0) rotate(0deg)";
+          });
+          [bar, primaryDot, secondaryDot].forEach((element) => {
+            element.style.opacity = "0";
+            element.style.transform = "translate3d(0, 0, 0)";
+          });
+        };
+
+        const applyLayout = (finalOnly = false) => {
+          resetAnimatedElements();
+          // Force layout after clearing any filled/cancelled animation transforms so
+          // all positioning math is based on the letters' true resting geometry.
+          void stage.offsetWidth;
+          const stageRect = stage.getBoundingClientRect();
+          if (!stageRect.width || !stageRect.height) return;
+          const getLetterRect = (index) => letters[index]?.getBoundingClientRect();
+          const getGlyphRect = (index) => letters[index]?.querySelector(".splash-wordmark-letter-glyph")?.getBoundingClientRect() || getLetterRect(index);
+          const oRect = getLetterRect(1);
+          const jRect = getGlyphRect(2);
+          const iRect = getGlyphRect(3);
+          const dRect = getLetterRect(7);
+          if (!oRect || !jRect || !iRect || !dRect) return;
+
+          const toStageX = (rect) => (rect.left - stageRect.left) + (rect.width * 0.5);
+          const toStageTop = (rect) => rect.top - stageRect.top;
+          const guideY = Math.min(toStageTop(oRect), toStageTop(iRect), toStageTop(jRect), toStageTop(dRect));
+          const letterScale = Math.min(
+            Math.max(oRect.width, jRect.width),
+            Math.max(oRect.height, jRect.height)
+          );
+          const dotSize = Math.max(8, Math.min(24, letterScale * 0.18));
+          const barWidth = Math.max(18, Math.min(52, oRect.width * 0.72));
+          const barHeight = Math.max(4, Math.min(12, dotSize * 0.42));
+          const dotRadius = dotSize * 0.5;
+          const restY = Math.max(6, guideY - (dotSize * 0.68));
+          const barLeft = toStageX(oRect) - (barWidth * 0.5);
+          const barTop = restY + (dotRadius * 0.18);
+          const barStartY = -Math.max(40, stageRect.height * 0.4);
+          const projectileStartY = barStartY - (dotSize * 0.9);
+          const projectilePrimaryImpactX = barLeft + (barWidth * 0.72) - dotRadius;
+          const projectileSecondaryImpactX = barLeft + (barWidth * 0.42) - dotRadius;
+          const projectileImpactY = barTop - dotSize;
+
+          const placeMask = (mask, rect, widthRatio) => {
+            const width = Math.max(8, rect.width * widthRatio);
+            const height = Math.max(8, Math.min(dotSize * 1.5, rect.height * 0.24));
+            mask.style.width = `${width}px`;
+            mask.style.height = `${height}px`;
+            mask.style.left = `${toStageX(rect) - (width * 0.5)}px`;
+            mask.style.top = `${Math.max(0, toStageTop(rect) - (height * 0.72))}px`;
+          };
+
+          placeMask(firstIMask, iRect, 0.56);
+          placeMask(jMask, jRect, 0.78);
+
+          const readMaskTarget = (mask) => {
+            const maskLeft = Number.parseFloat(mask.style.left || "0");
+            const maskTop = Number.parseFloat(mask.style.top || "0");
+            return {
+              x: maskLeft,
+              y: maskTop + Math.max(1, dotSize * 0.08)
+            };
+          };
+
+          const iMaskTarget = readMaskTarget(firstIMask);
+          const jMaskTarget = readMaskTarget(jMask);
+          const iStemAnchorX = (iRect.left - stageRect.left) + (iRect.width * 0.28) - dotRadius;
+          const jStemAnchorX = (jRect.left - stageRect.left) + (jRect.width * 0.32) - dotRadius;
+          const iRestX = Math.min(iMaskTarget.x, iStemAnchorX);
+          const iRestY = iMaskTarget.y;
+          const jRestX = Math.min(jMaskTarget.x, jStemAnchorX);
+          const jRestY = jMaskTarget.y;
+
+          bar.style.width = `${barWidth}px`;
+          bar.style.height = `${barHeight}px`;
+          bar.style.left = `${barLeft}px`;
+          bar.style.top = `${barTop}px`;
+          bar.style.boxShadow = `0 0 ${Math.max(8, dotSize * 1.15)}px color-mix(in srgb, var(--text) 22%, transparent)`;
+          bar.style.opacity = "1";
+          bar.style.transform = "translate3d(0, 0, 0)";
+
+          [primaryDot, secondaryDot].forEach((dot) => {
+            dot.style.width = `${dotSize}px`;
+            dot.style.height = `${dotSize}px`;
+            dot.style.boxShadow = `0 0 ${Math.max(8, dotSize * 1.15)}px color-mix(in srgb, var(--text) 26%, transparent)`;
+            dot.style.opacity = finalOnly ? "1" : "0";
+            dot.style.transform = "translate3d(0, 0, 0)";
+          });
+
+          if (finalOnly) {
+            primaryDot.style.left = `${iRestX}px`;
+            primaryDot.style.top = `${iRestY}px`;
+            secondaryDot.style.left = `${jRestX}px`;
+            secondaryDot.style.top = `${jRestY}px`;
+            return;
+          }
+
+          primaryDot.style.left = `${projectilePrimaryImpactX}px`;
+          primaryDot.style.top = `${projectileStartY}px`;
+          secondaryDot.style.left = `${projectileSecondaryImpactX}px`;
+          secondaryDot.style.top = `${projectileStartY - (dotSize * 1.15)}px`;
+          bar.style.opacity = "0";
+
+          const midIndex = (letters.length - 1) * 0.5;
+          letters.forEach((letter, index) => {
+            const letterRect = getLetterRect(index);
+            if (!letterRect) return;
+            const finalCenterX = toStageX(letterRect);
+            const finalTop = toStageTop(letterRect);
+            const distributedViewportX = (window.innerWidth * (index + 1)) / (letters.length + 1);
+            let initialCenterX = distributedViewportX - stageRect.left;
+            const minHorizontalTravel = Math.max(letterRect.width * 0.75, stageRect.width * 0.04);
+            if (index < midIndex && initialCenterX > finalCenterX - minHorizontalTravel) {
+              initialCenterX = finalCenterX - minHorizontalTravel;
+            }
+            if (index > midIndex && initialCenterX < finalCenterX + minHorizontalTravel) {
+              initialCenterX = finalCenterX + minHorizontalTravel;
+            }
+            const initialTop = (window.innerHeight - stageRect.top) - (letterRect.height * 1.05) - 10;
+            const fromX = initialCenterX - finalCenterX;
+            const fromY = initialTop - finalTop;
+            letter.style.opacity = "0";
+            letter.style.transform = `translate3d(${fromX}px, ${fromY}px, 0) rotate(0deg)`;
+            const animation = letter.animate(
+              [
+                {
+                  opacity: 0,
+                  transform: `translate3d(${fromX}px, ${fromY}px, 0) rotate(0deg)`
+                },
+                {
+                  opacity: 1,
+                  transform: `translate3d(${fromX * 0.16}px, ${fromY * 0.14}px, 0) rotate(0deg)`,
+                  offset: 0.7
+                },
+                {
+                  opacity: 1,
+                  transform: "translate3d(0, 0, 0) rotate(0deg)"
+                }
+              ],
+              {
+                duration: introDuration,
+                easing: "cubic-bezier(0.16, 0.84, 0.2, 1)",
+                fill: "forwards"
+              }
+            );
+            animations.push(animation);
+          });
+
+          const barDrop = bar.animate(
+            [
+              { opacity: 0, transform: `translate3d(0, ${barStartY - barTop}px, 0)` },
+              { opacity: 1, transform: "translate3d(0, 10px, 0)", offset: 0.82 },
+              { opacity: 1, transform: "translate3d(0, 0, 0)" }
+            ],
+            {
+              duration: 820,
+              delay: barIntroDelay,
+              easing: "cubic-bezier(0.2, 0.84, 0.22, 1)",
+              fill: "forwards"
+            }
+          );
+          animations.push(barDrop);
+
+          const launchProjectile = (dot, { startX, startY, impactX, targetX, targetY, dropDuration, arcDuration }) => {
+            dot.style.left = `${startX}px`;
+            dot.style.top = `${startY}px`;
+            dot.style.opacity = "1";
+            dot.style.transform = "translate3d(0, 0, 0)";
+            const drop = dot.animate(
+              [
+                {
+                  opacity: 0,
+                  transform: "translate3d(0, 0, 0) scale(0.52)"
+                },
+                {
+                  opacity: 1,
+                  transform: `translate3d(0, ${(projectileImpactY - startY) - Math.max(8, dotSize * 0.2)}px, 0) scale(1.02, 0.98)`,
+                  offset: 0.78
+                },
+                {
+                  opacity: 1,
+                  transform: `translate3d(0, ${projectileImpactY - startY}px, 0) scale(1.18, 0.82)`
+                }
+              ],
+              {
+                duration: dropDuration,
+                easing: "cubic-bezier(0.2, 0.88, 0.26, 1)",
+                fill: "forwards"
+              }
+            );
+            animations.push(drop);
+            drop.onfinish = () => {
+              dot.style.left = `${impactX}px`;
+              dot.style.top = `${projectileImpactY}px`;
+              dot.style.transform = "translate3d(0, 0, 0) scale(1, 1)";
+              const liftHeight = Math.max(dotSize * 2.3, stageRect.height * 0.16);
+              const arc = dot.animate(
+                [
+                  {
+                    transform: "translate3d(0, 0, 0) scale(1.16, 0.84)"
+                  },
+                  {
+                    transform: `translate3d(${(targetX - impactX) * 0.34}px, ${Math.min(targetY - projectileImpactY, -liftHeight)}px, 0) scale(0.92, 1.08)`,
+                    offset: 0.36
+                  },
+                  {
+                    transform: `translate3d(${(targetX - impactX) * 0.82}px, ${(targetY - projectileImpactY) - Math.max(4, dotSize * 0.5)}px, 0) scale(1.04, 0.96)`,
+                    offset: 0.82
+                  },
+                  {
+                    transform: `translate3d(${targetX - impactX}px, ${targetY - projectileImpactY}px, 0) scale(1, 1)`
+                  }
+                ],
+                {
+                  duration: arcDuration,
+                  easing: "cubic-bezier(0.2, 1, 0.22, 1)",
+                  fill: "forwards"
+                }
+              );
+              animations.push(arc);
+              arc.onfinish = () => {
+                dot.style.left = `${targetX}px`;
+                dot.style.top = `${targetY}px`;
+                dot.style.transform = "translate3d(0, 0, 0)";
+              };
+            };
+          };
+
+          const primaryLaunch = () => {
+            launchProjectile(primaryDot, {
+              startX: projectilePrimaryImpactX,
+              startY: projectileStartY,
+              impactX: projectilePrimaryImpactX,
+              targetX: iRestX,
+              targetY: iRestY,
+              dropDuration: 620,
+              arcDuration: 700
+            });
+          };
+
+          const secondaryLaunch = () => {
+            launchProjectile(secondaryDot, {
+              startX: projectileSecondaryImpactX,
+              startY: projectileStartY - (dotSize * 1.15),
+              impactX: projectileSecondaryImpactX,
+              targetX: jRestX,
+              targetY: jRestY,
+              dropDuration: 660,
+              arcDuration: 740
+            });
+          };
+
+          const flyLettersAway = () => {
+            const letterBurstDistance = Math.max(stageRect.width, stageRect.height) * 0.95;
+            const breakupMode = Math.random() < 0.5 ? "explode" : "shrink";
+            letters.forEach((letter, index) => {
+              const spread = ((index / Math.max(1, letters.length - 1)) - 0.5) * 1.45;
+              const dx = spread * letterBurstDistance;
+              const dy = (index % 2 === 0 ? -1 : 1) * (stageRect.height * (0.55 + (index * 0.04)));
+              const rotation = (spread * 150) + ((index % 2 === 0 ? -1 : 1) * 24);
+              const shrinkScale = 0.04 + (Math.random() * 0.18);
+              const animation = letter.animate(
+                breakupMode === "explode"
+                  ? [
+                      { opacity: 1, transform: "translate3d(0, 0, 0) rotate(0deg) scale(1)" },
+                      {
+                        opacity: 1,
+                        transform: `translate3d(${dx * 0.32}px, ${dy * 0.24}px, 0) rotate(${rotation * 0.28}deg) scale(1)`,
+                        offset: 0.28
+                      },
+                      {
+                        opacity: 0,
+                        transform: `translate3d(${dx}px, ${dy}px, 0) rotate(${rotation}deg) scale(1)`
+                      }
+                    ]
+                  : [
+                      { opacity: 1, transform: "translate3d(0, 0, 0) rotate(0deg) scale(1)" },
+                      {
+                        opacity: 1,
+                        transform: `translate3d(${spread * 14}px, ${(index % 2 === 0 ? -1 : 1) * 10}px, 0) rotate(${rotation * 0.08}deg) scale(0.56)`,
+                        offset: 0.42
+                      },
+                      {
+                        opacity: 0,
+                        transform: `translate3d(${spread * 18}px, ${(index % 2 === 0 ? -1 : 1) * 14}px, 0) rotate(${rotation * 0.12}deg) scale(${shrinkScale})`
+                      }
+                    ],
+                {
+                  duration: 980,
+                  easing: "cubic-bezier(0.18, 0.82, 0.18, 1)",
+                  fill: "forwards"
+                }
+              );
+              animations.push(animation);
+            });
+
+            [bar, primaryDot, secondaryDot].forEach((element) => {
+              const animation = element.animate(
+                [
+                  { opacity: Number(element.style.opacity || 1), transform: "translate3d(0, 0, 0) scale(1)" },
+                  { opacity: 0, transform: "translate3d(0, -24px, 0) scale(0.72)" }
+                ],
+                {
+                  duration: 520,
+                  easing: "ease-in",
+                  fill: "forwards"
+                }
+              );
+              animations.push(animation);
+            });
+          };
+
+          timeouts.push(window.setTimeout(primaryLaunch, primaryLaunchDelay));
+          timeouts.push(window.setTimeout(secondaryLaunch, secondaryLaunchDelay));
+          timeouts.push(window.setTimeout(flyLettersAway, 10000));
+          timeouts.push(window.setTimeout(rerun, 11150));
+        };
+
+        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const rerun = () => {
+          cancelAll();
+          window.requestAnimationFrame(() => applyLayout(prefersReducedMotion));
+        };
+        const handleResize = () => {
+          if (resizeTimer) clearTimeout(resizeTimer);
+          resizeTimer = window.setTimeout(rerun, 120);
+        };
+
+        rerun();
+        window.addEventListener("resize", handleResize);
+        splashForegroundCleanup = () => {
+          window.removeEventListener("resize", handleResize);
+          cancelAll();
+        };
+      }
 
       function isSplashAnimationEnabled() {
         const raw = localStorage.getItem(SPLASH_ANIMATION_ENABLED_KEY);
@@ -43,6 +485,7 @@ export async function initializeHomeSplash(options = {}) {
       function getConfiguredSplashAnimationMode() {
         const forcedMode = String(forceMode || "").toLowerCase();
         if (forcedMode === "random") return "random";
+        if (forcedMode === "tojistudios") return "tojistudios";
         if (forcedMode === "flock") return "flock";
         if (forcedMode === "circles") return "circles";
         if (forcedMode === "matrix") return "matrix";
@@ -61,6 +504,7 @@ export async function initializeHomeSplash(options = {}) {
 
         const mode = String(localStorage.getItem(SPLASH_ANIMATION_MODE_KEY) || "").toLowerCase();
         if (mode === "random") return "random";
+        if (mode === "tojistudios") return "tojistudios";
         if (mode === "flock") return "flock";
         if (mode === "circles") return "circles";
         if (mode === "matrix") return "matrix";
@@ -79,7 +523,7 @@ export async function initializeHomeSplash(options = {}) {
       }
   
       function pickRandomSplashMode(preferDifferent = false) {
-        const choices = ["nodes", "flock", "circles", "matrix", "life", "plot", "bounce", "turningcircles", "asteroids", "tempest", "missilecommand", "radar", "mountains", "serpentinesphere", "orbitalbeams"];
+        const choices = ["tojistudios", "nodes", "flock", "circles", "matrix", "life", "plot", "bounce", "turningcircles", "asteroids", "tempest", "missilecommand", "radar", "mountains", "serpentinesphere", "orbitalbeams"];
         let picked = choices[Math.floor(Math.random() * choices.length)];
         if (preferDifferent && activeSplashMode && choices.length > 1) {
           let tries = 0;
@@ -313,12 +757,24 @@ export async function initializeHomeSplash(options = {}) {
         if (!isSplashAnimationEnabled()) {
           activeSplashMode = "off";
           stopSplashLogo3dAnimation();
+          stopSplashForegroundAnimation();
           clearSplashLogoCornerTimer();
           splashP5Host.innerHTML = "";
           return;
         }
+        const splashMode = forcedMode || getSplashAnimationMode();
+        activeSplashMode = splashMode;
+        renderSplashLogoForeground(splashMode);
+        if (isTojiStudiosSplashMode(splashMode)) {
+          stopSplashLogo3dAnimation();
+          clearSplashLogoCornerTimer();
+          splashP5Host.innerHTML = "";
+          startTojiStudiosSplashForegroundAnimation();
+          return;
+        }
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         if (reduceMotion) {
+          stopSplashForegroundAnimation();
           stopSplashLogo3dAnimation();
           splashP5Host.innerHTML = "";
           return;
@@ -326,9 +782,8 @@ export async function initializeHomeSplash(options = {}) {
   
         await ensureSplashP5();
         if (!window.p5) return;
-  
-        const splashMode = forcedMode || getSplashAnimationMode();
-        activeSplashMode = splashMode;
+
+        stopSplashForegroundAnimation();
         if (splashMode === "logo3d") startSplashLogo3dAnimation();
         else stopSplashLogo3dAnimation();
         startSplashLogoCornerTimer();
@@ -4937,9 +5392,11 @@ export async function initializeHomeSplash(options = {}) {
   
       function destroySplashAnimation() {
         stopSplashLogo3dAnimation();
-        if (!splashP5Instance) return;
-        splashP5Instance.remove();
-        splashP5Instance = null;
+        stopSplashForegroundAnimation();
+        if (splashP5Instance) {
+          splashP5Instance.remove();
+          splashP5Instance = null;
+        }
         splashP5Host && (splashP5Host.innerHTML = "");
       }
   
@@ -5011,17 +5468,27 @@ export async function initializeHomeSplash(options = {}) {
   
       if (showSplash) {
         splashClosing = false;
+        const activeMode = getSplashAnimationMode();
+        renderSplashLogoForeground(activeMode);
         splashLogo?.classList.remove("is-melting");
         resetSplashLogoImpactVisual();
         splashScreen?.classList.remove("hidden");
         document.body.classList.add("splash-active");
-        ({ splashLogoIconP5, splashLogoIconCanvasHost } = await mountSplashLogoIconAnimation({
-          splashLogo,
-          getBannerLogoAnimationMode,
-          currentInstance: splashLogoIconP5,
-          currentCanvasHost: splashLogoIconCanvasHost
-        }));
-        initSplashAnimation();
+        if (isTojiStudiosSplashMode(activeMode)) {
+          if (splashLogoIconP5) {
+            splashLogoIconP5.remove();
+            splashLogoIconP5 = null;
+            splashLogoIconCanvasHost = null;
+          }
+        } else {
+          ({ splashLogoIconP5, splashLogoIconCanvasHost } = await mountSplashLogoIconAnimation({
+            splashLogo,
+            getBannerLogoAnimationMode,
+            currentInstance: splashLogoIconP5,
+            currentCanvasHost: splashLogoIconCanvasHost
+          }));
+        }
+        initSplashAnimation(activeMode);
         startSplashRotationIfNeeded();
       } else {
         splashScreen?.classList.add("hidden");
@@ -5035,17 +5502,27 @@ export async function initializeHomeSplash(options = {}) {
         topLeftBrand?.addEventListener("click", async (e) => {
           e.preventDefault();
           splashClosing = false;
+          const activeMode = getSplashAnimationMode();
+          renderSplashLogoForeground(activeMode);
           splashLogo?.classList.remove("is-melting");
           resetSplashLogoImpactVisual();
           splashScreen?.classList.remove("hidden");
           document.body.classList.add("splash-active");
-          ({ splashLogoIconP5, splashLogoIconCanvasHost } = await mountSplashLogoIconAnimation({
-            splashLogo,
-            getBannerLogoAnimationMode,
-            currentInstance: splashLogoIconP5,
-            currentCanvasHost: splashLogoIconCanvasHost
-          }));
-          initSplashAnimation();
+          if (isTojiStudiosSplashMode(activeMode)) {
+            if (splashLogoIconP5) {
+              splashLogoIconP5.remove();
+              splashLogoIconP5 = null;
+              splashLogoIconCanvasHost = null;
+            }
+          } else {
+            ({ splashLogoIconP5, splashLogoIconCanvasHost } = await mountSplashLogoIconAnimation({
+              splashLogo,
+              getBannerLogoAnimationMode,
+              currentInstance: splashLogoIconP5,
+              currentCanvasHost: splashLogoIconCanvasHost
+            }));
+          }
+          initSplashAnimation(activeMode);
           startSplashRotationIfNeeded();
         });
       }

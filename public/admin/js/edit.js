@@ -1,4 +1,4 @@
-    import {
+﻿    import {
       loadStateAutoSync, saveState, qs, el, setYearFooter, ensureBaseStyles, upsertTag, confirmToast, showToast
     } from "../admin.js";
 
@@ -145,6 +145,11 @@
           background: color-mix(in srgb, #2a97d4 16%, var(--panel));
           box-shadow: none;
         }
+        .edit-tabbtn.tab-tags.is-active{
+          border-color: color-mix(in srgb, #d08a2f 82%, var(--line));
+          background: color-mix(in srgb, #d08a2f 16%, var(--panel));
+          box-shadow: none;
+        }
         .edit-tabcontent{
           border:1px solid var(--line);
           border-radius:0 0 12px 12px;
@@ -159,6 +164,11 @@
         .edit-tabcontent.tab-active-social{
           border-color: color-mix(in srgb, #2a97d4 82%, var(--line));
           border-top-color: color-mix(in srgb, #2a97d4 82%, var(--line));
+          box-shadow: none;
+        }
+        .edit-tabcontent.tab-active-tags{
+          border-color: color-mix(in srgb, #d08a2f 82%, var(--line));
+          border-top-color: color-mix(in srgb, #d08a2f 82%, var(--line));
           box-shadow: none;
         }
         .edit-tabpane[hidden]{
@@ -192,6 +202,103 @@
         }
         .btn-ai[data-tooltip]{
           position: relative;
+        }
+        .featured-toggle{
+          display:inline-flex;
+          align-items:center;
+          gap:10px;
+          padding:4px 6px 4px 12px;
+          border:1px solid var(--line);
+          border-radius:999px;
+          background:color-mix(in srgb, var(--panel) 94%, transparent);
+          color:var(--text);
+          cursor:pointer;
+          transition:border-color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .12s ease;
+        }
+        .featured-toggle:hover{
+          border-color:var(--hover-line);
+          transform:translateY(-1px);
+        }
+        .featured-toggle:focus-visible{
+          outline:2px solid color-mix(in srgb, var(--accent) 56%, transparent);
+          outline-offset:2px;
+        }
+        .featured-toggle__track{
+          width:46px;
+          height:26px;
+          padding:2px;
+          display:inline-flex;
+          align-items:center;
+          justify-content:flex-start;
+          border-radius:999px;
+          background:color-mix(in srgb, var(--line) 72%, var(--panel));
+          box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--line) 88%, transparent);
+          transition:background-color .18s ease, box-shadow .18s ease;
+        }
+        .featured-toggle__dot{
+          width:22px;
+          height:22px;
+          border-radius:50%;
+          background:#fff;
+          box-shadow:0 1px 3px rgba(0,0,0,.22);
+          transform:translateX(0);
+          transition:transform .18s ease, background-color .18s ease, box-shadow .18s ease;
+        }
+        .featured-toggle[aria-pressed="true"]{
+          border-color:color-mix(in srgb, var(--accent) 82%, var(--line));
+          background:color-mix(in srgb, var(--accent-soft) 84%, var(--panel));
+          box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+        }
+        .featured-toggle[aria-pressed="true"] .featured-toggle__track{
+          background:color-mix(in srgb, var(--accent) 86%, #fff);
+          box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent) 26%, transparent);
+        }
+        .featured-toggle[aria-pressed="true"] .featured-toggle__dot{
+          transform:translateX(20px);
+          background:#ffffff;
+        }
+        .status-toggle{
+          display:inline-flex;
+          align-items:center;
+          gap:4px;
+          padding:4px;
+          border:1px solid var(--line);
+          border-radius:999px;
+          background:color-mix(in srgb, var(--panel) 94%, transparent);
+        }
+        .status-toggle__pill{
+          border:0;
+          border-radius:999px;
+          padding:7px 12px;
+          background:transparent;
+          color:var(--muted);
+          cursor:pointer;
+          font:inherit;
+          font-size:13px;
+          font-weight:600;
+          transition:background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .12s ease;
+        }
+        .status-toggle__pill:hover{
+          color:var(--text);
+          background:color-mix(in srgb, var(--line) 35%, transparent);
+          transform:translateY(-1px);
+        }
+        .status-toggle__pill:focus-visible{
+          outline:2px solid color-mix(in srgb, var(--accent) 56%, transparent);
+          outline-offset:2px;
+        }
+        .status-toggle__pill.is-active{
+          color:var(--text);
+          box-shadow:inset 0 0 0 1px color-mix(in srgb, currentColor 12%, transparent);
+        }
+        .status-toggle__pill[data-status-value="published"].is-active{
+          background:color-mix(in srgb, #2f9e63 22%, var(--panel));
+        }
+        .status-toggle__pill[data-status-value="draft"].is-active{
+          background:color-mix(in srgb, #c18a2d 24%, var(--panel));
+        }
+        .status-toggle__pill[data-status-value="hidden"].is-active{
+          background:color-mix(in srgb, #8f5565 24%, var(--panel));
         }
         .btn-ai[data-tooltip]:hover::after,
         .btn-ai[data-tooltip]:focus-visible::after{
@@ -267,7 +374,7 @@
       a.updatedAt = new Date().toISOString();
       saveState(state);
       h1.textContent = a.title || "Untitled";
-      sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
+      sub.textContent = `ID: ${a.id} \u2022 Status: ${a.status}`;
       if (!quiet) setStatusText("Saved locally.");
     }
 
@@ -350,7 +457,7 @@
 
       const setMedia = (m, tone="info") => { if (m) showToast(m, { tone, duration: 10000 }); };
 
-      setMedia("Replacing…");
+      setMedia("Replacing\u2026");
 
       try{
         const fd = new FormData();
@@ -395,7 +502,7 @@
 
       const setMedia = (m, tone="info") => { if (m) showToast(m, { tone, duration: 10000 }); };
 
-      setMedia("Regenerating…");
+      setMedia("Regenerating\u2026");
 
       try{
         const { API_BASE } = await import("../admin.js");
@@ -483,7 +590,7 @@
       if (next === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
       localSave(true);
       flushBackendSave(true);
-      sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
+      sub.textContent = `ID: ${a.id} \u2022 Status: ${a.status}`;
     }
 
     function extractGeneratedDescription(payload){
@@ -513,7 +620,7 @@
       if (!text && !fromArray) return [];
 
       const rawParts = (fromArray || String(text).split(/[\n,;|]/g))
-        .map((p) => String(p || "").replace(/^[-*•\d\.\)\s]+/, "").trim())
+        .map((p) => String(p || "").replace(/^[-*\u2022\d\.\)\s]+/, "").trim())
         .map((p) => p.replace(/^#/, "").replace(/["']/g, "").trim())
         .map((p) => p.toLowerCase())
         .map((p) => p.replace(/\s+/g, " "))
@@ -611,7 +718,7 @@
     const descriptionGenerateBtn = el(
       "button",
       { class:"btn mini btn-ai", type:"button", style:"padding:6px 10px; margin-left:auto; margin-bottom:10px;" },
-      "🤖 Generate"
+      "AI Generate"
     );
 
     function syncAiGenerateButtons(){
@@ -652,7 +759,7 @@
 
       generatingDescription = true;
       descriptionGenerateBtn.disabled = true;
-      descriptionGenerateBtn.textContent = "🤖 Generating...";
+      descriptionGenerateBtn.textContent = "AI Generating...";
       setStatusText("Generating description...", 10000, "info");
 
       try {
@@ -667,7 +774,7 @@
       } finally {
         generatingDescription = false;
         syncAiGenerateButtons();
-        descriptionGenerateBtn.textContent = "🤖 Generate";
+        descriptionGenerateBtn.textContent = "AI Generate";
       }
     });
 
@@ -702,7 +809,7 @@
     const tagsGenerateBtn = el(
       "button",
       { class:"btn mini btn-ai", type:"button", style:"padding:6px 10px; margin-left:auto;" },
-      "🤖 Generate"
+      "AI Generate"
     );
 
     syncAiGenerateButtons();
@@ -730,7 +837,7 @@
 
       generatingTags = true;
       tagsGenerateBtn.disabled = true;
-      tagsGenerateBtn.textContent = "🤖 Generating...";
+      tagsGenerateBtn.textContent = "AI Generating...";
       setStatusText("Generating tags...", 10000, "info");
 
       try {
@@ -750,7 +857,7 @@
       } finally {
         generatingTags = false;
         syncAiGenerateButtons();
-        tagsGenerateBtn.textContent = "🤖 Generate";
+        tagsGenerateBtn.textContent = "AI Generate";
       }
     });
 
@@ -854,7 +961,29 @@
 	      return Array.isArray(json) ? json : [];
 	    }
 
-	    function mergeSocialPlatformMeta(posts, platforms) {
+	    function resolveSocialPlatformIconSrc(raw) {
+      const text = String(raw || "").trim().replace(/\\/g, "/");
+      if (!text) return "";
+      if (/^(https?:)?\/\//i.test(text) || text.startsWith("data:")) return text;
+
+      let normalized = text;
+      if (normalized.startsWith("/public/")) {
+        normalized = normalized.slice("/public".length);
+      } else if (!normalized.startsWith("/")) {
+        const marker = "/assets/";
+        const markerIndex = normalized.toLowerCase().indexOf(marker);
+        normalized = markerIndex >= 0 ? normalized.slice(markerIndex) : `/${normalized.replace(/^\/+/, "")}`;
+      }
+
+      const pathname = String(window.location.pathname || "");
+      const isPublicPreview = pathname === "/public" || pathname.startsWith("/public/");
+      if (isPublicPreview && normalized.startsWith("/assets/")) {
+        return `/public${normalized}`;
+      }
+
+      return normalized;
+    }
+    function mergeSocialPlatformMeta(posts, platforms) {
 	      const byId = new Map(
 	        (Array.isArray(platforms) ? platforms : [])
 	          .map((platform) => [String(platform?.id || "").trim(), platform])
@@ -1068,7 +1197,7 @@
       }
 
       if (!enabledCount) {
-        socialSummary.textContent = `${socialState.posts.length} platforms • 0 bound to this image`;
+        socialSummary.textContent = `${socialState.posts.length} platforms \u2022 0 bound to this image`;
         socialBindLabel.textContent = "No active platforms available";
         socialBindRow.style.display = "grid";
         socialBindSelect.style.display = "none";
@@ -1095,7 +1224,7 @@
       socialRowsHost.style.display = "";
       socialBoundLabel.style.display = "none";
       socialRowsHost.classList.remove("social-posting-row");
-      socialSummary.textContent = `${socialState.posts.length} platforms • ${bound.length} bound to this image`;
+      socialSummary.textContent = `${socialState.posts.length} platforms \u2022 ${bound.length} bound to this image`;
 
       socialBindSelect.innerHTML = "";
       socialBindSelect.appendChild(el("option", { value:"" }, available.length ? "Select a platform..." : "All platforms already bound"));
@@ -1133,7 +1262,7 @@
           const active = pid && pid === socialState.selectedBoundPlatformId;
           const tabColor = colorForPlatformId(pid);
           const icon = el("span", { class:"social-site-tabicon", "aria-hidden":"true" });
-          const iconSrc = String(p.platformIconLocation || "").trim();
+          const iconSrc = resolveSocialPlatformIconSrc(p.platformIconLocation || "");
           if (iconSrc) {
             icon.appendChild(el("img", { src: iconSrc, alt:"", loading:"lazy" }));
           }
@@ -1213,7 +1342,7 @@
     // Initial header text
     // -----------------------
     h1.textContent = a.title || "Untitled";
-    sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
+    sub.textContent = `ID: ${a.id} \u2022 Status: ${a.status}`;
 
     // -----------------------
     // UI
@@ -1228,12 +1357,39 @@
         })
       ),
       el("div", { class:"meta" },
-        el("div", { class:"pillrow" },
-          el("button", { class:"btn mini", type:"button", onclick:()=>setStatus("published") }, "Publish"),
-          el("button", { class:"btn mini", type:"button", onclick:()=>setStatus("draft") }, "Draft"),
-          el("button", { class:"btn mini", type:"button", onclick:()=>setStatus("hidden") }, "Hide"),
-          el("span", { style:"margin-left:auto" }, status)
-        ),
+        (() => {
+          const statusButtons = [
+            { value:"published", label:"Publish" },
+            { value:"draft", label:"Draft" },
+            { value:"hidden", label:"Hide" }
+          ];
+          const toggle = el("div", { class:"status-toggle", role:"group", "aria-label":"Artwork status" });
+          const syncStatusButtons = () => {
+            for (const btn of toggle.querySelectorAll("[data-status-value]")) {
+              const active = btn.getAttribute("data-status-value") === String(a.status || "draft");
+              btn.classList.toggle("is-active", active);
+              btn.setAttribute("aria-pressed", active ? "true" : "false");
+            }
+          };
+          for (const row of statusButtons) {
+            const btn = el("button", {
+              class:"status-toggle__pill",
+              type:"button",
+              "data-status-value": row.value,
+              "aria-pressed":"false",
+              onclick:() => {
+                setStatus(row.value);
+                syncStatusButtons();
+              }
+            }, row.label);
+            toggle.appendChild(btn);
+          }
+          syncStatusButtons();
+          return el("div", { class:"pillrow" },
+            toggle,
+            el("span", { style:"margin-left:auto" }, status)
+          );
+        })(),
 
 
         el("hr", { class:"sep" }),
@@ -1290,30 +1446,43 @@
         { labelAction: descriptionGenerateBtn }
       ),
       el("hr", { class:"sep" }),
+      (() => {
+        const featuredToggle = el(
+          "button",
+          {
+            class:"featured-toggle",
+            type:"button",
+            "aria-pressed": a.featured ? "true" : "false",
+            onclick:() => {
+              a.featured = !a.featured;
+              featuredToggle.setAttribute("aria-pressed", a.featured ? "true" : "false");
+              scheduleBackendSave();
+            }
+          },
+          el("span", { class:"featured-toggle__label" }, "Featured"),
+          el("span", { class:"featured-toggle__track", "aria-hidden":"true" },
+            el("span", { class:"featured-toggle__dot" })
+          )
+        );
+        return el("div", { class:"pillrow" },
+          featuredToggle,
+          el("button", {
+            class:"btn mini",
+            type:"button",
+            style:"margin-left:auto",
+            onclick: deleteArtwork
+          }, "Delete"),
+          el("a", { class:"btn mini", href:"index.html" }, "Done")
+        );
+      })()
+    );
+
+    const tagsPane = el("div", { class:"edit-tabpane", "data-tab":"tags", hidden:"" },
       el("div", { style:"display:flex; align-items:center; gap:10px;" },
         el("p", { class:"title", style:"margin:0" }, "Tags"),
         tagsGenerateBtn
       ),
-      tagsEditor(),
-      el("hr", { class:"sep" }),
-      el("div", { class:"pillrow" },
-        el("label", { class:"pill", style:"cursor:pointer; display:inline-flex; align-items:center; gap:8px; white-space:nowrap" },
-          el("input", {
-            type:"checkbox",
-            style:"margin:0; width:auto; height:auto;",
-            checked: a.featured ? "" : null,
-            onchange:(e)=>{ a.featured = e.target.checked; scheduleBackendSave(); }
-          }),
-          "Featured"
-        ),
-        el("button", {
-          class:"btn mini",
-          type:"button",
-          style:"margin-left:auto",
-          onclick: deleteArtwork
-        }, "Delete"),
-        el("a", { class:"btn mini", href:"index.html" }, "Done")
-      )
+      tagsEditor()
     );
 
     const socialPane = el("div", { class:"edit-tabpane", "data-tab":"social", hidden:"" },
@@ -1329,34 +1498,47 @@
     );
 
     const detailsTabBtn = el("button", { class:"edit-tabbtn tab-details is-active", type:"button" }, "Details");
+    const tagsTabBtn = el("button", { class:"edit-tabbtn tab-tags", type:"button" }, "Tags");
     const socialTabBtn = el("button", { class:"edit-tabbtn tab-social", type:"button" }, "Social Media");
     const tabContent = el("div", { class:"edit-tabcontent tab-active-details" },
       detailsPane,
+      tagsPane,
       socialPane
     );
 
     function setEditTab(tab){
       const onDetails = tab === "details";
+      const onTags = tab === "tags";
+      const onSocial = tab === "social";
+
       detailsTabBtn.classList.toggle("is-active", onDetails);
-      socialTabBtn.classList.toggle("is-active", !onDetails);
-      tabContent.classList.toggle("tab-active-details", onDetails);
-      tabContent.classList.toggle("tab-active-social", !onDetails);
-      if (onDetails) {
-        detailsPane.removeAttribute("hidden");
-        socialPane.setAttribute("hidden", "");
-      } else {
-        detailsPane.setAttribute("hidden", "");
-        socialPane.removeAttribute("hidden");
-      }
+      tagsTabBtn.classList.toggle("is-active", onTags);
+      socialTabBtn.classList.toggle("is-active", onSocial);
+
+      tabContent.classList.remove("tab-active-details", "tab-active-tags", "tab-active-social");
+      if (onTags) tabContent.classList.add("tab-active-tags");
+      else if (onSocial) tabContent.classList.add("tab-active-social");
+      else tabContent.classList.add("tab-active-details");
+
+      if (onDetails) detailsPane.removeAttribute("hidden");
+      else detailsPane.setAttribute("hidden", "");
+
+      if (onTags) tagsPane.removeAttribute("hidden");
+      else tagsPane.setAttribute("hidden", "");
+
+      if (onSocial) socialPane.removeAttribute("hidden");
+      else socialPane.setAttribute("hidden", "");
     }
 
     detailsTabBtn.addEventListener("click", () => setEditTab("details"));
+    tagsTabBtn.addEventListener("click", () => setEditTab("tags"));
     socialTabBtn.addEventListener("click", () => setEditTab("social"));
 
     const right = el("div", { class:"card edit-side-card", style:"grid-column: span 5" },
       el("div", { class:"meta" },
         el("div", { class:"edit-tabbar", role:"tablist", "aria-label":"Edit sections" },
           detailsTabBtn,
+          tagsTabBtn,
           socialTabBtn
         ),
         tabContent
@@ -1405,7 +1587,7 @@
       const list = Array.from(set).filter(Boolean).sort((a,b)=>a.localeCompare(b));
 
       const s = el("select", { id },
-        el("option", { value:"" }, "—"),
+        el("option", { value:"" }, "\u2014"),
         ...list.map(o => el("option", { value:o, selected: o===current ? "" : null }, o))
       );
       s.addEventListener("change", (e)=> onChange(e.target.value));
@@ -1460,7 +1642,7 @@
                   scheduleBackendSave();
                   renderTags();
                 }
-              }, "×")
+              }, "x")
             )
           );
         }
@@ -1474,3 +1656,8 @@
     // No auto-write on load.
     // Saves occur only after explicit user edits/actions.
   
+
+
+
+
+

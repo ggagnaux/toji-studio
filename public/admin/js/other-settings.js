@@ -6,7 +6,9 @@ import {
   apiFetch,
   API_BASE,
   getAdminToken,
-  confirmToast
+  confirmToast,
+  loadState,
+  saveState
 } from "../admin.js";
 
 ensureBaseStyles();
@@ -22,6 +24,7 @@ const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
 const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
 const TAG_CAP_KEY = "toji_ai_tag_cap_v1";
 const AI_FEATURES_ENABLED_KEY = "toji_ai_features_enabled_v1";
+const DEFAULT_CONTACT_EMAIL = "you@example.com";
 
 const DEFAULT_IMAGE_VARIANTS = Object.freeze({
   thumbMaxWidth: 560,
@@ -59,6 +62,8 @@ const imageVariantStatus = document.getElementById("imageVariantStatus");
 const imageVariantCurrent = document.getElementById("imageVariantCurrent");
 const exportDatabaseBtn = document.getElementById("exportDatabaseBtn");
 const exportDatabaseStatus = document.getElementById("exportDatabaseStatus");
+const contactEmailAddress = document.getElementById("contactEmailAddress");
+const contactEmailCurrent = document.getElementById("contactEmailCurrent");
 const splashPreviewBtn = document.getElementById("splashPreviewBtn");
 const splashPreviewModal = document.getElementById("splashPreviewModal");
 const splashPreviewCloseBtn = document.getElementById("splashPreviewCloseBtn");
@@ -74,6 +79,7 @@ const SETTINGS_TAB_COLORS = {
   banner: "#2ea97d",
   aiIntegration: "#cc5f2f",
   variants: "#8a63d2",
+  contact: "#d15353",
   export: "#7d8f34"
 };
 
@@ -82,6 +88,7 @@ if (splashPreviewModal && splashPreviewModal.parentElement !== document.body) {
 }
 
 const SPLASH_PREVIEW_MODE_ORDER = Object.freeze([
+  "tojistudios",
   "nodes",
   "flock",
   "circles",
@@ -109,6 +116,7 @@ settingsTabButtons.forEach((btn) => {
 function normalizeSplashMode(value){
   const mode = String(value || "").toLowerCase();
   if (mode === "random") return "random";
+  if (mode === "tojistudios") return "tojistudios";
   if (mode === "flock") return "flock";
   if (mode === "circles") return "circles";
   if (mode === "matrix") return "matrix";
@@ -128,6 +136,7 @@ function normalizeSplashMode(value){
 
 function describeSplashMode(mode){
   if (mode === "random") return "Randomize each visit";
+  if (mode === "tojistudios") return "Tojistudios dot chase";
   if (mode === "flock") return "Flocking triangles (mouse follow)";
   if (mode === "circles") return "Outlined circles grid (fill/unfill)";
   if (mode === "matrix") return "Matrix digital rain";
@@ -156,6 +165,10 @@ function normalizeBannerLogoAnimationStyle(value){
   if (style === "plot") return "plot";
   if (style === "radar") return "radar";
   return "circles";
+}
+
+function normalizeContactEmail(value){
+  return String(value || "").trim();
 }
 
 function normalizeTagCap(value){
@@ -218,6 +231,69 @@ function renderImageVariantSettings(settings) {
   }
 }
 
+function ensureAdminStateSettings() {
+  adminState ||= {};
+  adminState.settings ||= {};
+  return adminState.settings;
+}
+
+function renderContactSettings(note = "") {
+  const settings = ensureAdminStateSettings();
+  const email = normalizeContactEmail(settings.contactEmail) || DEFAULT_CONTACT_EMAIL;
+  if (contactEmailAddress) contactEmailAddress.value = email;
+  if (contactEmailCurrent) {
+    contactEmailCurrent.textContent = note
+      ? `Contact email: ${email} (${note})`
+      : `Contact email: ${email}`;
+  }
+}
+
+async function loadContactSettings() {
+  const settings = ensureAdminStateSettings();
+  renderContactSettings();
+
+  if (!getAdminToken()) {
+    renderContactSettings("local cache only");
+    return;
+  }
+
+  try {
+    const saved = await apiFetch("/api/admin/settings/contact", { method: "GET" });
+    settings.contactEmail = normalizeContactEmail(saved?.contactEmail) || DEFAULT_CONTACT_EMAIL;
+    saveState(adminState);
+    renderContactSettings("backend");
+  } catch (error) {
+    console.warn("Failed to load backend contact settings; using local cache.", error);
+    renderContactSettings("local cache only");
+  }
+}
+
+async function persistContactSettings() {
+  const settings = ensureAdminStateSettings();
+  const email = normalizeContactEmail(contactEmailAddress?.value) || DEFAULT_CONTACT_EMAIL;
+  settings.contactEmail = email;
+  saveState(adminState);
+  renderContactSettings(getAdminToken() ? "saving..." : "local cache only");
+
+  if (!getAdminToken()) {
+    renderContactSettings("local cache only");
+    return;
+  }
+
+  try {
+    const saved = await apiFetch("/api/admin/settings/contact", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactEmail: email })
+    });
+    settings.contactEmail = normalizeContactEmail(saved?.contactEmail) || DEFAULT_CONTACT_EMAIL;
+    saveState(adminState);
+    renderContactSettings("backend");
+  } catch (error) {
+    console.warn("Failed to save backend contact settings; kept local cache.", error);
+    renderContactSettings("local cache only");
+  }
+}
 function setSettingsTab(tab) {
   const nextTab = String(tab || "splash");
   const activeColor = SETTINGS_TAB_COLORS[nextTab] || "var(--accent)";
@@ -445,6 +521,9 @@ async function loadImageVariantSettings() {
   }
 }
 
+let adminState = await loadState();
+ensureAdminStateSettings();
+
 function persistSettings({ refreshBanner = false } = {}){
   const splashEnabled = !!splashAnimationEnabled?.checked;
   const mode = normalizeSplashMode(splashMode?.value);
@@ -533,6 +612,7 @@ async function exportDatabaseJson() {
 }
 
 syncSplashModeUI();
+await loadContactSettings();
 await loadImageVariantSettings();
 setSettingsTab("splash");
 
@@ -570,6 +650,14 @@ tagCap?.addEventListener("change", () => {
 
 aiFeaturesEnabled?.addEventListener("change", () => {
   persistSettings();
+});
+
+contactEmailAddress?.addEventListener("change", () => {
+  persistContactSettings();
+});
+
+contactEmailAddress?.addEventListener("blur", () => {
+  persistContactSettings();
 });
 
 [thumbMaxWidth, thumbQuality, webMaxWidth, webQuality].forEach((input) => {
@@ -644,3 +732,7 @@ window.addEventListener("keydown", (event) => {
     cycleSplashPreviewMode(1);
   }
 });
+
+
+
+

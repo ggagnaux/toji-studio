@@ -86,6 +86,10 @@ function ensureLightboxStyles() {
       grid-template-columns: 1fr 320px;
       gap: 0;
       min-height: 0;
+      transition: grid-template-columns .22s ease;
+    }
+    .lb-body.is-meta-collapsed{
+      grid-template-columns: 1fr 0;
     }
     .lb-media{
       background: rgba(255,255,255,.03);
@@ -93,6 +97,15 @@ function ensureLightboxStyles() {
       min-height: calc(100vh - 90px);
       position: relative;
       overflow: hidden;
+    }
+    .lb-media-tabbar{
+      position:absolute;
+      top:12px;
+      right:12px;
+      z-index:3;
+      display:flex;
+      justify-content:flex-end;
+      pointer-events:none;
     }
     .lb-media-frame{
       position: relative;
@@ -140,6 +153,50 @@ function ensureLightboxStyles() {
     .lb-meta{
       padding:14px;
       border-left:1px solid var(--line);
+      overflow:hidden;
+      min-width:0;
+      transition: opacity .18s ease, transform .18s ease, padding .18s ease, border-color .18s ease;
+    }
+    .lb-body.is-meta-collapsed .lb-meta{
+      opacity:0;
+      transform: translateX(12px);
+      padding-left:0;
+      padding-right:0;
+      border-left-color: transparent;
+      pointer-events:none;
+    }
+    .lb-meta-tab{
+      pointer-events:auto;
+      position:relative;
+      z-index:3;
+      min-width:88px;
+      min-height:0;
+      padding:8px 10px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background: color-mix(in srgb, var(--panel) 92%, #000 8%);
+      color:var(--text);
+      box-shadow: var(--shadow);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      cursor:pointer;
+      transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease;
+    }
+    .lb-meta-tab:hover,
+    .lb-meta-tab:focus-visible{
+      background: color-mix(in srgb, var(--panel) 82%, var(--accent) 18%);
+      border-color: color-mix(in srgb, var(--accent-border) 78%, var(--line));
+    }
+    .lb-meta-tab-label{
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+    .lb-body.is-meta-collapsed .lb-meta-tab{
+      opacity:.96;
     }
     .lb-meta .sub{ margin-top:8px; }
     .lb-tags{
@@ -173,10 +230,25 @@ function ensureLightboxStyles() {
       border-style:dashed;
       color:var(--muted);
     }
-    .lb-actions{ display:flex; gap:8px; flex-wrap:wrap; }
-    .lb-actions .btn{ padding:8px 10px; font-size:13px; }
-    @media (max-width: 920px){
+	    .lb-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+	    .lb-actions .btn{ padding:8px 10px; font-size:13px; }
+	    .lb-actions .btn,
+	    .lb-meta-tab{
+	      transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease, box-shadow .18s ease, color .18s ease;
+	    }
+	    .lb-actions .btn:hover,
+	    .lb-actions .btn:focus-visible,
+	    .lb-meta-tab:hover,
+	    .lb-meta-tab:focus-visible{
+	      color: var(--text);
+	      background: color-mix(in srgb, var(--panel) 62%, var(--accent) 38%);
+	      border-color: color-mix(in srgb, var(--accent-border) 88%, #ffffff 12%);
+	      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+	      transform: translateY(-1px);
+	    }
+	    @media (max-width: 920px){
       .lb-body{ grid-template-columns: 1fr; }
+      .lb-body.is-meta-collapsed{ grid-template-columns: 1fr; }
       .lb-media{
         min-height: calc(100vh - 180px);
       }
@@ -189,6 +261,19 @@ function ensureLightboxStyles() {
         max-height: 28vh;
         overflow:auto;
       }
+      .lb-body.is-meta-collapsed .lb-meta{
+        max-height:0;
+        min-height:0;
+        padding-top:0;
+        padding-bottom:0;
+        border-top-color: transparent;
+      }
+      .lb-meta-tab{
+        min-width:82px;
+      }
+      .lb-body.is-meta-collapsed .lb-meta-tab{
+        opacity:.96;
+      }
     }
   `;
   document.head.appendChild(style);
@@ -199,30 +284,46 @@ export function createArtworkLightboxController() {
 
   const backdrop = el("div", { class: "lb-backdrop", role: "dialog", "aria-modal": "true" });
 	  const title = el("div", { class: "lb-title" }, "");
-	  const closeBtn = el("button", { class: "btn", type: "button" }, "Close");
-	  const prevBtn = el("button", { class: "btn", type: "button" }, "Prev");
-	  const nextBtn = el("button", { class: "btn", type: "button" }, "Next");
+		  const closeBtn = el("button", { class: "btn", type: "button", "aria-label": "Close lightbox", title: "Close lightbox" }, "x");
+		  const prevBtn = el("button", { class: "btn", type: "button", "aria-label": "Previous artwork", title: "Previous artwork" }, "\u2190");
+		  const nextBtn = el("button", { class: "btn", type: "button", "aria-label": "Next artwork", title: "Next artwork" }, "\u2192");
 
 	  const top = el("div", { class: "lb-top" }, title, el("div", { class: "lb-actions" }, prevBtn, nextBtn, closeBtn));
-	  const mediaFrame = el("div", { class: "lb-media-frame" });
-	  const media = el("div", { class: "lb-media" }, mediaFrame);
-	  const metaTitle = el("div", { style: "font-weight:650" }, "");
+		  const mediaFrame = el("div", { class: "lb-media-frame" });
+		  const metaTitle = el("div", { style: "font-weight:650" }, "");
 	  const metaSub = el("div", { class: "sub" }, "");
 	  const metaTagsLabel = el("div", { class: "lb-tags-label" }, "Tags");
   const metaTagsValue = el("div", { class: "lb-tags-value" });
   const metaTags = el("div", { class: "lb-tags" }, metaTagsLabel, metaTagsValue);
   const metaDesc = el("div", { class: "sub", style: "font-size:15px; line-height:1.65" }, "");
-  const meta = el("div", { class: "lb-meta" }, metaTitle, metaSub, metaTags, el("hr", { class: "sep" }), metaDesc);
-  const body = el("div", { class: "lb-body" }, media, meta);
-  const panel = el("div", { class: "lb" }, top, body);
+		  const meta = el("div", { class: "lb-meta" }, metaTitle, metaSub, metaTags, el("hr", { class: "sep" }), metaDesc);
+  const metaTabLabel = el("span", { class: "lb-meta-tab-label" }, "Details");
+  const metaTab = el("button", {
+    class: "lb-meta-tab",
+    type: "button",
+    "aria-expanded": "false",
+    "aria-label": "Show details panel"
+  }, metaTabLabel);
+  const mediaTabbar = el("div", { class: "lb-media-tabbar" }, metaTab);
+		  const media = el("div", { class: "lb-media" }, mediaTabbar, mediaFrame);
+  const body = el("div", { class: "lb-body is-meta-collapsed" }, media, meta);
+	  const panel = el("div", { class: "lb" }, top, body);
 
   backdrop.appendChild(panel);
 
-	  let currentList = [];
-	  let currentIndex = -1;
-	  let lastActive = null;
-	  let activeImg = null;
-	  let animationToken = 0;
+		  let currentList = [];
+		  let currentIndex = -1;
+		  let lastActive = null;
+		  let activeImg = null;
+		  let animationToken = 0;
+  let isMetaOpen = false;
+
+  function syncMetaVisibility() {
+    body.classList.toggle("is-meta-collapsed", !isMetaOpen);
+    metaTab.setAttribute("aria-expanded", isMetaOpen ? "true" : "false");
+    metaTab.setAttribute("aria-label", isMetaOpen ? "Hide details panel" : "Show details panel");
+    metaTabLabel.textContent = isMetaOpen ? "Hide" : "Details";
+  }
 
 	  function renderImage(item, direction = 0) {
 	    const nextImg = el("img", {
@@ -285,14 +386,16 @@ export function createArtworkLightboxController() {
 	    backdrop.style.display = "flex";
 	  }
 
-  function open(list, idx = 0) {
-    if (!Array.isArray(list) || !list.length) return;
-    lastActive = document.activeElement;
-    currentList = list;
-    currentIndex = Math.max(0, Math.min(list.length - 1, Number(idx) || 0));
-	    showCurrent(0);
-	    closeBtn.focus();
-	  }
+		  function open(list, idx = 0) {
+	    if (!Array.isArray(list) || !list.length) return;
+	    lastActive = document.activeElement;
+	    currentList = list;
+	    currentIndex = Math.max(0, Math.min(list.length - 1, Number(idx) || 0));
+    isMetaOpen = false;
+    syncMetaVisibility();
+		    showCurrent(0);
+		    closeBtn.focus();
+		  }
 
 	  function close() {
 	    backdrop.style.display = "none";
@@ -314,16 +417,22 @@ export function createArtworkLightboxController() {
   backdrop.addEventListener("click", (e) => {
     if (e.target === backdrop) close();
   });
-  closeBtn.addEventListener("click", close);
-  nextBtn.addEventListener("click", next);
-  prevBtn.addEventListener("click", prev);
-
-  document.addEventListener("keydown", (e) => {
-    if (backdrop.style.display !== "flex") return;
-    if (e.key === "Escape") close();
-    if (e.key === "ArrowRight") next();
-    if (e.key === "ArrowLeft") prev();
+	  closeBtn.addEventListener("click", close);
+	  nextBtn.addEventListener("click", next);
+	  prevBtn.addEventListener("click", prev);
+  metaTab.addEventListener("click", () => {
+    isMetaOpen = !isMetaOpen;
+    syncMetaVisibility();
   });
 
-  return { host: backdrop, open, close, next, prev };
+	  document.addEventListener("keydown", (e) => {
+	    if (backdrop.style.display !== "flex") return;
+	    if (e.key === "Escape") close();
+	    if (e.key === "ArrowRight") next();
+	    if (e.key === "ArrowLeft") prev();
+	  });
+
+  syncMetaVisibility();
+
+	  return { host: backdrop, open, close, next, prev };
 }

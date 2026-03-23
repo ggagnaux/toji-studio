@@ -19,6 +19,13 @@
             <input id="password" type="password" autocomplete="current-password" required />
           </label>
 
+          <label class="field">
+            <div class="sub" style="margin-bottom:8px;">Admin token</div>
+            <input id="token" type="password" autocomplete="off" placeholder="Paste ADMIN_TOKEN from .env" required />
+          </label>
+
+          <p class="sub" style="margin:0;">API-backed admin pages need the same <code>ADMIN_TOKEN</code> the server is using.</p>
+
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <button class="btn primary" type="submit">Sign in</button>
             <a class="btn" href="../index.html">Back to site</a>
@@ -32,4 +39,3 @@
   <script type="module" src="./js/login.js"></script>
 </body>
 </html>
-

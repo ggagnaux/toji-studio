@@ -1,4 +1,4 @@
-import { ensureBaseStyles, setYearFooter, showToast, apiFetch, confirmToast } from "../admin.js";
+﻿import { ensureBaseStyles, setYearFooter, showToast, apiFetch, confirmToast } from "../admin.js";
 
 ensureBaseStyles();
 setYearFooter();
@@ -26,6 +26,7 @@ function normalizePlatformIconLocation(raw) {
   const text = cleanText(raw).replace(/\\/g, "/");
   if (!text) return "";
   if (/^(https?:)?\/\//i.test(text) || text.startsWith("data:")) return text;
+  if (text.startsWith("/public/")) return text.slice("/public".length);
   if (text.startsWith("/")) return text;
   const marker = "/assets/";
   const markerIndex = text.toLowerCase().indexOf(marker);
@@ -33,6 +34,19 @@ function normalizePlatformIconLocation(raw) {
   return `/${text.replace(/^\/+/, "")}`;
 }
 
+function resolvePlatformIconSrc(raw) {
+  const normalized = normalizePlatformIconLocation(raw);
+  if (!normalized) return "";
+  if (/^(https?:)?\/\//i.test(normalized) || normalized.startsWith("data:")) return normalized;
+
+  const pathname = String(window.location.pathname || "");
+  const isPublicPreview = pathname === "/public" || pathname.startsWith("/public/");
+  if (isPublicPreview && normalized.startsWith("/assets/")) {
+    return `/public${normalized}`;
+  }
+
+  return normalized;
+}
 function cleanSlug(v) {
   return cleanText(v)
     .toLowerCase()
@@ -58,7 +72,7 @@ let activePlatformId = "";
 const TAB_BORDER_PALETTE = ["#2a97d4", "#2ea97d", "#d18b2e", "#d15353", "#8a63d2", "#cf5ea8", "#3aa5a0", "#7e8c2b"];
 
 function getPlatformTabIconSrc(platform) {
-  return normalizePlatformIconLocation(platform?.iconLocation || platform?.config?.iconLocation);
+  return resolvePlatformIconSrc(platform?.iconLocation || platform?.config?.iconLocation);
 }
 
 function ensureSocialManagerStyles() {
@@ -720,3 +734,7 @@ platformCreateForm?.addEventListener("submit", async (e) => {
 });
 
 loadPlatforms();
+
+
+
+

@@ -1,0 +1,80 @@
+.contact-form{
+  margin-top:14px;
+  display:grid;
+  gap:12px;
+}
+
+.contact-form__actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.contact-draft-box{
+  display:none;
+  margin-top:10px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:14px;
+}
+
+.contact-floating-field{
+  position:relative;
+  display:block;
+}
+
+.contact-floating-field input,
+.contact-floating-field textarea{
+  width:100%;
+  margin:0;
+  padding:24px 12px 10px;
+}
+
+.contact-floating-field--textarea textarea{
+  min-height:152px;
+  padding-top:30px;
+}
+
+.contact-floating-field__label{
+  position:absolute;
+  left:13px;
+  top:50%;
+  transform:translateY(-50%);
+  transform-origin:left top;
+  color:color-mix(in srgb, var(--muted) 88%, transparent);
+  font-size:0.98rem;
+  line-height:1;
+  letter-spacing:0.01em;
+  pointer-events:none;
+  transition:
+    top 180ms ease,
+    transform 180ms ease,
+    font-size 180ms ease,
+    color 180ms ease;
+}
+
+.contact-floating-field--textarea .contact-floating-field__label{
+  top:22px;
+  transform:none;
+}
+
+.contact-floating-field:focus-within .contact-floating-field__label,
+.contact-floating-field.has-value .contact-floating-field__label{
+  top:10px;
+  transform:none;
+  font-size:0.72rem;
+  color:var(--accent);
+}
+
+.contact-floating-field input::placeholder,
+.contact-floating-field textarea::placeholder{
+  color:transparent;
+}
+
+@media (max-width: 760px){
+  .contact-panel--form,
+  .contact-panel--direct{
+    grid-column: 1 / -1 !important;
+  }
+}

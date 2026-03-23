@@ -1,5 +1,24 @@
-﻿let siteMetaPromise = null;
-const API_BASE = (localStorage.getItem("toji_api_base") || "http://localhost:5179").replace(/\/+$/, "");
+let siteMetaPromise = null;
+
+function resolvePublicApiBase() {
+  const override = String(localStorage.getItem("toji_api_base") || "").trim().replace(/\/+$/, "");
+  if (override) return override;
+
+  const origin = String(window.location.origin || "").replace(/\/+$/, "");
+  if (!origin) return "";
+
+  try {
+    const current = new URL(origin);
+    const isLocalHost = ["localhost", "127.0.0.1"].includes(current.hostname);
+    if (isLocalHost && current.port && current.port !== "5179") {
+      return `${current.protocol}//${current.hostname}:5179`;
+    }
+  } catch {}
+
+  return origin;
+}
+
+const API_BASE = resolvePublicApiBase();
 
 async function getSiteVersion() {
   if (!siteMetaPromise) {
@@ -120,3 +139,4 @@ function escapeHtml(s) {
     "'": "&#039;"
   }[m]));
 }
+

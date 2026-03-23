@@ -1,25 +1,14 @@
 {
   "version": "0.2.0",
   "configurations": [
-    
-
-    // {
-    //   "type": "node",
-    //   "request": "launch",
-    //   "name": "Debug Toji Backend",
-    //   "program": "${workspaceFolder}/public/toji-backend/src/server.js",
-    //   "cwd": "${workspaceFolder}/public/toji-backend",
-    //   "skipFiles": ["<node_internals>/**"]
-    // },
-
     {
       "type": "node",
       "request": "launch",
       "name": "Debug Toji Backend",
       "skipFiles": ["<node_internals>/**"],
-      "program": "${workspaceFolder}/public/toji-backend/src/server.js",
-      "cwd": "${workspaceFolder}/public/toji-backend",
-      "envFile": "${workspaceFolder}/public/toji-backend/.env",
+      "program": "${workspaceFolder}/public/server/src/server.js",
+      "cwd": "${workspaceFolder}/public/server",
+      "envFile": "${workspaceFolder}/public/server/.env",
       "console": "integratedTerminal",
       "restart": true,
       "runtimeArgs": ["--watch"]

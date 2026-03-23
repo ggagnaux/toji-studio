@@ -1,3 +1,13 @@
-public/toji-backend/storage/toji.sqlite
-public/toji-backend/storage/toji.sqlite-shm
-public/toji-backend/storage/toji.sqlite-wal
+public/server/storage/toji.sqlite
+public/server/storage/toji.sqlite-shm
+public/server/storage/toji.sqlite-wal
+public/server/node_modules/
+public/server/.env
+public/server/.env.*
+public/server/.env copy
+public/server/dist/node_modules/
+public/server/dist/.env
+public/server/dist/.env.*
+
+# Archived legacy backend (kept for reference only)
+archive/toji-backend-NOTUSED/

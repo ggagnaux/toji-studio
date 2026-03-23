@@ -1,10 +1,11 @@
-<!doctype html>
+﻿<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>About — Toji Studios</title>
+  <title>About &mdash; Toji Studios</title>
   <link rel="stylesheet" href="assets/css/site.css" />
+  <link rel="stylesheet" href="assets/css/about.css" />
 </head>
 <body class="home-animated">
   <header id="siteHeader"></header>
@@ -13,38 +14,44 @@
     <section class="hero hero--sticky">
       <h1>About</h1>
       <p>
-        Hi, my name's Greg. I make abstract, cosmic-leaning digital artwork—geometry, atmosphere, and controlled chaos.
+        Hi, my name's Greg. I make abstract, cosmic-leaning digital artwork&mdash;geometry, atmosphere, and controlled chaos.
         This space is a slow gallery: minimal distractions, maximum presence.
       </p>
     </section>
 
     <section class="grid" aria-label="About content">
-      <div class="card" style="grid-column: span 7">
-        <div class="meta">
-          <p class="title">Artist statement</p>
+	      <div class="card about-panel about-panel--statement" style="grid-column: span 7">
+        <div class="meta about-artist-card">
+          <div class="about-artist-card__content">
+            <p class="title">Artist statement</p>
           <p class="sub" style="font-size:15px; line-height:1.65; margin:10px 0 0">
-            My work lives between structure and drift—hard edges meeting soft fields, like constellations
-            forming and dissolving. I’m interested in how simple systems can produce surprise.
+            My work lives between structure and drift&mdash;hard edges meeting soft fields, like constellations
+            forming and dissolving. I&rsquo;m interested in how simple systems can produce surprise.
           </p>
           <p class="sub" style="font-size:15px; line-height:1.65; margin:10px 0 0">
-            If you’d like to license a piece, commission a variation, or talk about a custom backlit print,
+            If you&rsquo;d like to license a piece, commission a variation, or talk about a custom backlit print,
             head to the contact page.
           </p>
-          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px">
-            <a class="btn primary" href="gallery.html">Explore the Gallery</a>
-            <a class="btn" href="contact.html">Contact</a>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px">
+              <a class="btn primary" href="gallery.html">Explore the Gallery</a>
+              <a class="btn" href="contact.html">Contact</a>
+            </div>
           </div>
+
+          <figure class="about-artist-card__figure">
+            <img src="assets/img/Me-20260319.png" alt="Portrait of Greg" class="about-artist-card__image" />
+          </figure>
         </div>
       </div>
 
-      <div class="card" style="grid-column: span 5">
+	      <div class="card about-panel about-panel--facts" style="grid-column: span 5">
         <div class="meta">
           <p class="title">Quick facts</p>
           <div style="display:grid; gap:10px; margin-top:12px">
             <div><div class="sub">Location</div><div>Vancouver, BC</div></div>
-            <div><div class="sub">Focus</div><div>Abstract • Cosmic • Geometric</div></div>
+            <div><div class="sub">Focus</div><div>Abstract &bull; Cosmic &bull; Geometric</div></div>
             <div><div class="sub">Medium</div><div>Digital (Build by a human)</div></div>
-            <div><div class="sub">Availability</div><div>Licensing • Commissions • Prints</div></div>
+            <div><div class="sub">Availability</div><div>Licensing &bull; Commissions &bull; Prints</div></div>
           </div>
         </div>
       </div>
@@ -63,26 +70,8 @@
 
   <footer id="siteFooter"></footer>
 
-  <script type="module">
-    import { renderPublicHeader } from "./assets/js/header.js";
-    import { renderPublicFooter } from "./assets/js/footer.js";
-    import { initStickyHero } from "./assets/js/site.js";
-
-    renderPublicHeader({
-      active: "about",
-      small: "about",
-      ctaText: "Inquire",
-      ctaHref: "contact.html",
-      //brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
-      brandLogoSrc: "assets/img/logo.png"
-    });
-    renderPublicFooter({
-      rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
-    });
-
-    initStickyHero();
-
-    // page-specific JS (if needed)
-  </script>
+  <script type="module" src="./assets/js/about-page.js"></script>
 </body>
 </html>
+
+

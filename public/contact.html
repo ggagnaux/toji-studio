@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Contact — Toji Studios</title>
+  <title>Contact &mdash; Toji Studios</title>
   <link rel="stylesheet" href="assets/css/site.css" />
   <link rel="stylesheet" href="assets/css/contact.css" />
 </head>
@@ -14,31 +14,27 @@
     <section class="hero hero--sticky">
       <h1>Contact</h1>
       <p>
-        For licensing, commissions, print inquiries, or collaborations—send a note.
-        If you include a link to the piece(s) you’re referring to, I can respond faster.
+        For licensing, commissions, print inquiries, or collaborations&mdash;send a note.
+        If you include a link to the piece(s) you&rsquo;re referring to, I can respond faster.
       </p>
     </section>
 
     <section class="grid" aria-label="Contact content">
       <!-- Left: form -->
-      <div class="card" style="grid-column: span 7">
+	      <div class="card contact-panel contact-panel--form" style="grid-column: span 7">
         <div class="meta">
           <p class="title">Inquiry form</p>
           <p class="sub">This form generates an email draft (no backend yet).</p>
 
-          <form id="contactForm" style="margin-top:14px; display:grid; gap:12px">
-            <label>
-              <div class="sub" style="margin-bottom:6px">Your name</div>
-              <input id="name" required
-                     style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line)"
-                     placeholder="Jane Doe" />
+          <form id="contactForm" class="contact-form">
+            <label class="contact-floating-field">
+              <input id="name" required placeholder=" " />
+              <span class="contact-floating-field__label">Your name</span>
             </label>
 
-            <label>
-              <div class="sub" style="margin-bottom:6px">Your email</div>
-              <input id="email" type="email" required
-                     style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line)"
-                     placeholder="jane@example.com" />
+            <label class="contact-floating-field">
+              <input id="email" type="email" required placeholder=" " />
+              <span class="contact-floating-field__label">Your email</span>
             </label>
 
             <label>
@@ -53,28 +49,23 @@
               </select>
             </label>
 
-            <label>
-              <div class="sub" style="margin-bottom:6px">Artwork link(s) (optional)</div>
-              <input id="links"
-                     style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line)"
-                     placeholder="Paste gallery or artwork URLs here" />
+            <label class="contact-floating-field">
+              <input id="links" placeholder=" " />
+              <span class="contact-floating-field__label">Artwork link(s) (optional)</span>
             </label>
 
-            <label>
-              <div class="sub" style="margin-bottom:6px">Message</div>
-              <textarea id="message" required rows="7"
-                        style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line)"
-                        placeholder="Tell me what you’re thinking…"></textarea>
+            <label class="contact-floating-field contact-floating-field--textarea">
+              <textarea id="message" required rows="7" placeholder=" "></textarea>
+              <span class="contact-floating-field__label">Message</span>
             </label>
 
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+            <div class="contact-form__actions">
               <button class="btn primary" type="submit">Create email draft</button>
               <button class="btn" type="button" id="copyDraft">Copy message</button>
               <span class="sub" id="status" aria-live="polite"></span>
             </div>
 
-            <div id="draftBox"
-                 style="display:none; margin-top:10px; padding:12px; border:1px solid var(--line); border-radius:14px">
+            <div id="draftBox" class="contact-draft-box">
               <div class="sub" style="margin-bottom:6px">Email draft preview</div>
               <pre id="draft"
                    style="margin:0; white-space:pre-wrap; color:var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"></pre>
@@ -84,7 +75,7 @@
       </div>
 
       <!-- Right: direct contact + socials -->
-      <div class="card" style="grid-column: span 5">
+	      <div class="card contact-panel contact-panel--direct" style="grid-column: span 5">
         <div class="meta">
           <p class="title">Direct</p>
 
@@ -96,7 +87,7 @@
                 <button class="btn" type="button" id="copyEmail">Copy</button>
               </div>
               <div class="sub" style="margin-top:6px">
-                Response time: usually 1–3 days.
+                Response time: usually 1&ndash;3 days.
               </div>
             </div>
 
@@ -107,7 +98,7 @@
 
             <div>
               <div class="sub">Availability</div>
-              <div>Licensing • Commissions • Prints</div>
+                <div>Licensing &bull; Commissions &bull; Prints</div>
             </div>
           </div>
 
@@ -124,7 +115,7 @@
         <div class="meta">
           <p class="title">What helps</p>
           <p class="sub" style="font-size:15px; line-height:1.65; margin:10px 0 0">
-            If you’re asking about a specific piece, include the title and a link. For commissions, mention
+            If you&rsquo;re asking about a specific piece, include the title and a link. For commissions, mention
             size, color direction, deadline, and intended use (personal, commercial, editorial, etc.).
           </p>
         </div>
@@ -134,318 +125,12 @@
 
   <footer id="siteFooter"></footer>
 
-<script type="module">
-  import { renderPublicHeader } from "./assets/js/header.js";
-  import { renderPublicFooter } from "./assets/js/footer.js";
-  import { initStickyHero } from "./assets/js/site.js";
-  import { qs, el } from "./assets/js/content-utils.js";
-
-  renderPublicHeader({
-    active: "contact",
-    small: "contact",
-    ctaText: "View Gallery",
-    ctaHref: "gallery.html",
-      //brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
-      brandLogoSrc: "assets/img/logo.png"
-  });
-  renderPublicFooter({
-    rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="about.html">About</a> • <a href="admin/index.html">Studio</a>`
-  });
-
-  initStickyHero();
-
-  const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
-  const FALLBACK_URL = "assets/data/admin.sample.json";
-  const PUBLIC_API_BASE = (localStorage.getItem("toji_api_base") || "http://localhost:5179").replace(/\/+$/, "");
-
-  async function loadSiteSettings() {
-    const defaults = { contactEmail: "you@example.com" };
-    const fromState = (data) => {
-      const settings = data && typeof data === "object" ? (data.settings || {}) : {};
-      return {
-        contactEmail: String(settings.contactEmail || defaults.contactEmail)
-      };
-    };
-
-    const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
-    if (saved) {
-      try { return fromState(JSON.parse(saved)); } catch {}
-    }
-
-    try {
-      const res = await fetch(FALLBACK_URL, { cache: "no-store" });
-      if (!res.ok) throw new Error(String(res.status));
-      return fromState(await res.json());
-    } catch {
-      return defaults;
-    }
-  }
-
-  async function loadExternalLinks() {
-    try {
-      const res = await fetch(`${PUBLIC_API_BASE}/api/public/external-links`, { cache: "no-store" });
-      if (!res.ok) throw new Error(String(res.status));
-      const rows = await res.json();
-      return Array.isArray(rows) ? rows : [];
-    } catch {
-      try {
-        const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          const settings = parsed && typeof parsed === "object" ? (parsed.settings || {}) : {};
-          return Array.isArray(settings.externalLinks) ? settings.externalLinks : [];
-        }
-      } catch {}
-      return [];
-    }
-  }
-
-  const settings = await loadSiteSettings();
-  const externalLinks = await loadExternalLinks();
-  const TO_EMAIL = settings.contactEmail;
-  const emailEl = document.getElementById("contactEmail");
-  const socialLinksEl = document.getElementById("socialLinks");
-  emailEl.textContent = TO_EMAIL;
-
-  function sanitizeLinks(links) {
-    const seen = new Set();
-    return (Array.isArray(links) ? links : [])
-      .map((link) => ({
-        label: String(link?.label || "").trim(),
-        url: String(link?.url || "").trim(),
-        enabled: link?.enabled == null ? true : !!link.enabled
-      }))
-      .filter((link) => {
-        if (!link.enabled || !link.label || !link.url) return false;
-        if (!/^(https?:\/\/|mailto:|tel:)/i.test(link.url)) return false;
-        const key = `${link.label.toLowerCase()}|${link.url.toLowerCase()}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-  }
-
-  function renderSocialLinks(links){
-    if (!socialLinksEl) return;
-    socialLinksEl.innerHTML = "";
-
-    const list = sanitizeLinks(links);
-    if (!list.length) {
-      socialLinksEl.appendChild(el("span", { class: "sub" }, "No links published yet."));
-      return;
-    }
-
-    list.forEach((item) => {
-      const attrs = {
-        href: item.url,
-        target: "_blank",
-        rel: "noopener noreferrer",
-        "aria-label": `${item.label} link`,
-        title: item.label
-      };
-
-      socialLinksEl.appendChild(el("a", { ...attrs, class: "btn" }, item.label));
-    });
-  }
-
-  renderSocialLinks(externalLinks);
-
-  const form = document.getElementById("contactForm");
-  const draftBox = document.getElementById("draftBox");
-  const draftPre = document.getElementById("draft");
-
-  const nameEl = document.getElementById("name");
-  const fromEl = document.getElementById("email");
-  const topicEl = document.getElementById("topic");
-  const linksEl = document.getElementById("links");
-  const msgEl = document.getElementById("message");
-
-  function ensureToastHost(){
-    let host = document.querySelector(".contact-toast-stack");
-    if (host) return host;
-
-    const style = document.createElement("style");
-    style.textContent = `
-      .contact-toast-stack{
-        position:fixed;
-        right:16px;
-        bottom:16px;
-        display:grid;
-        gap:10px;
-        width:min(92vw,420px);
-        z-index:9999;
-        pointer-events:none;
-      }
-      .contact-toast{
-        pointer-events:auto;
-        border:1px solid color-mix(in srgb, var(--line, rgba(255,255,255,.22)) 75%, #ffffff 25%);
-        border-radius:14px;
-        background:color-mix(in srgb, var(--panel, rgba(14,18,28,.94)) 96%, transparent);
-        color:var(--text, #f8f7f4);
-        box-shadow:0 14px 36px rgba(0,0,0,.2);
-        padding:12px;
-        line-height:1.4;
-        white-space:pre-line;
-      }
-      .contact-toast__msg{
-        margin:0;
-      }
-      .contact-toast__countdown{
-        margin-top:8px;
-        font-size:11px;
-        line-height:1.2;
-        letter-spacing:.01em;
-        color:color-mix(in srgb, var(--muted, #bcc4d6) 80%, transparent);
-        text-align:right;
-        font-variant-numeric:tabular-nums;
-      }
-    `;
-    document.head.appendChild(style);
-
-    host = document.createElement("div");
-    host.className = "contact-toast-stack";
-    host.setAttribute("aria-live", "polite");
-    document.body.appendChild(host);
-    return host;
-  }
-
-  function setStatus(msg){
-    if (!msg) return;
-    const host = ensureToastHost();
-    const toast = document.createElement("article");
-    toast.className = "contact-toast";
-    const body = document.createElement("p");
-    body.className = "contact-toast__msg";
-    body.textContent = msg;
-
-    const countdown = document.createElement("div");
-    countdown.className = "contact-toast__countdown";
-    toast.append(body, countdown);
-    host.appendChild(toast);
-
-    const duration = 3000;
-    const startedAt = Date.now();
-    const updateCountdown = () => {
-      const remaining = Math.max(0, duration - (Date.now() - startedAt));
-      countdown.textContent = `Auto close in ${Math.ceil(remaining / 1000)}s`;
-    };
-    updateCountdown();
-    const intervalId = setInterval(updateCountdown, 200);
-
-    setTimeout(() => {
-      clearInterval(intervalId);
-      toast.remove();
-    }, duration);
-  }
-
-  function prefillFromQuery(){
-    const topic = qs("topic");
-    const title = qs("title");
-    const id = qs("id");
-    const url = qs("url");
-
-    // topic (match existing options or fall back to Other)
-    if (topic) {
-      const opts = Array.from(topicEl.options).map(o => o.value);
-      topicEl.value = opts.includes(topic) ? topic : "Other";
-    }
-
-    // Artwork link(s)
-    const linkParts = [];
-    if (url) linkParts.push(url);
-    if (id && !url) linkParts.push(`artwork.html?id=${encodeURIComponent(id)}`);
-    if (linkParts.length && !linksEl.value.trim()) linksEl.value = linkParts.join("\n");
-
-    // Message template
-    if (title && !msgEl.value.trim()) {
-      const lines = [
-        `Hi Greg,`,
-        ``,
-        `I'm interested in: ${title}${id ? ` (ID: ${id})` : ""}.`,
-        ``,
-        `Use case:`,
-        `Timeline:`,
-        `Budget range (optional):`,
-        ``,
-        `Notes:`
-      ];
-      msgEl.value = lines.join("\n");
-    }
-
-    // Small UX nudge
-    if (topic || title || id || url) setStatus("Prefilled from artwork link.");
-  }
-
-  prefillFromQuery();
-
-  function buildDraft(){
-    const name = nameEl.value.trim();
-    const from = fromEl.value.trim();
-    const topic = topicEl.value;
-    const links = linksEl.value.trim();
-    const message = msgEl.value.trim();
-
-    // Subject stays short and scan-friendly
-    const subject = `[Toji Studios] ${topic} — ${name || "Inquiry"}`;
-
-    const bodyLines = [
-      `Hi Greg,`,
-      ``,
-      `Topic: ${topic}`,
-      name ? `From: ${name}${from ? ` <${from}>` : ""}` : (from ? `From: ${from}` : null),
-      links ? `Links:\n${links}` : null,
-      ``,
-      message,
-      ``,
-      `—`,
-      name || ""
-    ].filter(Boolean);
-
-    return { subject, body: bodyLines.join("\n") };
-  }
-
-  function mailtoLink(subject, body){
-    const s = encodeURIComponent(subject);
-    const b = encodeURIComponent(body);
-    return `mailto:${encodeURIComponent(TO_EMAIL)}?subject=${s}&body=${b}`;
-  }
-
-  async function copyToClipboard(text){
-    await navigator.clipboard.writeText(text);
-  }
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    setStatus("");
-
-    const { subject, body } = buildDraft();
-    draftPre.textContent = `To: ${TO_EMAIL}\nSubject: ${subject}\n\n${body}`;
-    draftBox.style.display = "block";
-
-    location.href = mailtoLink(subject, body);
-    setStatus("Email draft created.");
-  });
-
-  document.getElementById("copyEmail").addEventListener("click", async () => {
-    try{
-      await copyToClipboard(TO_EMAIL);
-      setStatus("Email copied.");
-    }catch{
-      setStatus("Couldn’t copy email (browser blocked).");
-    }
-  });
-
-  document.getElementById("copyDraft").addEventListener("click", async () => {
-    try{
-      const txt = draftPre.textContent || "";
-      if (!txt) return setStatus("Create a draft first.");
-      await copyToClipboard(txt);
-      setStatus("Draft copied.");
-    }catch{
-      setStatus("Couldn’t copy draft (browser blocked).");
-    }
-  });
-</script>
+<script type="module" src="./assets/js/contact-page.js"></script>
 
 </body>
 </html>
+
+
+
+
+

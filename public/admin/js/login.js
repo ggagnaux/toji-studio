@@ -1,11 +1,14 @@
     import {
       setAdminSessionAuthenticated,
       isAdminSessionAuthenticated,
-      getExpectedAdminPassword
+      getExpectedAdminPassword,
+      getAdminToken,
+      setAdminToken
     } from "../admin.js";
 
     const form = document.getElementById("loginForm");
     const passwordEl = document.getElementById("password");
+    const tokenEl = document.getElementById("token");
     const statusEl = document.getElementById("status");
 
     function getSafeNext() {
@@ -24,6 +27,7 @@
     }
 
     const redirectTarget = getSafeNext();
+    if (tokenEl) tokenEl.value = getAdminToken();
     if (isAdminSessionAuthenticated()) {
       window.location.replace(redirectTarget);
     }
@@ -36,9 +40,14 @@
         return;
       }
 
+      const enteredToken = String(tokenEl?.value || "").trim();
+      if (!enteredToken) {
+        if (statusEl) statusEl.textContent = "Admin token is required.";
+        return;
+      }
+
+      setAdminToken(enteredToken);
       sessionStorage.setItem("toji_admin_just_logged_in_v1", "1");
       setAdminSessionAuthenticated(true);
       window.location.replace(redirectTarget);
     });
-  
-

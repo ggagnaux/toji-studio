@@ -388,8 +388,16 @@ async function initializeExternalLinksEditor() {
       externalLinksRows.appendChild(el("div", { class: "sub external-link-empty" }, "Failed to load links."));
     }
     if (externalLinksHint) externalLinksHint.textContent = "Load failed";
-    showToast(`Failed to load external links: ${err?.message || err}`, { tone: "error" });
+    const message = String(err?.message || err || "");
+    if (/unauthorized/i.test(message)) {
+      showToast("Failed to load external links: Unauthorized. Sign in again and enter the current admin token.", {
+        tone: "error"
+      });
+      return;
+    }
+    showToast(`Failed to load external links: ${message}`, { tone: "error" });
   }
 }
 
 initializeExternalLinksEditor();
+

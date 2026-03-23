@@ -1,3 +1,5 @@
-cd public
-cd toji-backend
+@echo off
+setlocal
+
+cd /d "%~dp0public\server"
 npm run dev

@@ -760,8 +760,26 @@ export function ensureSeriesMeta(state, options = {}){
 // API helpers (local-first)
 // --------------------
 
-// Local dev default. For same-origin deployment later, set to "".
-export const API_BASE = localStorage.getItem("toji_api_base") || "http://localhost:5179";
+// Same-origin by default; localStorage override is kept for local/dev edge cases.
+function resolveApiBase() {
+  const override = String(localStorage.getItem("toji_api_base") || "").trim().replace(/\/+$/, "");
+  if (override) return override;
+
+  const origin = String(window.location.origin || "").replace(/\/+$/, "");
+  if (!origin) return "";
+
+  try {
+    const current = new URL(origin);
+    const isLocalHost = ["localhost", "127.0.0.1"].includes(current.hostname);
+    if (isLocalHost && current.port && current.port !== "5179") {
+      return `${current.protocol}//${current.hostname}:5179`;
+    }
+  } catch {}
+
+  return origin;
+}
+
+export const API_BASE = resolveApiBase();
 
 const TOKEN_KEY = "toji_admin_token_v1";
 
@@ -1010,3 +1028,4 @@ export async function syncSeriesFromBackend(state){
 export async function deleteArtworkFromBackend(id){
   return apiFetch(`/api/admin/artworks/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+

@@ -121,7 +121,7 @@
 - [ ] Add password hashing and secure credential storage server-side
 - [ ] Add rate limiting + lockout/backoff for auth endpoints
 - [ ] Add CSRF/abuse review for admin mutations
-- [ ] Add a confirmation dialog PRIOR to any calls to external Ai systems.
+- [x] Add a confirmation dialog PRIOR to any calls to external Ai systems.
 
 
 ### 3.2 Content architecture consistency
@@ -140,21 +140,18 @@
 - [ ] Previous/Next navigation on artwork permalink
 - [ ] Accessibility pass (focus states, keyboard paths, announcements)
 - [ ] Performance pass (image loading strategy, query batching, bundle cleanup)
-- [ ] In Gallery.html, replace the floating jump bar with a small panel that will slide out or down from the top or left edge. in that panel will be links/buttons to allow jumping to each section.
 - [ ] Social Media Manager - Remove the 'Add Platform' panel. Instead, add a button to the 'Platform Configuration' panel called 'Add' and then display a modal dialog for adding the new platform.
-- [x] In Gallery.html, hide the jump panel when the mouse is not over it. Instead, shrink it down to the left and
-have it open when the mouse goes over it.
-- [x] Social Media Manager - Remove the 'Add Platform' panel. Instead, add a button to the 'Platform Configuration' panel called 'Add' and then display a modal dialog for adding the new platform.
-- [ ] Social Media Manager - Add icons next to the tab text for each social media site.
-- [ ] Admin - Add the ability to export all data to json files.
-- [ ] Gallery.html - Create tabs for 'Featured', 'Series' and 'All works'
-- [ ] Splash Screen - New animation - Mimic Missile Command game.
+- [x] Social Media Manager - Add icons next to the tab text for each social media site.
+- [x] Admin - Add the ability to export all data to json files.
+- [x] Gallery.html - Create tabs for 'Featured', 'Series' and 'All works'
+- [x] Splash Screen - New animation - Mimic Missile Command game.
 
 
 ### 3.5 Operational readiness
 - [ ] Environment/setup docs for local + deployed API (`ADMIN_TOKEN`, CORS, storage location)
 - [ ] Basic smoke tests for key API flows (upload, patch, delete, series CRUD)
 - [ ] Backup/restore guidance for SQLite + media storage
+- [x] Minification of javascript on build/deploy process.
 - [ ] Obfuscate markup (id's, classnames, etc.) during build/deploy step (I want to try this)
 
 ---
@@ -198,10 +195,10 @@ have it open when the mouse goes over it.
 - `public/admin/admin.js`
 
 ### Backend
-- `public/toji-backend/src/server.js`
-- `public/toji-backend/src/auth.js`
-- `public/toji-backend/src/db.js`
-- `public/toji-backend/src/routes/public.js`
-- `public/toji-backend/src/routes/admin.js`
-- `public/toji-backend/src/routes/upload.js`
-- `public/toji-backend/src/routes/series.js`
+- `public/server/src/server.js`
+- `public/server/src/auth.js`
+- `public/server/src/db.js`
+- `public/server/src/routes/public.js`
+- `public/server/src/routes/admin.js`
+- `public/server/src/routes/upload.js`
+- `public/server/src/routes/series.js`

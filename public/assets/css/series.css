@@ -5,6 +5,13 @@
       justify-self: start;
       box-shadow: none;
     }
-    .series-pieces-grid .thumb{
-      aspect-ratio: 16/10;
-    }
+.series-pieces-grid .thumb{
+  aspect-ratio: 16/10;
+}
+
+@media (max-width: 760px){
+  .series-panel--list,
+  .series-panel--detail{
+    grid-column: 1 / -1 !important;
+  }
+}

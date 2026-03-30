@@ -791,7 +791,12 @@ import {
         ),
         el("td", {},
           el("div", { style:"display:flex; gap:10px; align-items:center" },
-            el("div", { class:"thumbSm" },
+            el("a", {
+              class: "thumbSm",
+              href: `edit.html?id=${encodeURIComponent(a.id)}`,
+              title: a.title || "Edit artwork",
+              "aria-label": `Edit ${a.title || a.id}`
+            },
               el("img", { src: a.thumb || a.image, alt: a.title, loading:"lazy" })
             ),
             el("div", {},
@@ -945,4 +950,5 @@ import {
   });
 
   render();
+
 

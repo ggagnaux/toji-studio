@@ -7,6 +7,68 @@ const ADMIN_SESSION_KEY = "toji_admin_session_v1";
 const ADMIN_JUST_LOGGED_IN_KEY = "toji_admin_just_logged_in_v1";
 export const ADMIN_PASSWORD_KEY = "toji_admin_login_password_v1";
 export const ADMIN_DEFAULT_PASSWORD = "toji-admin";
+const ADMIN_NAV_ITEMS = Object.freeze([
+  { href: "index.html", label: "Image Manager" },
+  { href: "upload.html", label: "Upload" },
+  { href: "series.html", label: "Series Manager" },
+  { href: "linkmanager.html", label: "Link Manager" },
+  { href: "HomePageManager.html", label: "Home Page Manager" },
+  { href: "SocialMediaManager.html", label: "Social Media Manager" },
+  { href: "SocialQueue.html", label: "Bluesky Queue" },
+  { href: "DataManager.html", label: "Data Manager" },
+  { href: "OtherSettings.html", label: "Other Settings" },
+  { href: "SecurityManager.html", label: "Security Manager" }
+]);
+const ADMIN_QUICK_NAV_ITEMS = Object.freeze([
+  { href: "index.html", label: "Admin Home" },
+  { href: "SocialMediaManager.html", label: "Social Media Manager" },
+  { href: "SocialQueue.html", label: "Bluesky Queue" },
+  { href: "DataManager.html", label: "Data Manager" }
+]);
+
+function normalizeAdminPathname(pathname) {
+  return String(pathname || "").replace(/\\/g, "/").toLowerCase();
+}
+
+function isActiveAdminHref(href) {
+  const current = normalizeAdminPathname(window.location.pathname || "");
+  return current.endsWith("/admin/" + String(href || "").toLowerCase());
+}
+
+function renderAdminSidebarNav() {
+  const sidebar = document.querySelector(".sidebar");
+  if (!sidebar) return;
+  const extra = sidebar.querySelector("[data-admin-sidebar-extra]");
+  const preservedExtra = extra ? extra.cloneNode(true) : null;
+  sidebar.innerHTML = "";
+  ADMIN_NAV_ITEMS.forEach((item) => {
+    const link = document.createElement("a");
+    link.href = item.href;
+    link.textContent = item.label;
+    if (isActiveAdminHref(item.href)) link.classList.add("active");
+    sidebar.appendChild(link);
+  });
+  if (preservedExtra) {
+    const sep = document.createElement("hr");
+    sep.className = "sep";
+    sidebar.appendChild(sep);
+    sidebar.appendChild(preservedExtra);
+  }
+}
+
+function renderAdminQuickNav() {
+  const host = document.querySelector("[data-admin-quicknav]");
+  if (!host) return;
+  host.innerHTML = "";
+  ADMIN_QUICK_NAV_ITEMS.forEach((item) => {
+    const link = document.createElement("a");
+    link.className = "btn mini";
+    link.href = item.href;
+    link.textContent = item.label;
+    if (isActiveAdminHref(item.href)) link.classList.add("active");
+    host.appendChild(link);
+  });
+}
 
 function enforceAdminSession() {
   if (typeof window === "undefined") return;
@@ -32,6 +94,7 @@ export function isAdminSessionAuthenticated() {
 
 export function clearAdminSession() {
   setAdminSessionAuthenticated(false);
+  if (typeof window !== "undefined") localStorage.removeItem(TOKEN_KEY);
 }
 
 export function getExpectedAdminPassword() {
@@ -220,7 +283,7 @@ export function ensureBaseStyles() {
     .table th{
       color:var(--muted);
       font-weight:600;
-      font-size:13px;
+      font-size:18px;
       position:sticky;
       top:0;
       z-index:21;
@@ -244,13 +307,14 @@ export function ensureBaseStyles() {
       color:var(--text);
       background: var(--chip-bg);
     }
-    .admin-toast-stack{
-      position: fixed;
-      right: 16px;
-      bottom: 16px;
-      display: grid;
-      gap: 10px;
-      width: min(92vw, 420px);
+	    .admin-toast-stack{
+	      position: fixed;
+	      left: 50%;
+	      top: 16px;
+	      transform: translateX(-50%);
+	      display: grid;
+	      gap: 10px;
+	      width: min(92vw, 420px);
       z-index: 9999;
       pointer-events: none;
     }
@@ -370,10 +434,19 @@ export function ensureBaseStyles() {
       border-color: var(--accent-border);
       background: var(--accent-soft);
     }
-    .admin-confirm__btn--primary{
-      border-color: var(--accent-border);
-      background: var(--accent-soft);
-    }
+	    .admin-confirm__btn--primary{
+	      border-color: var(--accent-border);
+	      background: var(--accent-soft);
+	    }
+	    .admin-confirm__btn--danger{
+	      border-color: rgba(255,80,80,.35);
+	      background: rgba(255,80,80,.12);
+	      color: #ffd6d6;
+	    }
+	    .admin-confirm__btn--danger:hover{
+	      border-color: rgba(255,80,80,.52);
+	      background: rgba(255,80,80,.2);
+	    }
     @keyframes adminToastIn{
       from{ opacity:0; transform:translateY(8px); }
       to{ opacity:1; transform:translateY(0); }
@@ -507,7 +580,8 @@ export function confirmToast(message, opts = {}) {
     confirmLabel = "Confirm",
     cancelLabel = "Cancel",
     tone = "warn",
-    highlightText = ""
+    highlightText = "",
+    destructive = false
   } = opts;
 
   return new Promise((resolve) => {
@@ -538,9 +612,11 @@ export function confirmToast(message, opts = {}) {
     cancelBtn.className = "admin-confirm__btn";
     cancelBtn.textContent = cancelLabel;
 
+    const destructiveConfirm = destructive || /delete|remove|reset|cleanup|replace|unbind|destroy/i.test(String(confirmLabel || ""));
+
     const confirmBtn = document.createElement("button");
     confirmBtn.type = "button";
-    confirmBtn.className = "admin-confirm__btn admin-confirm__btn--primary";
+    confirmBtn.className = `admin-confirm__btn ${destructiveConfirm ? "admin-confirm__btn--danger" : "admin-confirm__btn--primary"}`;
     confirmBtn.textContent = confirmLabel;
 
     actions.append(cancelBtn, confirmBtn);
@@ -647,7 +723,13 @@ function initAdminNavMenu() {
 
 function initAdminSidebarControls() {
   const sidebar = document.querySelector(".sidebar");
-  if (!sidebar) return;
+  if (!sidebar) {
+    renderAdminQuickNav();
+    return;
+  }
+
+  renderAdminSidebarNav();
+  renderAdminQuickNav();
   if (sidebar.querySelector("[data-admin-logout]")) return;
 
   const logoutBtn = document.createElement("button");
@@ -655,8 +737,8 @@ function initAdminSidebarControls() {
   logoutBtn.className = "btn logout-btn";
   logoutBtn.setAttribute("data-admin-logout", "1");
   logoutBtn.textContent = "Log out";
-  logoutBtn.addEventListener("click", () => {
-    clearAdminSession();
+  logoutBtn.addEventListener("click", async () => {
+    await logoutAdminSession();
     window.location.href = "login.html";
   });
 
@@ -782,49 +864,51 @@ function resolveApiBase() {
 export const API_BASE = resolveApiBase();
 
 const TOKEN_KEY = "toji_admin_token_v1";
+const SESSION_SENTINEL_TOKEN = "__session__";
+
+function getStoredAdminToken() {
+  return String(localStorage.getItem(TOKEN_KEY) || "").trim();
+}
 
 export function getAdminToken() {
-  return localStorage.getItem(TOKEN_KEY) || "";
+  const stored = getStoredAdminToken();
+  if (stored) return stored;
+  return isAdminSessionAuthenticated() ? SESSION_SENTINEL_TOKEN : "";
 }
 
 export function setAdminToken(token) {
-  localStorage.setItem(TOKEN_KEY, String(token || "").trim());
+  const value = String(token || "").trim();
+  if (!value) {
+    localStorage.removeItem(TOKEN_KEY);
+    return;
+  }
+  localStorage.setItem(TOKEN_KEY, value);
 }
 
-// export async function apiFetch(path, options = {}) {
-//   const token = getAdminToken();
-//   const headers = new Headers(options.headers || {});
-//   if (token) headers.set("Authorization", `Bearer ${token}`);
-
-//   // Don't set Content-Type for FormData; browser will set boundary.
-//   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-
-//   if (!res.ok) {
-//     let msg = `${res.status} ${res.statusText}`;
-//     try {
-//       const j = await res.json();
-//       if (j?.error) msg = j.error;
-//     } catch {}
-//     throw new Error(msg);
-//   }
-
-//   // Handle empty responses safely
-//   const ct = res.headers.get("content-type") || "";
-//   if (ct.includes("application/json")) return res.json();
-//   return res.text();
-// }
-
+export async function logoutAdminSession() {
+  try {
+    await fetch(`${API_BASE}/api/admin/session/logout`, {
+      method: "POST",
+      credentials: "include"
+    });
+  } catch {}
+  clearAdminSession();
+}
 
 export async function apiFetch(path, opts = {}) {
   const url = `${API_BASE}${path}`;
   console.log("[apiFetch] start", url, opts);
 
+  const headers = {
+    ...(opts.headers || {})
+  };
+  const token = getStoredAdminToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const res = await fetch(url, {
     ...opts,
-    headers: {
-      ...(opts.headers || {}),
-      "Authorization": `Bearer ${getAdminToken()}`
-    }
+    credentials: "include",
+    headers
   });
 
   console.log("[apiFetch] response", res.status, res.statusText);
@@ -834,7 +918,10 @@ export async function apiFetch(path, opts = {}) {
 
   let json;
   try { json = text ? JSON.parse(text) : null; } catch { json = { raw: text }; }
-  if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    if (res.status === 401) clearAdminSession();
+    throw new Error(json?.error || `${res.status} ${res.statusText}`);
+  }
   return json;
 }
 
@@ -1028,4 +1115,10 @@ export async function syncSeriesFromBackend(state){
 export async function deleteArtworkFromBackend(id){
   return apiFetch(`/api/admin/artworks/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+
+
+
+
+
 

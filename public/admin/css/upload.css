@@ -4,9 +4,27 @@
       padding:12px;
     }
     .upload-section + .upload-section{ margin-top:12px; }
-    .upload-section-backend{ background: color-mix(in srgb, var(--panel) 86%, var(--accent) 14%); }
     .upload-section-originals{ background: color-mix(in srgb, var(--panel) 88%, var(--alternateaccent) 12%); }
     .upload-section-batch{ background: color-mix(in srgb, var(--panel) 90%, var(--muted) 10%); }
+    .tag-filter-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-bottom:10px;
+    }
+    .tag-filter-pill{
+      min-width:34px;
+      justify-content:center;
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+    }
+    .tag-filter-pill.is-active{
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--text);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
     .file-picker-shell{
       border: 1px dashed color-mix(in srgb, var(--accent) 48%, var(--line));
       border-radius: 14px;
@@ -94,11 +112,35 @@
         background: color-mix(in srgb, var(--panel) 88%, var(--alternateaccent) 12%);
       }
     }
-    .status-pill{
-      border-radius:999px;
-      padding:7px 12px;
+    .status-toggle{
+      display:inline-grid;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:0;
+      border:1px solid var(--line);
+      border-radius:14px;
+      overflow:hidden;
+      background: color-mix(in srgb, var(--panel) 92%, var(--muted) 8%);
+      width:min(100%, 360px);
+      margin-top:4px;
     }
-    .status-pill.active{
+    .status-toggle-option{
+      border:0;
+      border-right:1px solid var(--line);
+      border-radius:0;
+      padding:9px 12px;
+      justify-content:center;
+      background:transparent;
+      box-shadow:none;
+    }
+    .status-toggle-option:last-child{
+      border-right:0;
+    }
+    .status-toggle-option:hover{
+      transform:none;
+      box-shadow:none;
+      background: color-mix(in srgb, var(--panel) 82%, var(--accent-soft) 18%);
+    }
+    .status-toggle-option.active{
       border-color: var(--accent-border);
       background: var(--accent-soft);
       color: var(--text);

@@ -5,9 +5,5 @@ public/server/node_modules/
 public/server/.env
 public/server/.env.*
 public/server/.env copy
-public/server/dist/node_modules/
-public/server/dist/.env
-public/server/dist/.env.*
+public/server/dist/
 
-# Archived legacy backend (kept for reference only)
-archive/toji-backend-NOTUSED/

@@ -525,7 +525,7 @@ import {
 
     // No token? stop here (local cache removed)
     if (!getAdminToken()) {
-      showToast("Deleted locally, but no admin token set - backend was not updated.", { tone: "warn", duration: 3200 });
+      showToast("Deleted locally, but no active admin session was available, so the backend was not updated.", { tone: "warn", duration: 3200 });
       return;
     }
 
@@ -945,41 +945,4 @@ import {
   });
 
   render();
-
-  // ---------------------------
-  // Cleanup files (admin-only)
-  // ---------------------------
-  const cleanupBtn = document.getElementById("cleanupBtn");
-  const setCleanup = (m, tone = "info") => {
-    if (!m) return;
-    showToast(m, { tone });
-  };
-
-  cleanupBtn?.addEventListener("click", async () => {
-    const ok = await confirmToast(
-      "Cleanup orphan files (variants/originals) and broken variant rows?",
-      { confirmLabel: "Run cleanup", cancelLabel: "Cancel", tone: "warn" }
-    );
-    if (!ok) return;
-
-    if (!getAdminToken()) return setCleanup("Set admin token in Upload page first.", "warn");
-
-    setCleanup("Cleaning...", "info");
-
-    try{
-      const { API_BASE } = await import("../admin.js");
-      const res = await fetch(`${API_BASE}/api/admin/cleanup`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${getAdminToken()}` }
-      });
-
-      const j = await res.json();
-      if (!res.ok) throw new Error(j?.error || `${res.status} ${res.statusText}`);
-
-      setCleanup(`Done. Deleted variants: ${j.deletedVariantFiles}, originals: ${j.deletedOriginalFiles}, broken rows: ${j.deletedBrokenVariantRows}.`, "success");
-    }catch(err){
-      setCleanup(`Cleanup failed: ${err?.message || err}`, "error");
-    }
-  });
-
 

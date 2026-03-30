@@ -20,8 +20,24 @@ import {
   getAllowedSocialPlatform,
   getAllowedSocialPlatformIds
 } from "../config/social-platforms.js";
+import { publishArtworkToBluesky } from "../services/social/bluesky.js";
+import { publishArtworkToLinkedIn } from "../services/social/linkedin.js";
 
 export const adminRouter = Router();
+const DATA_EXPORT_FORMAT = "toji-data-export";
+const DATA_EXPORT_VERSION = 1;
+const DATA_IMPORT_SAFE_TABLES = new Set(["settings", "social_platforms", "external_links"]);
+const DATA_TABLE_DEFINITIONS = Object.freeze([
+  { name: "artworks", label: "Artworks", exportSql: "SELECT * FROM artworks ORDER BY updatedAt DESC, createdAt DESC, id ASC", countSql: "SELECT COUNT(*) AS count FROM artworks", importSupported: false, importNotes: "Export only in v1." },
+  { name: "variants", label: "Variants", exportSql: "SELECT * FROM variants ORDER BY artworkId ASC, kind ASC, id ASC", countSql: "SELECT COUNT(*) AS count FROM variants", importSupported: false, importNotes: "Export only in v1." },
+  { name: "settings", label: "Settings", exportSql: "SELECT * FROM settings ORDER BY key ASC", countSql: "SELECT COUNT(*) AS count FROM settings", importSupported: true, importNotes: "Safe import supported in v1." },
+  { name: "series", label: "Series", exportSql: "SELECT * FROM series ORDER BY sortOrder ASC, name COLLATE NOCASE ASC, slug ASC", countSql: "SELECT COUNT(*) AS count FROM series", importSupported: false, importNotes: "Export only in v1." },
+  { name: "social_platforms", label: "Social Platforms", exportSql: "SELECT * FROM social_platforms ORDER BY id ASC", countSql: "SELECT COUNT(*) AS count FROM social_platforms", importSupported: true, importNotes: "Safe import supported in v1." },
+  { name: "external_links", label: "External Links", exportSql: "SELECT * FROM external_links ORDER BY sortOrder ASC, updatedAt DESC, id ASC", countSql: "SELECT COUNT(*) AS count FROM external_links", importSupported: true, importNotes: "Safe import supported in v1." },
+  { name: "artwork_social_posts", label: "Artwork Social Posts", exportSql: "SELECT * FROM artwork_social_posts ORDER BY artworkId ASC, platformId ASC, id ASC", countSql: "SELECT COUNT(*) AS count FROM artwork_social_posts", importSupported: false, importNotes: "Export only in v1." }
+]);
+const DATA_TABLE_DEFINITION_MAP = new Map(DATA_TABLE_DEFINITIONS.map((definition) => [definition.name, definition]));
+const ALLOWED_IMPORT_SOCIAL_PLATFORM_IDS = new Set(getAllowedSocialPlatformIds());
 
 adminRouter.get("/admin/settings/image-variants", (req, res) => {
   res.json(getImageVariantSettings());
@@ -40,24 +56,363 @@ adminRouter.put("/admin/settings/contact", (req, res) => {
   const saved = setContactSettings(req.body || {});
   res.json(saved);
 });
-adminRouter.get("/admin/export/database.json", (req, res) => {
-  const snapshot = {
+function getDataTableDefinition(tableName) {
+  return DATA_TABLE_DEFINITION_MAP.get(cleanText(tableName));
+}
+
+function listDataTableMetadata() {
+  return DATA_TABLE_DEFINITIONS.map((definition) => ({
+    name: definition.name,
+    label: definition.label,
+    rowCount: Number(db.prepare(definition.countSql).get()?.count || 0),
+    exportSupported: true,
+    importSupported: !!definition.importSupported,
+    importNotes: definition.importNotes || ""
+  }));
+}
+
+function normalizeRequestedDataTableNames(raw, { importOnly = false } = {}) {
+  const input = Array.isArray(raw) ? raw : [];
+  const names = [];
+  const seen = new Set();
+  for (const item of input) {
+    const name = cleanText(item);
+    if (!name || seen.has(name)) continue;
+    const definition = getDataTableDefinition(name);
+    if (!definition) continue;
+    if (importOnly && !definition.importSupported) continue;
+    seen.add(name);
+    names.push(name);
+  }
+  return names;
+}
+
+function collectInvalidRequestedDataTableNames(raw, { importOnly = false } = {}) {
+  const input = Array.isArray(raw) ? raw : [];
+  const invalid = [];
+  const seen = new Set();
+  for (const item of input) {
+    const name = cleanText(item);
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    const definition = getDataTableDefinition(name);
+    if (!definition) {
+      invalid.push(name);
+      continue;
+    }
+    if (importOnly && !definition.importSupported) invalid.push(name);
+  }
+  return invalid;
+}
+
+function selectRowsForDataTable(tableName) {
+  const definition = getDataTableDefinition(tableName);
+  if (!definition) throw new Error("Unknown data table: " + tableName);
+  return db.prepare(definition.exportSql).all();
+}
+
+function buildDataExportPayload(tableNames) {
+  const names = Array.isArray(tableNames) && tableNames.length
+    ? tableNames
+    : DATA_TABLE_DEFINITIONS.map((definition) => definition.name);
+  const tables = {};
+  for (const name of names) tables[name] = selectRowsForDataTable(name);
+  return {
+    format: DATA_EXPORT_FORMAT,
+    version: DATA_EXPORT_VERSION,
     exportedAt: nowIso(),
-    tables: {
-      artworks: db.prepare(`SELECT * FROM artworks ORDER BY updatedAt DESC, createdAt DESC, id ASC`).all(),
-      variants: db.prepare(`SELECT * FROM variants ORDER BY artworkId ASC, kind ASC, id ASC`).all(),
-      settings: db.prepare(`SELECT * FROM settings ORDER BY key ASC`).all(),
-      series: db.prepare(`SELECT * FROM series ORDER BY sortOrder ASC, name COLLATE NOCASE ASC, slug ASC`).all(),
-      external_links: db.prepare(`SELECT * FROM external_links ORDER BY sortOrder ASC, updatedAt DESC, id ASC`).all(),
-      social_platforms: db.prepare(`SELECT * FROM social_platforms ORDER BY id ASC`).all(),
-      artwork_social_posts: db.prepare(`SELECT * FROM artwork_social_posts ORDER BY artworkId ASC, platformId ASC, id ASC`).all()
+    selectedTables: names,
+    tableCount: names.length,
+    tables
+  };
+}
+
+function buildDataExportFilename(tableNames) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  if (Array.isArray(tableNames) && tableNames.length === 1) {
+    return "toji-" + tableNames[0] + "-export-" + stamp + ".json";
+  }
+  return "toji-database-export-" + stamp + ".json";
+}
+
+function sendJsonDownload(res, payload, filename) {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Content-Disposition", 'attachment; filename="' + filename + '"');
+  res.send(JSON.stringify(payload, null, 2));
+}
+
+function parseDataImportBundle(raw) {
+  const payload = raw && typeof raw === "object" && !Array.isArray(raw)
+    ? (raw.bundle && typeof raw.bundle === "object" && !Array.isArray(raw.bundle) ? raw.bundle : raw)
+    : null;
+  if (!payload) throw new Error("Import payload must be an object.");
+  const tables = payload.tables;
+  if (!tables || typeof tables !== "object" || Array.isArray(tables)) {
+    throw new Error("Import bundle must include a tables object.");
+  }
+  return {
+    format: cleanText(payload.format) || DATA_EXPORT_FORMAT,
+    version: Number(payload.version || 0) || 0,
+    exportedAt: cleanText(payload.exportedAt),
+    tables
+  };
+}
+
+function validateImportRow(tableName, row, index) {
+  const errors = [];
+  if (!row || typeof row !== "object" || Array.isArray(row)) {
+    errors.push("Row " + (index + 1) + " must be an object.");
+    return errors;
+  }
+  if (tableName === "settings") {
+    if (!cleanText(row.key)) errors.push("Row " + (index + 1) + ": settings.key is required.");
+    return errors;
+  }
+  if (tableName === "social_platforms") {
+    const id = cleanSlug(row.id);
+    if (!id) errors.push("Row " + (index + 1) + ": social_platforms.id is required.");
+    else if (!ALLOWED_IMPORT_SOCIAL_PLATFORM_IDS.has(id)) errors.push("Row " + (index + 1) + ": social_platforms.id must be an allowed platform id.");
+    if (!cleanText(row.name)) errors.push("Row " + (index + 1) + ": social_platforms.name is required.");
+    return errors;
+  }
+  if (tableName === "external_links") {
+    if (!cleanSlug(row.id)) errors.push("Row " + (index + 1) + ": external_links.id is required.");
+    if (!cleanText(row.label)) errors.push("Row " + (index + 1) + ": external_links.label is required.");
+    if (!cleanExternalLinkUrl(row.url)) errors.push("Row " + (index + 1) + ": external_links.url is required.");
+    return errors;
+  }
+  errors.push("Import is not supported for " + tableName + " in v1.");
+  return errors;
+}
+
+function previewDataImportBundle(bundle) {
+  const tables = [];
+  for (const [tableName, rawRows] of Object.entries(bundle.tables || {})) {
+    const definition = getDataTableDefinition(tableName);
+    const issues = [];
+    const warnings = [];
+    const rows = Array.isArray(rawRows) ? rawRows : null;
+    if (!definition) issues.push('Unknown table "' + tableName + '".');
+    if (!rows) issues.push("Table payload must be an array.");
+    if (definition && !definition.importSupported) warnings.push(definition.importNotes || "Export only in v1.");
+    let validRowCount = 0;
+    if (definition && definition.importSupported && rows) {
+      rows.forEach((row, index) => {
+        const rowErrors = validateImportRow(tableName, row, index);
+        if (rowErrors.length) issues.push(...rowErrors);
+        else validRowCount += 1;
+      });
+    }
+    tables.push({
+      name: tableName,
+      label: definition?.label || tableName,
+      rowCount: rows ? rows.length : 0,
+      exportSupported: !!definition,
+      importSupported: !!definition?.importSupported,
+      importNotes: definition?.importNotes || "Unknown table.",
+      validRowCount,
+      issues,
+      warnings
+    });
+  }
+  const importableTableNames = tables.filter((table) => table.importSupported && !table.issues.length).map((table) => table.name);
+  return {
+    format: bundle.format,
+    version: bundle.version,
+    exportedAt: bundle.exportedAt,
+    tables,
+    importableTableNames,
+    summary: {
+      tableCount: tables.length,
+      importableTableCount: importableTableNames.length,
+      issueCount: tables.reduce((sum, table) => sum + table.issues.length, 0),
+      warningCount: tables.reduce((sum, table) => sum + table.warnings.length, 0)
     }
   };
+}
 
-  const filename = `toji-database-export-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-  res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-  res.send(JSON.stringify(snapshot, null, 2));
+function normalizeImportedSettingRow(row, updatedAt) {
+  return {
+    key: cleanText(row.key),
+    value: typeof row.value === "string" ? row.value : JSON.stringify(row.value ?? ""),
+    updatedAt: cleanText(row.updatedAt) || updatedAt
+  };
+}
+
+function normalizeImportedSocialPlatformRow(row, timestamp) {
+  const config = row?.config && typeof row.config === "object" && !Array.isArray(row.config) ? row.config : parseJsonObject(row?.configJson, {});
+  const auth = row?.auth && typeof row.auth === "object" && !Array.isArray(row.auth) ? row.auth : parseJsonObject(row?.authJson, {});
+  const iconLocation = cleanText(row.iconLocation || config.iconLocation);
+  return {
+    id: cleanSlug(row.id),
+    name: cleanText(row.name),
+    category: cleanCategory(row.category || "social"),
+    enabled: toDbBool(row.enabled, 1),
+    iconLocation,
+    configJson: JSON.stringify({ ...config, iconLocation }),
+    authJson: JSON.stringify(auth),
+    createdAt: cleanText(row.createdAt) || timestamp,
+    updatedAt: cleanText(row.updatedAt) || timestamp
+  };
+}
+
+function normalizeImportedExternalLinkRow(row, timestamp) {
+  return {
+    id: cleanSlug(row.id),
+    label: cleanText(row.label),
+    url: cleanExternalLinkUrl(row.url),
+    category: cleanExternalLinkCategory(row.category || "other"),
+    enabled: toDbBool(row.enabled, 1),
+    sortOrder: Number.isFinite(Number(row.sortOrder)) ? Number(row.sortOrder) : 0,
+    createdAt: cleanText(row.createdAt) || timestamp,
+    updatedAt: cleanText(row.updatedAt) || timestamp
+  };
+}
+
+function importSettingsRows(rows, timestamp) {
+  const existsStmt = db.prepare("SELECT 1 FROM settings WHERE key=?");
+  const upsertStmt = db.prepare(`
+    INSERT INTO settings (key, value, updatedAt)
+    VALUES (@key, @value, @updatedAt)
+    ON CONFLICT(key) DO UPDATE SET
+      value=excluded.value,
+      updatedAt=excluded.updatedAt
+  `);
+  const summary = { table: "settings", inserted: 0, updated: 0, skipped: 0, failed: 0, rowCount: rows.length };
+  for (const row of rows) {
+    const payload = normalizeImportedSettingRow(row, timestamp);
+    const exists = !!existsStmt.get(payload.key);
+    upsertStmt.run(payload);
+    if (exists) summary.updated += 1;
+    else summary.inserted += 1;
+  }
+  return summary;
+}
+
+function importSocialPlatformRows(rows, timestamp) {
+  const existsStmt = db.prepare("SELECT 1 FROM social_platforms WHERE id=?");
+  const upsertStmt = db.prepare(`
+    INSERT INTO social_platforms (
+      id, name, category, enabled, iconLocation, configJson, authJson, createdAt, updatedAt
+    ) VALUES (
+      @id, @name, @category, @enabled, @iconLocation, @configJson, @authJson, @createdAt, @updatedAt
+    )
+    ON CONFLICT(id) DO UPDATE SET
+      name=excluded.name,
+      category=excluded.category,
+      enabled=excluded.enabled,
+      iconLocation=excluded.iconLocation,
+      configJson=excluded.configJson,
+      authJson=excluded.authJson,
+      updatedAt=excluded.updatedAt
+  `);
+  const summary = { table: "social_platforms", inserted: 0, updated: 0, skipped: 0, failed: 0, rowCount: rows.length };
+  for (const row of rows) {
+    const payload = normalizeImportedSocialPlatformRow(row, timestamp);
+    const exists = !!existsStmt.get(payload.id);
+    upsertStmt.run(payload);
+    if (exists) summary.updated += 1;
+    else summary.inserted += 1;
+  }
+  return summary;
+}
+
+function importExternalLinkRows(rows, timestamp) {
+  const existsStmt = db.prepare("SELECT 1 FROM external_links WHERE id=?");
+  const upsertStmt = db.prepare(`
+    INSERT INTO external_links (
+      id, label, url, category, enabled, sortOrder, createdAt, updatedAt
+    ) VALUES (
+      @id, @label, @url, @category, @enabled, @sortOrder, @createdAt, @updatedAt
+    )
+    ON CONFLICT(id) DO UPDATE SET
+      label=excluded.label,
+      url=excluded.url,
+      category=excluded.category,
+      enabled=excluded.enabled,
+      sortOrder=excluded.sortOrder,
+      updatedAt=excluded.updatedAt
+  `);
+  const summary = { table: "external_links", inserted: 0, updated: 0, skipped: 0, failed: 0, rowCount: rows.length };
+  for (const row of rows) {
+    const payload = normalizeImportedExternalLinkRow(row, timestamp);
+    const exists = !!existsStmt.get(payload.id);
+    upsertStmt.run(payload);
+    if (exists) summary.updated += 1;
+    else summary.inserted += 1;
+  }
+  return summary;
+}
+
+function importDataRowsForTable(tableName, rows, timestamp) {
+  if (tableName === "settings") return importSettingsRows(rows, timestamp);
+  if (tableName === "social_platforms") return importSocialPlatformRows(rows, timestamp);
+  if (tableName === "external_links") return importExternalLinkRows(rows, timestamp);
+  throw new Error("Import is not supported for " + tableName + " in v1.");
+}
+
+adminRouter.get("/admin/data/tables", (req, res) => {
+  res.json({ tables: listDataTableMetadata() });
+});
+
+adminRouter.post("/admin/data/export", (req, res) => {
+  const invalidTableNames = collectInvalidRequestedDataTableNames(req.body?.tables);
+  if (invalidTableNames.length) return res.status(400).json({ error: "Unknown export table selection: " + invalidTableNames.join(", ") });
+  const tableNames = normalizeRequestedDataTableNames(req.body?.tables);
+  if (!tableNames.length) return res.status(400).json({ error: "Select at least one valid table to export." });
+  const payload = buildDataExportPayload(tableNames);
+  sendJsonDownload(res, payload, buildDataExportFilename(tableNames));
+});
+
+adminRouter.post("/admin/data/import/preview", (req, res) => {
+  try {
+    const bundle = parseDataImportBundle(req.body || {});
+    res.json(previewDataImportBundle(bundle));
+  } catch (error) {
+    res.status(400).json({ error: cleanText(error?.message || error) || "Import preview failed." });
+  }
+});
+
+adminRouter.post("/admin/data/import/commit", (req, res) => {
+  try {
+    const mode = cleanText(req.body?.mode || "upsert").toLowerCase();
+    if (mode !== "upsert") return res.status(400).json({ error: "Only upsert import mode is supported in v1." });
+    const bundle = parseDataImportBundle(req.body || {});
+    const preview = previewDataImportBundle(bundle);
+    const previewMap = new Map(preview.tables.map((table) => [table.name, table]));
+    const invalidTableNames = collectInvalidRequestedDataTableNames(req.body?.tables, { importOnly: true });
+    if (invalidTableNames.length) return res.status(400).json({ error: "Unsupported import table selection: " + invalidTableNames.join(", ") });
+    const selectedTables = normalizeRequestedDataTableNames(req.body?.tables, { importOnly: true });
+    if (!selectedTables.length) return res.status(400).json({ error: "Select at least one supported table to import." });
+    for (const tableName of selectedTables) {
+      const tablePreview = previewMap.get(tableName);
+      if (!tablePreview) return res.status(400).json({ error: "Selected table is not present in the import bundle: " + tableName });
+      if (!tablePreview.importSupported) return res.status(400).json({ error: "Import is not supported for " + tableName + " in v1." });
+      if (tablePreview.issues.length) return res.status(400).json({ error: "Import preview found validation issues for " + tableName + ". Resolve them before importing." });
+    }
+    const importedAt = nowIso();
+    const result = { ok: true, mode, importedAt, selectedTables, tables: [], totals: { inserted: 0, updated: 0, skipped: 0, failed: 0 } };
+    const runImport = db.transaction(() => {
+      for (const tableName of selectedTables) {
+        const tableResult = importDataRowsForTable(tableName, bundle.tables[tableName] || [], importedAt);
+        result.tables.push(tableResult);
+        result.totals.inserted += tableResult.inserted;
+        result.totals.updated += tableResult.updated;
+        result.totals.skipped += tableResult.skipped;
+        result.totals.failed += tableResult.failed;
+      }
+    });
+    runImport();
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: cleanText(error?.message || error) || "Import failed." });
+  }
+});
+
+adminRouter.get("/admin/export/database.json", (req, res) => {
+  const allTables = DATA_TABLE_DEFINITIONS.map((definition) => definition.name);
+  const payload = buildDataExportPayload(allTables);
+  sendJsonDownload(res, payload, buildDataExportFilename(allTables));
 });
 
 adminRouter.get("/admin/artworks", (req, res) => {
@@ -239,6 +594,27 @@ function parseJsonObject(raw, fallback = {}) {
   return { ...fallback };
 }
 
+function normalizeSocialHashtag(tag) {
+  return cleanText(tag)
+    .replace(/^#+/, "")
+    .replace(/\s+/g, "")
+    .replace(/[^a-z0-9_]+/gi, "")
+    .toLowerCase();
+}
+
+function listDefaultSocialHashtags(raw) {
+  const values = Array.isArray(raw)
+    ? raw
+    : cleanText(raw).split(/[,;\n]+/g);
+  return Array.from(new Set(values.map(normalizeSocialHashtag).filter(Boolean)));
+}
+
+function composeSocialCaption({ caption, fallbackText = "", suffix = "", hashtags = [] }) {
+  const base = cleanText(caption) || cleanText(fallbackText);
+  const tail = cleanText(suffix);
+  const hashtagLine = listDefaultSocialHashtags(hashtags).map((tag) => `#${tag}`).join(" ");
+  return [base, tail, hashtagLine].filter(Boolean).join("\n\n").trim();
+}
 function mapSocialPostRow(row) {
   return {
     ...row,
@@ -794,7 +1170,10 @@ adminRouter.get("/admin/social/posts", (req, res) => {
       sp.category AS platformCategory,
       sp.iconLocation AS platformIconLocation,
       sp.enabled AS platformEnabled,
-      a.title AS artworkTitle
+      a.title AS artworkTitle,
+      a.status AS artworkStatus,
+      (SELECT path FROM variants v WHERE v.artworkId = a.id AND v.kind = 'thumb') AS artworkThumb,
+      (SELECT path FROM variants v WHERE v.artworkId = a.id AND v.kind = 'web') AS artworkImage
     FROM artwork_social_posts asp
     JOIN social_platforms sp ON sp.id = asp.platformId
     JOIN artworks a ON a.id = asp.artworkId
@@ -919,6 +1298,224 @@ adminRouter.put("/admin/artworks/:id/social-posts/:platformId", (req, res) => {
   });
 });
 
+adminRouter.post("/admin/artworks/:id/social-posts/:platformId/publish", async (req, res) => {
+  const artworkId = cleanText(req.params.id);
+  const platformId = cleanText(req.params.platformId).toLowerCase();
+  if (platformId !== "bluesky" && platformId !== "linkedin") {
+    return res.status(400).json({ error: "Direct publish is currently supported only for Bluesky and LinkedIn." });
+  }
+
+  const artwork = db.prepare(`
+    SELECT a.*,
+      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='thumb') AS thumb,
+      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image
+    FROM artworks a
+    WHERE a.id=?
+  `).get(artworkId);
+  if (!artwork) return res.status(404).json({ error: "Artwork not found." });
+
+  const platformRow = db.prepare(`SELECT * FROM social_platforms WHERE id=?`).get(platformId);
+  if (!platformRow) return res.status(404).json({ error: "Platform not found." });
+  const platform = mapPlatformRow(platformRow);
+  if (!platform.enabled) return res.status(400).json({ error: "Platform is disabled." });
+
+  const postingMode = cleanText(platform.config?.postingMode || "manual").toLowerCase();
+  if (postingMode !== "api") {
+    return res.status(400).json({ error: `${platform.name || platformId} is not in API mode.` });
+  }
+
+  const currentPost = db.prepare(`SELECT * FROM artwork_social_posts WHERE artworkId=? AND platformId=?`).get(artworkId, platformId);
+  const text = composeSocialCaption({
+    caption: currentPost?.caption,
+    fallbackText: artwork.description || artwork.title,
+    suffix: platform.config?.defaultCaptionSuffix,
+    hashtags: platform.config?.defaultHashtags
+  });
+  if (!text) {
+    return res.status(400).json({ error: `${platform.name || platformId} post text is empty.` });
+  }
+  if (platformId === "bluesky" && text.length > 300) {
+    return res.status(400).json({ error: `Bluesky post exceeds 300 characters (${text.length}).` });
+  }
+  if (platformId === "linkedin" && text.length > 3000) {
+    return res.status(400).json({ error: `LinkedIn post exceeds 3000 characters (${text.length}).` });
+  }
+
+  const imagePath = cleanText(artwork.image || artwork.thumb);
+  if (!imagePath) {
+    return res.status(400).json({ error: "Artwork image is not available for publishing." });
+  }
+  const imageFile = variantPathToFilepath(imagePath);
+  if (!imageFile || !fs.existsSync(imageFile)) {
+    return res.status(400).json({ error: "Artwork media file could not be found on the server." });
+  }
+
+  const imageBuffer = fs.readFileSync(imageFile);
+  const imageMimeType = mimeFromFilename(imageFile);
+  const altText = cleanText(artwork.alt || artwork.title || artwork.description || "Artwork");
+  const now = nowIso();
+
+  try {
+    let published;
+    let publishPayload;
+
+    if (platformId === "bluesky") {
+      const identifier = cleanText(platform.auth?.clientId || platform.config?.accountHandle);
+      const appPassword = cleanText(platform.auth?.clientSecret);
+      if (!identifier || !appPassword) {
+        return res.status(400).json({ error: "Bluesky identifier and app password are required." });
+      }
+
+      published = await publishArtworkToBluesky({
+        identifier,
+        appPassword,
+        text,
+        imageBuffer,
+        imageMimeType,
+        altText,
+        aspectRatio: {
+          width: Number(artwork.width || 0),
+          height: Number(artwork.height || 0)
+        },
+        serviceUrl: cleanText(process.env.BLUESKY_PDS_URL || "https://bsky.social"),
+        handle: cleanText(platform.config?.accountHandle)
+      });
+
+      publishPayload = {
+        provider: "bluesky",
+        publishedAt: now,
+        uri: published.uri,
+        cid: published.cid,
+        did: published.did,
+        handle: published.handle,
+        textLength: text.length
+      };
+    } else {
+      const accessToken = cleanText(platform.auth?.accessToken || platform.auth?.clientSecret);
+      const owner = cleanText(platform.config?.accountId || platform.auth?.clientId || platform.config?.accountHandle);
+      if (!accessToken || !owner) {
+        return res.status(400).json({ error: "LinkedIn access token and organization/account id are required." });
+      }
+
+      published = await publishArtworkToLinkedIn({
+        accessToken,
+        commentary: text,
+        imageBuffer,
+        imageMimeType,
+        altText,
+        title: cleanText(artwork.title || "Artwork"),
+        owner,
+        apiBaseUrl: cleanText(process.env.LINKEDIN_API_BASE_URL || "https://api.linkedin.com"),
+        apiVersion: cleanText(process.env.LINKEDIN_API_VERSION || "202601")
+      });
+
+      publishPayload = {
+        provider: "linkedin",
+        publishedAt: now,
+        owner: published.owner,
+        imageUrn: published.imageUrn,
+        postUrn: published.postUrn,
+        apiVersion: published.apiVersion,
+        textLength: text.length
+      };
+    }
+
+    const next = {
+      caption: currentPost?.caption || "",
+      postUrl: published.postUrl,
+      externalPostId: published.externalPostId,
+      status: "posted",
+      payload: JSON.stringify(publishPayload),
+      errorMessage: "",
+      postedAt: now,
+      updatedAt: now
+    };
+
+    if (currentPost) {
+      db.prepare(`
+        UPDATE artwork_social_posts
+        SET status=@status, caption=@caption, postUrl=@postUrl, externalPostId=@externalPostId,
+            payload=@payload, errorMessage=@errorMessage, postedAt=@postedAt, updatedAt=@updatedAt
+        WHERE artworkId=@artworkId AND platformId=@platformId
+      `).run({ artworkId, platformId, ...next });
+    } else {
+      db.prepare(`
+        INSERT INTO artwork_social_posts (
+          id, artworkId, platformId, status, caption, postUrl, externalPostId,
+          payload, errorMessage, postedAt, createdAt, updatedAt
+        ) VALUES (
+          @id, @artworkId, @platformId, @status, @caption, @postUrl, @externalPostId,
+          @payload, @errorMessage, @postedAt, @createdAt, @updatedAt
+        )
+      `).run({
+        id: uid("asp"),
+        artworkId,
+        platformId,
+        ...next,
+        createdAt: now
+      });
+    }
+
+    const out = db.prepare(`
+      SELECT
+        asp.*,
+        sp.name AS platformName,
+        sp.category AS platformCategory,
+        sp.iconLocation AS platformIconLocation,
+        sp.enabled AS platformEnabled
+      FROM artwork_social_posts asp
+      JOIN social_platforms sp ON sp.id = asp.platformId
+      WHERE asp.artworkId=? AND asp.platformId=?
+    `).get(artworkId, platformId);
+
+    return res.json({
+      ...mapSocialPostRow(out),
+      platformEnabled: !!out.platformEnabled
+    });
+  } catch (err) {
+    const failure = {
+      caption: currentPost?.caption || "",
+      postUrl: currentPost?.postUrl || "",
+      externalPostId: currentPost?.externalPostId || "",
+      status: "failed",
+      payload: JSON.stringify({
+        provider: platformId,
+        attemptedAt: now,
+        textLength: text.length
+      }),
+      errorMessage: cleanText(err?.message || err) || `${platform.name || platformId} publish failed.`,
+      postedAt: currentPost?.postedAt || null,
+      updatedAt: now
+    };
+
+    if (currentPost) {
+      db.prepare(`
+        UPDATE artwork_social_posts
+        SET status=@status, caption=@caption, postUrl=@postUrl, externalPostId=@externalPostId,
+            payload=@payload, errorMessage=@errorMessage, postedAt=@postedAt, updatedAt=@updatedAt
+        WHERE artworkId=@artworkId AND platformId=@platformId
+      `).run({ artworkId, platformId, ...failure });
+    } else {
+      db.prepare(`
+        INSERT INTO artwork_social_posts (
+          id, artworkId, platformId, status, caption, postUrl, externalPostId,
+          payload, errorMessage, postedAt, createdAt, updatedAt
+        ) VALUES (
+          @id, @artworkId, @platformId, @status, @caption, @postUrl, @externalPostId,
+          @payload, @errorMessage, @postedAt, @createdAt, @updatedAt
+        )
+      `).run({
+        id: uid("asp"),
+        artworkId,
+        platformId,
+        ...failure,
+        createdAt: now
+      });
+    }
+
+    return res.status(502).json({ error: failure.errorMessage });
+  }
+});
 adminRouter.delete("/admin/artworks/:id/social-posts/:platformId", (req, res) => {
   const artworkId = cleanText(req.params.id);
   const platformId = cleanText(req.params.platformId);
@@ -1031,5 +1628,12 @@ adminRouter.post("/admin/cleanup", (req, res) => {
     deletedBrokenVariantRows
   });
 });
+
+
+
+
+
+
+
 
 

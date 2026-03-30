@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -12,7 +12,10 @@
 
   <main class="container">
     <section class="hero" style="padding-bottom:10px">
-      <button class="btn mini" id="backNavBtn" type="button" style="margin-bottom:10px">&larr; Back</button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+        <button class="btn mini" id="backNavBtn" type="button">&larr; Back</button>
+        <div data-admin-quicknav style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+      </div>
       <h1 id="h1">Edit artwork</h1>
       <p class="sub" id="sub">&mdash;</p>
     </section>
@@ -25,6 +28,9 @@
   <script type="module" src="./js/edit.js"></script>
 </body>
 </html>
+
+
+
 
 
 

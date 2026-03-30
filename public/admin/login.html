@@ -5,32 +5,144 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Studio - Admin Login</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
+  <style>
+    .login-form{
+      display:grid;
+      gap:10px;
+      margin-top:8px;
+    }
+    .login-row{
+      display:grid;
+      grid-template-columns:minmax(0, 1fr) auto;
+      gap:10px;
+      align-items:stretch;
+    }
+    .login-field{
+      position:relative;
+      min-width:0;
+    }
+    .login-input{
+      width:100%;
+      min-height:48px;
+      padding:20px 14px 8px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:transparent;
+      color:var(--text);
+      font:inherit;
+    }
+    .login-input:focus{
+      outline:none;
+      border-color:var(--accent-border);
+      box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+    .login-floating-label{
+      position:absolute;
+      left:14px;
+      top:50%;
+      transform:translateY(-50%);
+      color:var(--muted);
+      font-size:15px;
+      line-height:1;
+      pointer-events:none;
+      transition:top .16s ease, transform .16s ease, font-size .16s ease, color .16s ease;
+      background:transparent;
+      padding:0 2px;
+    }
+    .login-field:focus-within .login-floating-label,
+    .login-input:not(:placeholder-shown) + .login-floating-label{
+      top:10px;
+      transform:none;
+      font-size:11px;
+      color:var(--text);
+    }
+    .login-action,
+    .login-action:hover,
+    .login-secondary,
+    .login-secondary:hover{
+      min-height:48px;
+      padding:0 16px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:15px;
+      line-height:1;
+      white-space:nowrap;
+    }
+    .login-secondary,
+    .login-secondary:hover{
+      width:fit-content;
+      min-width:0;
+      justify-self:start;
+      align-self:start;
+      padding:0 10px;
+    }
+    .login-status{
+      display:none;
+      margin-top:6px;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      font-size:14px;
+      line-height:1.45;
+      font-weight:600;
+      background:color-mix(in srgb, var(--panel) 88%, transparent);
+      color:var(--text);
+    }
+    .login-status.is-visible{ display:block; }
+    .login-status.is-info{
+      border-color:color-mix(in srgb, var(--accent) 55%, var(--line));
+      background:color-mix(in srgb, var(--accent) 12%, var(--panel));
+    }
+    .login-status.is-error{
+      border-color:color-mix(in srgb, #d15353 65%, var(--line));
+      background:color-mix(in srgb, #d15353 12%, var(--panel));
+      color:#ffb1b1;
+    }
+    .card,
+    .card:hover{
+      transform:none !important;
+      border-color:var(--line) !important;
+    }
+    .btn,
+    .btn:hover,
+    .btn.primary,
+    .btn.primary:hover,
+    .icon-btn,
+    .icon-btn:hover{
+      transform:none !important;
+      box-shadow:none !important;
+    }
+    @media (max-width: 640px){
+      .login-row{
+        grid-template-columns:1fr;
+      }
+      .login-action,
+      .login-secondary{
+        width:100%;
+      }
+    }
+  </style>
 </head>
 <body>
   <main class="container" style="max-width: 560px; padding-top: min(10vh, 80px);">
     <section class="card">
       <div class="meta" style="display:grid; gap:12px;">
         <h1 style="margin:0; font-size: clamp(24px, 4vw, 32px);">Admin Login</h1>
-        <p class="sub" style="margin:0;">Sign in to access Studio admin pages.</p>
+        <p class="sub" style="margin:0;">Sign in to access Toji Studio administration pages.</p>
 
-        <form id="loginForm" style="display:grid; gap:10px; margin-top:8px;">
-          <label class="field">
-            <div class="sub" style="margin-bottom:8px;">Password</div>
-            <input id="password" type="password" autocomplete="current-password" required />
-          </label>
-
-          <label class="field">
-            <div class="sub" style="margin-bottom:8px;">Admin token</div>
-            <input id="token" type="password" autocomplete="off" placeholder="Paste ADMIN_TOKEN from .env" required />
-          </label>
-
-          <p class="sub" style="margin:0;">API-backed admin pages need the same <code>ADMIN_TOKEN</code> the server is using.</p>
-
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <button class="btn primary" type="submit">Sign in</button>
-            <a class="btn" href="../index.html">Back to site</a>
-            <span id="status" class="sub" aria-live="polite"></span>
+        <form id="loginForm" class="login-form">
+          <div class="login-row">
+            <label class="login-field" for="password">
+              <input id="password" class="login-input" type="password" autocomplete="current-password" placeholder=" " required />
+              <span class="login-floating-label">Password</span>
+            </label>
+            <button class="btn primary login-action" type="submit">Sign in</button>
           </div>
+
+          <a class="btn login-secondary" href="../index.html">Back to site</a>
+
+          <div id="status" class="login-status" aria-live="polite"></div>
         </form>
       </div>
     </section>
@@ -39,3 +151,6 @@
   <script type="module" src="./js/login.js"></script>
 </body>
 </html>
+
+
+

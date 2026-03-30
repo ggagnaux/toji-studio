@@ -16,16 +16,7 @@
     </section>
 
     <div class="admin-layout">
-      <aside class="sidebar" aria-label="Studio navigation">
-        <a href="index.html">Image Manager</a>
-        <a href="upload.html">Upload</a>
-        <a href="series.html">Series Manager</a>
-        <a href="linkmanager.html">Link Manager</a>
-        <a href="HomePageManager.html">Home Page Manager</a>
-        <a href="SocialMediaManager.html">Social Media Manager</a>
-        <a href="OtherSettings.html">Other Settings</a>
-        <a class="active" href="SecurityManager.html">Security Manager</a>
-      </aside>
+      <aside class="sidebar" aria-label="Studio navigation"></aside>
 
       <section>
         <article class="card">
@@ -47,9 +38,9 @@
                 <input id="confirmAdminPassword" type="password" autocomplete="new-password" required />
               </label>
 
-              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px;">
                 <button class="btn primary" type="submit">Change password</button>
-                <button class="btn" id="resetAdminPassword" type="button">Reset to default</button>
+                <button class="btn danger" id="resetAdminPassword" type="button">Reset to default</button>
                 <span class="sub" id="passwordStatus" aria-live="polite"></span>
               </div>
             </form>
@@ -64,6 +55,10 @@
   <script type="module" src="./js/security-manager.js"></script>
 </body>
 </html>
+
+
+
+
 
 
 

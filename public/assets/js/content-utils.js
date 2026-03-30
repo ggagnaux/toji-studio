@@ -83,28 +83,33 @@ function ensureLightboxStyles() {
     .lb-title{ font-weight:650; }
     .lb-body{
       display:grid;
-      grid-template-columns: 1fr 320px;
+      grid-template-columns: 320px minmax(0, 1fr);
       gap: 0;
       min-height: 0;
       transition: grid-template-columns .22s ease;
     }
     .lb-body.is-meta-collapsed{
-      grid-template-columns: 1fr 0;
+      grid-template-columns: 0 minmax(0, 1fr);
     }
     .lb-media{
+      --lb-media-pad: clamp(18px, 2.4vw, 32px);
       background: rgba(255,255,255,.03);
       display:flex; align-items:center; justify-content:center;
       min-height: calc(100vh - 90px);
       position: relative;
-      overflow: hidden;
+      overflow: visible;
+      min-width: 0;
+      grid-column: 2;
+      grid-row: 1;
     }
     .lb-media-tabbar{
       position:absolute;
-      top:12px;
-      right:12px;
-      z-index:3;
+      top:50%;
+      left:1px;
+      transform:translateY(-50%);
+      z-index:4;
       display:flex;
-      justify-content:flex-end;
+      justify-content:flex-start;
       pointer-events:none;
     }
     .lb-media-frame{
@@ -116,12 +121,14 @@ function ensureLightboxStyles() {
     }
     .lb-media img{
       position: absolute;
-      inset: 0;
-      width:100%;
-      height:100%;
-      max-height: calc(100vh - 16px);
+      inset: var(--lb-media-pad);
+      width:calc(100% - (var(--lb-media-pad) * 2));
+      height:calc(100% - (var(--lb-media-pad) * 2));
+      max-height: calc(100vh - 16px - (var(--lb-media-pad) * 2));
       object-fit: contain;
       background: var(--bg);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--line) 78%, transparent);
+      border-radius: 2px;
       transition: transform .3s ease, opacity .3s ease;
       will-change: transform, opacity;
     }
@@ -152,48 +159,69 @@ function ensureLightboxStyles() {
     }
     .lb-meta{
       padding:14px;
-      border-left:1px solid var(--line);
+      border-right:1px solid var(--line);
       overflow:hidden;
       min-width:0;
+      grid-column: 1;
+      grid-row: 1;
       transition: opacity .18s ease, transform .18s ease, padding .18s ease, border-color .18s ease;
     }
     .lb-body.is-meta-collapsed .lb-meta{
       opacity:0;
-      transform: translateX(12px);
+      transform: translateX(-12px);
       padding-left:0;
       padding-right:0;
-      border-left-color: transparent;
+      border-right-color: transparent;
       pointer-events:none;
     }
     .lb-meta-tab{
       pointer-events:auto;
       position:relative;
       z-index:3;
-      min-width:88px;
-      min-height:0;
-      padding:8px 10px;
-      border:1px solid var(--line);
-      border-radius:999px;
-      background: color-mix(in srgb, var(--panel) 92%, #000 8%);
-      color:var(--text);
-      box-shadow: var(--shadow);
+      align-self:center;
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      gap:6px;
+      min-width:34px;
+      min-height:46px;
+      padding:9px 4px;
+      margin-left:0;
+      border:1px solid var(--line);
+      border-left:0;
+      border-radius:0 14px 14px 0;
+      background: color-mix(in srgb, var(--panel) 88%, transparent);
+      color:var(--text);
+      box-shadow: 0 8px 18px rgba(0,0,0,.28);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      clip-path: polygon(0 0, 72% 0, 100% 20%, 100% 80%, 72% 100%, 0 100%);
       cursor:pointer;
-      transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease;
+      transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease, box-shadow .18s ease, color .18s ease;
     }
     .lb-meta-tab:hover,
     .lb-meta-tab:focus-visible{
-      background: color-mix(in srgb, var(--panel) 82%, var(--accent) 18%);
-      border-color: color-mix(in srgb, var(--accent-border) 78%, var(--line));
+      color: var(--text);
+      background: color-mix(in srgb, var(--panel) 60%, var(--accent) 40%);
+      border-color: color-mix(in srgb, var(--accent-border) 88%, #ffffff 12%);
+      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+      transform: translateX(1px);
     }
     .lb-meta-tab-label{
-      font-size:11px;
-      font-weight:700;
-      letter-spacing:.08em;
-      text-transform:uppercase;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:5px;
+      width:14px;
+      height:23px;
+      user-select: none;
+    }
+    .lb-meta-tab-line{
+      display:block;
+      width:2px;
+      height:100%;
+      border-radius:999px;
+      background: currentColor;
+      opacity:.94;
     }
     .lb-body.is-meta-collapsed .lb-meta-tab{
       opacity:.96;
@@ -236,31 +264,35 @@ function ensureLightboxStyles() {
 	    .lb-meta-tab{
 	      transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease, box-shadow .18s ease, color .18s ease;
 	    }
-	    .lb-actions .btn:hover,
-	    .lb-actions .btn:focus-visible,
-	    .lb-meta-tab:hover,
-	    .lb-meta-tab:focus-visible{
-	      color: var(--text);
-	      background: color-mix(in srgb, var(--panel) 62%, var(--accent) 38%);
-	      border-color: color-mix(in srgb, var(--accent-border) 88%, #ffffff 12%);
-	      box-shadow: 0 10px 24px rgba(0,0,0,.28);
-	      transform: translateY(-1px);
-	    }
-	    @media (max-width: 920px){
-      .lb-body{ grid-template-columns: 1fr; }
-      .lb-body.is-meta-collapsed{ grid-template-columns: 1fr; }
-      .lb-media{
-        min-height: calc(100vh - 180px);
-      }
+		    .lb-actions .btn:hover,
+		    .lb-actions .btn:focus-visible,
+		    .lb-meta-tab:hover,
+		    .lb-meta-tab:focus-visible{
+		      color: var(--text);
+		      background: color-mix(in srgb, var(--panel) 62%, var(--accent) 38%);
+		      border-color: color-mix(in srgb, var(--accent-border) 88%, #ffffff 12%);
+		      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+		      transform: translate(2px, 0);
+		    }
+		    @media (max-width: 920px){
+	      .lb-body{ grid-template-columns: 1fr; }
+	      .lb-body.is-meta-collapsed{ grid-template-columns: 1fr; }
+	      .lb-media{
+	        min-height: calc(100vh - 180px);
+          grid-column: auto;
+          grid-row: auto;
+	      }
       .lb-media-frame{
         min-height: calc(100vh - 180px);
       }
-      .lb-meta{
-        border-left:0;
-        border-top:1px solid var(--line);
-        max-height: 28vh;
-        overflow:auto;
-      }
+	      .lb-meta{
+          grid-column: auto;
+          grid-row: auto;
+	        border-left:0;
+	        border-top:1px solid var(--line);
+	        max-height: 28vh;
+	        overflow:auto;
+	      }
       .lb-body.is-meta-collapsed .lb-meta{
         max-height:0;
         min-height:0;
@@ -268,9 +300,10 @@ function ensureLightboxStyles() {
         padding-bottom:0;
         border-top-color: transparent;
       }
-      .lb-meta-tab{
-        min-width:82px;
-      }
+	      .lb-meta-tab{
+	        min-width:82px;
+          min-height:auto;
+	      }
       .lb-body.is-meta-collapsed .lb-meta-tab{
         opacity:.96;
       }
@@ -297,7 +330,12 @@ export function createArtworkLightboxController() {
   const metaTags = el("div", { class: "lb-tags" }, metaTagsLabel, metaTagsValue);
   const metaDesc = el("div", { class: "sub", style: "font-size:15px; line-height:1.65" }, "");
 		  const meta = el("div", { class: "lb-meta" }, metaTitle, metaSub, metaTags, el("hr", { class: "sep" }), metaDesc);
-  const metaTabLabel = el("span", { class: "lb-meta-tab-label" }, "Details");
+	  const metaTabLabel = el(
+	    "span",
+	    { class: "lb-meta-tab-label", "aria-hidden": "true" },
+	    el("span", { class: "lb-meta-tab-line" }),
+	    el("span", { class: "lb-meta-tab-line" })
+	  );
   const metaTab = el("button", {
     class: "lb-meta-tab",
     type: "button",
@@ -318,12 +356,11 @@ export function createArtworkLightboxController() {
 		  let animationToken = 0;
   let isMetaOpen = false;
 
-  function syncMetaVisibility() {
-    body.classList.toggle("is-meta-collapsed", !isMetaOpen);
-    metaTab.setAttribute("aria-expanded", isMetaOpen ? "true" : "false");
-    metaTab.setAttribute("aria-label", isMetaOpen ? "Hide details panel" : "Show details panel");
-    metaTabLabel.textContent = isMetaOpen ? "Hide" : "Details";
-  }
+	  function syncMetaVisibility() {
+	    body.classList.toggle("is-meta-collapsed", !isMetaOpen);
+	    metaTab.setAttribute("aria-expanded", isMetaOpen ? "true" : "false");
+	    metaTab.setAttribute("aria-label", isMetaOpen ? "Hide details panel" : "Show details panel");
+	  }
 
 	  function renderImage(item, direction = 0) {
 	    const nextImg = el("img", {
@@ -414,16 +451,33 @@ export function createArtworkLightboxController() {
 	    showCurrent(-1);
 	  }
 
-  backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) close();
-  });
-	  closeBtn.addEventListener("click", close);
-	  nextBtn.addEventListener("click", next);
-	  prevBtn.addEventListener("click", prev);
-  metaTab.addEventListener("click", () => {
-    isMetaOpen = !isMetaOpen;
-    syncMetaVisibility();
-  });
+	  backdrop.addEventListener("click", (e) => {
+	    if (e.target === backdrop) close();
+	  });
+		  closeBtn.addEventListener("click", close);
+		  nextBtn.addEventListener("click", next);
+		  prevBtn.addEventListener("click", prev);
+	  let wheelLock = false;
+	  panel.addEventListener("wheel", (e) => {
+	    if (backdrop.style.display !== "flex") return;
+	    if (wheelLock) {
+	      e.preventDefault();
+	      return;
+	    }
+	    const deltaY = Number(e.deltaY || 0);
+	    if (Math.abs(deltaY) < 18) return;
+	    e.preventDefault();
+	    wheelLock = true;
+	    if (deltaY > 0) next();
+	    else prev();
+	    window.setTimeout(() => {
+	      wheelLock = false;
+	    }, 220);
+	  }, { passive: false });
+	  metaTab.addEventListener("click", () => {
+	    isMetaOpen = !isMetaOpen;
+	    syncMetaVisibility();
+	  });
 
 	  document.addEventListener("keydown", (e) => {
 	    if (backdrop.style.display !== "flex") return;
@@ -436,3 +490,6 @@ export function createArtworkLightboxController() {
 
 	  return { host: backdrop, open, close, next, prev };
 }
+
+
+

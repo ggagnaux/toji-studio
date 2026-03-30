@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Studio — Upload</title>
+  <title>Studio - Upload</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
   <link rel="stylesheet" href="css/upload.css" />
 </head>
@@ -19,39 +19,14 @@
     </section>
 
     <div class="admin-layout">
-      <aside class="sidebar" aria-label="Studio navigation">
-        <a href="index.html">Image Manager</a>
-        <a class="active" href="upload.html">Upload</a>
-        <a href="series.html">Series Manager</a>
-        <a href="linkmanager.html">Link Manager</a>
-        <a href="HomePageManager.html">Home Page Manager</a>
-        <a href="SocialMediaManager.html">Social Media Manager</a>
-        <a href="OtherSettings.html">Other Settings</a>
-        <a href="SecurityManager.html">Security Manager</a>
-      </aside>
+      <aside class="sidebar" aria-label="Studio navigation"></aside>
       <section>
     <section class="grid">
       <div class="card" style="grid-column: span 7">
-        <div class="meta">
-          <div class="upload-section upload-section-backend">
-          <p class="title">Backend connection</p>
-          <p class="sub">Set your admin token (from <code>.env</code> → <code>ADMIN_TOKEN</code>).</p>
-
-          <div class="field" style="margin-top:12px">
-            <div class="sub">Admin token</div>
-            <input id="token" placeholder="Bearer token (stored in this browser)" />
-          </div>
-
-          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center">
-            <button class="btn" id="saveToken" type="button">Save token</button>
-            <span class="sub" id="tokenStatus" aria-live="polite"></span>
-          </div>
-          </div>
-
-          <div id="uploadOriginalsPanel" class="upload-section upload-section-originals">
+	        <div class="meta">
+	          <div id="uploadOriginalsPanel" class="upload-section upload-section-originals">
 
           <p class="title">Upload originals</p>
-          <!-- <p class="sub">Select image files — they’ll be uploaded and converted into thumb + web variants.</p> -->
 
           <div class="field" style="margin-top:14px">
             <div class="sub">Select files</div>
@@ -78,6 +53,36 @@
 
           <div style="display:grid; gap:12px; margin-top:12px">
             <div class="field">
+              <div class="sub">Show tags starting with...</div>
+              <div class="tag-filter-row" id="tagFilterRow" role="group" aria-label="Filter available tags">
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="0-9" aria-pressed="false">0-9</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="a" aria-pressed="false">A</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="b" aria-pressed="false">B</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="c" aria-pressed="false">C</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="d" aria-pressed="false">D</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="e" aria-pressed="false">E</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="f" aria-pressed="false">F</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="g" aria-pressed="false">G</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="h" aria-pressed="false">H</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="i" aria-pressed="false">I</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="j" aria-pressed="false">J</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="k" aria-pressed="false">K</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="l" aria-pressed="false">L</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="m" aria-pressed="false">M</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="n" aria-pressed="false">N</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="o" aria-pressed="false">O</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="p" aria-pressed="false">P</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="q" aria-pressed="false">Q</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="r" aria-pressed="false">R</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="s" aria-pressed="false">S</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="t" aria-pressed="false">T</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="u" aria-pressed="false">U</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="v" aria-pressed="false">V</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="w" aria-pressed="false">W</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="x" aria-pressed="false">X</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="y" aria-pressed="false">Y</button>
+                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="z" aria-pressed="false">Z</button>
+              </div>
               <div class="sub">Available Tags</div>
               <div id="tagPills" class="pillrow" style="min-height:40px"></div>
               <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center">
@@ -98,15 +103,15 @@
               <input id="year" placeholder="2026" />
             </div>
 
-              <div class="field">
-                <div class="sub">Status</div>
-                <div id="statusPills" class="pillrow" role="group" aria-label="Status">
-                  <button class="btn status-pill active" type="button" data-status-pill="draft" aria-pressed="true">Draft</button>
-                  <button class="btn status-pill" type="button" data-status-pill="published" aria-pressed="false">Published</button>
-                  <button class="btn status-pill" type="button" data-status-pill="hidden" aria-pressed="false">Hidden</button>
-                </div>
-                <input id="statusSelect" type="hidden" value="draft" />
-              </div>
+	              <div class="field">
+	                <div class="sub">Status</div>
+	                <div id="statusPills" class="status-toggle" role="group" aria-label="Status">
+	                  <button class="btn status-toggle-option active" type="button" data-status-pill="draft" aria-pressed="true">Draft</button>
+	                  <button class="btn status-toggle-option" type="button" data-status-pill="published" aria-pressed="false">Published</button>
+	                  <button class="btn status-toggle-option" type="button" data-status-pill="hidden" aria-pressed="false">Hidden</button>
+	                </div>
+	                <input id="statusSelect" type="hidden" value="draft" />
+	              </div>
             </div>
           </div>
 
@@ -145,8 +150,3 @@
   <script type="module" src="./js/upload.js"></script>
 </body>
 </html>
-
-
-
-
-

@@ -390,7 +390,7 @@ async function initializeExternalLinksEditor() {
     if (externalLinksHint) externalLinksHint.textContent = "Load failed";
     const message = String(err?.message || err || "");
     if (/unauthorized/i.test(message)) {
-      showToast("Failed to load external links: Unauthorized. Sign in again and enter the current admin token.", {
+      showToast("Failed to load external links: Unauthorized. Sign in again to refresh your admin session.", {
         tone: "error"
       });
       return;
@@ -400,4 +400,5 @@ async function initializeExternalLinksEditor() {
 }
 
 initializeExternalLinksEditor();
+
 

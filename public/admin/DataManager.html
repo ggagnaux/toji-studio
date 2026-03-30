@@ -1,0 +1,93 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Studio - Data Manager</title>
+  <link rel="stylesheet" href="../assets/css/site.css" />
+  <link rel="stylesheet" href="css/index.css" />
+  <link rel="stylesheet" href="css/OtherSettings.css" />
+</head>
+<body>
+  <header id="siteHeader"></header>
+
+  <main class="container">
+    <section class="hero" style="padding-bottom:10px">
+      <h1>Data Manager</h1>
+      <p>Manage selective exports and safe-table imports from one place.</p>
+    </section>
+
+    <div class="admin-layout">
+      <aside class="sidebar" aria-label="Studio navigation"></aside>
+
+      <section style="display:grid; gap:14px">
+        <article class="card">
+	          <div class="meta" style="display:grid; gap:0;">
+	            <div class="other-settings-tabbar" role="tablist" aria-label="Data manager sections">
+	              <button class="other-settings-tabbtn is-active" id="dataTabExport" type="button" role="tab" aria-selected="true" aria-controls="dataPanelExport" data-data-tab="export">Export</button>
+	              <button class="other-settings-tabbtn" id="dataTabImport" type="button" role="tab" aria-selected="false" aria-controls="dataPanelImport" data-data-tab="import">Import</button>
+	              <button class="other-settings-tabbtn" id="dataTabMaintenance" type="button" role="tab" aria-selected="false" aria-controls="dataPanelMaintenance" data-data-tab="maintenance">Maintenance</button>
+	            </div>
+
+            <div class="other-settings-tabcontent">
+              <section class="other-settings-tabpane" id="dataPanelExport" role="tabpanel" aria-labelledby="dataTabExport" data-data-panel="export" style="display:grid; gap:14px;">
+                <div>
+                  <p class="title" style="margin:0">Data Export</p>
+                  <p class="sub" style="margin-top:8px">Select one or more tables and download them as a bundled JSON export.</p>
+                </div>
+
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                  <button class="btn" id="exportSelectAllBtn" type="button">Select all</button>
+                  <button class="btn" id="exportClearAllBtn" type="button">Clear all</button>
+                  <button class="btn primary" id="exportSelectedBtn" type="button">Export selected</button>
+                  <span class="sub" id="exportSelectionSummary" aria-live="polite"></span>
+                </div>
+
+                <div id="exportTableList"></div>
+                <div class="sub" id="exportDatabaseStatus" aria-live="polite"></div>
+              </section>
+
+	              <section class="other-settings-tabpane" id="dataPanelImport" role="tabpanel" aria-labelledby="dataTabImport" data-data-panel="import" hidden style="display:none; gap:14px;">
+	                <div>
+	                  <p class="title" style="margin:0">Data Import</p>
+	                  <p class="sub" style="margin-top:8px">Preview a bundled export file, then import only the safe tables supported in v1: settings, social platforms, and external links.</p>
+                </div>
+
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                  <label class="data-manager-filepick" for="importBundleInput">
+                    <span class="btn">Choose file</span>
+                    <span class="sub data-manager-filepick__name" id="importBundleName">No file selected</span>
+                  </label>
+                  <input id="importBundleInput" type="file" accept=".json,application/json" />
+                  <button class="btn primary" id="importCommitBtn" type="button" disabled>Import selected safe tables</button>
+                </div>
+
+                <div class="sub" id="importDatabaseStatus" aria-live="polite"></div>
+	                <div class="sub" id="importPreviewSummary" aria-live="polite">Choose a bundled export file to preview its tables.</div>
+	                <div id="importPreviewList"></div>
+	              </section>
+
+	              <section class="other-settings-tabpane" id="dataPanelMaintenance" role="tabpanel" aria-labelledby="dataTabMaintenance" data-data-panel="maintenance" hidden style="display:none; gap:14px;">
+	                <div>
+	                  <p class="title" style="margin:0">Maintenance</p>
+	                  <p class="sub" style="margin-top:8px">Run maintenance tasks that clean up orphaned files and broken variant records.</p>
+	                </div>
+
+	                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+	                  <button class="btn danger" id="cleanupBtn" type="button">Cleanup files</button>
+	                  <span class="sub" id="cleanupStatus" aria-live="polite"></span>
+	                </div>
+	              </section>
+	            </div>
+	          </div>
+	        </article>
+      </section>
+    </div>
+
+    <footer id="siteFooter"></footer>
+  </main>
+
+  <script type="module" src="./js/data-manager.js"></script>
+</body>
+</html>
+

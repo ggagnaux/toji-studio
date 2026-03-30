@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Studio - Social Queue</title>
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <header id="siteHeader"></header>
+
+  <main class="container">
+    <section class="hero" style="padding-bottom:10px">
+      <h1 id="queuePageTitle">Social Queue</h1>
+      <p id="queuePageIntro">Track queued, failed, posted, and draft social posts from one admin view.</p>
+    </section>
+
+    <div class="admin-layout">
+      <aside class="sidebar" aria-label="Studio navigation"></aside>
+
+      <section style="display:grid; gap:14px">
+        <div class="dashboard-controls">
+          <div class="kpi">
+            <div class="card"><div class="meta"><div class="sub">Queued</div><b id="kQueued">&mdash;</b></div></div>
+            <div class="card"><div class="meta"><div class="sub">Failed</div><b id="kFailed">&mdash;</b></div></div>
+            <div class="card"><div class="meta"><div class="sub">Posted</div><b id="kPosted">&mdash;</b></div></div>
+          </div>
+
+          <div class="filters" style="margin-top:18px">
+            <div class="field" style="width:auto; min-width:220px; margin-top:0">
+              <div class="sub">Platform</div>
+              <select id="queuePlatform">
+                <option value="bluesky">Bluesky</option>
+                <option value="linkedin">LinkedIn</option>
+              </select>
+            </div>
+
+            <div class="chip active" data-status-filter="all">All</div>
+            <div class="chip" data-status-filter="queued">Queued</div>
+            <div class="chip" data-status-filter="failed">Failed</div>
+            <div class="chip" data-status-filter="posted">Posted</div>
+            <div class="chip" data-status-filter="draft">Draft</div>
+            <div class="chip" data-status-filter="skipped">Skipped</div>
+
+            <div class="search">
+              <span>Search</span>
+              <input id="queueSearch" placeholder="title, artwork id, external id..." />
+            </div>
+
+            <div class="field" style="width:auto; min-width:220px; margin-top:0">
+              <div class="sub">Sort</div>
+              <select id="queueSort">
+                <option value="updated_desc">Recently updated</option>
+                <option value="posted_desc">Recently posted</option>
+                <option value="status_priority">Queue priority</option>
+                <option value="title_asc">Artwork title</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <article class="card">
+          <div class="meta">
+            <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap">
+              <div>
+                <p class="title" id="queueCardTitle" style="margin:0">Social post queue</p>
+                <p class="sub" id="queueSummary" style="margin-top:8px">Loading...</p>
+              </div>
+              <button class="btn" id="refreshQueueBtn" type="button">Refresh</button>
+            </div>
+            <div id="queueList" style="display:grid; gap:12px; margin-top:12px"></div>
+          </div>
+        </article>
+
+        <footer id="siteFooter"></footer>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="./js/social-queue.js"></script>
+</body>
+</html>
+
+

@@ -1,4 +1,4 @@
-﻿    import {
+    import {
       loadStateAutoSync, saveState, qs, el, setYearFooter, ensureBaseStyles, upsertTag, confirmToast, showToast
     } from "../admin.js";
 
@@ -57,6 +57,43 @@
           color:var(--muted);
           font-size:12px;
           margin-left:auto;
+        }
+        .social-posting-preview{
+          display:grid;
+          gap:8px;
+          padding:12px;
+          border:1px solid color-mix(in srgb, var(--social-site-color) 36%, var(--line));
+          border-radius:12px;
+          background:color-mix(in srgb, var(--social-site-color) 7%, var(--panel));
+        }
+        .social-posting-preview.is-warning{
+          border-color:color-mix(in srgb, #d18b2e 66%, var(--line));
+          background:color-mix(in srgb, #d18b2e 11%, var(--panel));
+        }
+        .social-posting-preview.is-error{
+          border-color:color-mix(in srgb, #d15353 66%, var(--line));
+          background:color-mix(in srgb, #d15353 11%, var(--panel));
+        }
+        .social-posting-previewhead{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:10px;
+          flex-wrap:wrap;
+        }
+        .social-posting-previewtext{
+          white-space:pre-wrap;
+          line-height:1.55;
+          font-size:14px;
+        }
+        .social-posting-previewmeta{
+          display:grid;
+          gap:6px;
+        }
+        .social-posting-previewactions{
+          display:flex;
+          gap:8px;
+          flex-wrap:wrap;
         }
         .social-site-tabbar{
           display:flex;
@@ -403,7 +440,7 @@
     async function flushBackendSave(force=false){
       const token = getAdminToken();
       if (!token) {
-        if (force) setStatusText("No admin token - saved locally only.", 10000, "warn");
+        if (force) setStatusText("No active admin session - saved locally only.", 10000, "warn");
         return;
       }
 
@@ -440,7 +477,7 @@
 
     async function replaceImage(){
       const token = getAdminToken();
-      if (!token) return setStatusText("No admin token - set it in Upload page.", 10000, "warn");
+      if (!token) return setStatusText("Sign in to the admin first.", 10000, "warn");
 
       const inp = document.getElementById("replaceFile");
       const f = inp?.files?.[0];
@@ -468,7 +505,7 @@
           `${(await import("../admin.js")).API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}/replace-image`,
           {
             method: "POST",
-            headers: { "Authorization": `Bearer ${getAdminToken()}` },
+            credentials: "include",
             body: fd
           }
         )).json();
@@ -498,7 +535,7 @@
 
     async function regenVariants(){
       const token = getAdminToken();
-      if (!token) return setStatusText("No admin token - set it in Upload page.", 10000, "warn");
+      if (!token) return setStatusText("Sign in to the admin first.", 10000, "warn");
 
       const setMedia = (m, tone="info") => { if (m) showToast(m, { tone, duration: 10000 }); };
 
@@ -510,7 +547,7 @@
           `${API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}/regenerate-variants`,
           {
             method: "POST",
-            headers: { "Authorization": `Bearer ${getAdminToken()}` }
+            credentials: "include"
           }
         );
 
@@ -542,7 +579,7 @@
       if (!ok) return;
 
       const token = getAdminToken();
-      if (!token) return setStatusText("No admin token - set it in Upload page.", 10000, "warn");
+      if (!token) return setStatusText("Sign in to the admin first.", 10000, "warn");
 
       setStatusText("Deleting...", 10000, "warn");
 
@@ -550,7 +587,7 @@
         const { API_BASE } = await import("../admin.js");
         const res = await fetch(`${API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}`, {
           method: "DELETE",
-          headers: { "Authorization": `Bearer ${getAdminToken()}` }
+          credentials: "include"
         });
 
         const j = await res.json().catch(()=> ({}));
@@ -650,16 +687,16 @@
       };
 
       const headers = { "Content-Type": "application/json" };
-      const token = getAdminToken();
-      if (token) headers.Authorization = `Bearer ${token}`;
+
+
 
       const res = await fetch(endpoint, {
         method: "POST",
+        credentials: "include",
         headers,
         body: JSON.stringify(payload)
       });
 
-      let json = null;
       try { json = await res.json(); } catch {}
       if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
 
@@ -687,16 +724,16 @@
       };
 
       const headers = { "Content-Type": "application/json" };
-      const token = getAdminToken();
-      if (token) headers.Authorization = `Bearer ${token}`;
+
+
 
       const res = await fetch(endpoint, {
         method: "POST",
+        credentials: "include",
         headers,
         body: JSON.stringify(payload)
       });
 
-      let json = null;
       try { json = await res.json(); } catch {}
       if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
 
@@ -862,12 +899,17 @@
     });
 
     const SOCIAL_STATUSES = ["draft", "queued", "posted", "failed", "skipped"];
+    const SOCIAL_CHARACTER_LIMITS = Object.freeze({
+      bluesky: 300,
+      linkedin: 3000
+    });
 	    const socialState = {
-	      posts: [],
-	      platforms: [],
-	      loading: false,
-	      saving: new Set(),
-	      binding: false,
+      posts: [],
+      platforms: [],
+      loading: false,
+      saving: new Set(),
+      publishing: new Set(),
+      binding: false,
 	      selectedBoundPlatformId: ""
 	    };
     const socialAutoSaveTimers = new Map();
@@ -939,10 +981,10 @@
 
 	    async function fetchSocialPosts(){
 	      const token = getAdminToken();
-	      if (!token) throw new Error("No admin token - set it in Upload page.");
+	      if (!token) throw new Error("No active admin session.");
 
       const res = await fetch(`${API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}/social-posts`, {
-        headers: { "Authorization": `Bearer ${token}` }
+        credentials: "include"
       });
       const json = await res.json().catch(() => ({}));
 	      if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
@@ -951,10 +993,10 @@
 
 	    async function fetchSocialPlatforms(){
 	      const token = getAdminToken();
-	      if (!token) throw new Error("No admin token - set it in Upload page.");
+	      if (!token) throw new Error("No active admin session.");
 
 	      const res = await fetch(`${API_BASE}/api/admin/social/platforms`, {
-	        headers: { "Authorization": `Bearer ${token}` }
+	        credentials: "include"
 	      });
 	      const json = await res.json().catch(() => ([]));
 	      if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
@@ -1003,16 +1045,117 @@
 	      });
 	    }
 
+    function getSocialPlatformById(platformId) {
+      const key = String(platformId || "").trim();
+      if (!key) return null;
+      return (socialState.platforms || []).find((platform) => String(platform?.id || "").trim() === key) || null;
+    }
+
+    function getSocialCharacterLimit(platformId) {
+      return Number(SOCIAL_CHARACTER_LIMITS[String(platformId || "").trim().toLowerCase()] || 0);
+    }
+
+    function normalizeHashtag(tag) {
+      return String(tag || "")
+        .trim()
+        .replace(/^#+/, "")
+        .replace(/\s+/g, "")
+        .replace(/[^a-z0-9_]+/gi, "")
+        .toLowerCase();
+    }
+
+    function getArtworkPublicUrl() {
+      return new URL(`../artwork.html?id=${encodeURIComponent(a.id)}`, window.location.href).href;
+    }
+
+    function getArtworkImageUrl() {
+      const candidate = String(a.image || a.thumb || "").trim();
+      if (!candidate) return "";
+      try {
+        return new URL(candidate, window.location.href).href;
+      } catch {
+        return candidate;
+      }
+    }
+
+    async function copyTextToClipboard(text) {
+      if (!navigator?.clipboard?.writeText) {
+        throw new Error("Clipboard is not available in this browser.");
+      }
+      await navigator.clipboard.writeText(String(text || ""));
+    }
+
+    function buildComposedSocialCaption(platformId, captionOverride = "") {
+      const platform = getSocialPlatformById(platformId);
+      const config = platform?.config || {};
+      const baseCaption = String(captionOverride || "").trim();
+      const suffix = String(config?.defaultCaptionSuffix || "").trim();
+      const hashtags = Array.isArray(config?.defaultHashtags)
+        ? config.defaultHashtags
+        : String(config?.defaultHashtags || "")
+            .split(/[,;\n]+/g)
+            .map((item) => item.trim());
+      const hashtagLine = Array.from(new Set(
+        hashtags
+          .map(normalizeHashtag)
+          .filter(Boolean)
+      )).map((tag) => `#${tag}`).join(" ");
+      return [baseCaption, suffix, hashtagLine].filter(Boolean).join("\n\n").trim();
+    }
+
+    function buildSocialPostPackage(platformId, captionOverride = "", postUrlOverride = "", externalIdOverride = "") {
+      const platform = getSocialPlatformById(platformId);
+      const config = platform?.config || {};
+      const caption = buildComposedSocialCaption(platformId, captionOverride);
+      return {
+        platformId,
+        platformName: platform?.name || platformId,
+        postingMode: String(config?.postingMode || "manual").trim() || "manual",
+        accountHandle: String(config?.accountHandle || "").trim(),
+        profileUrl: String(config?.profileUrl || "").trim(),
+        artworkId: a.id,
+        artworkTitle: String(a.title || "").trim(),
+        artworkUrl: getArtworkPublicUrl(),
+        imageUrl: getArtworkImageUrl(),
+        altText: String(a.alt || a.title || "").trim(),
+        caption,
+        postUrl: String(postUrlOverride || "").trim(),
+        externalPostId: String(externalIdOverride || "").trim()
+      };
+    }
+    function extractExternalPostId(platformId, postUrl) {
+      const platformKey = String(platformId || "").trim().toLowerCase();
+      const raw = String(postUrl || "").trim();
+      if (!raw) return "";
+      try {
+        const parsed = new URL(raw, window.location.href);
+        if (platformKey === "bluesky") {
+          const match = parsed.pathname.match(/\/profile\/([^/]+)\/post\/([^/?#]+)/i);
+          if (!match) return "";
+          return `profile/${match[1]}/post/${match[2]}`;
+        }
+        if (platformKey === "linkedin") {
+          const urnMatch = decodeURIComponent(parsed.pathname || "").match(/urn:li:[^/?#]+/i);
+          if (urnMatch) return urnMatch[0];
+          const activityMatch = parsed.pathname.match(/\/posts\/[^/?#]*-(\d+)(?:[-/?#]|$)/i)
+            || parsed.pathname.match(/\/feed\/update\/urn:li:[^:]+:(\d+)(?:[/?#]|$)/i);
+          if (activityMatch?.[1]) return `activity:${activityMatch[1]}`;
+        }
+      } catch {
+        return "";
+      }
+      return "";
+    }
     async function saveSocialPost(platformId, payload){
       const token = getAdminToken();
-      if (!token) throw new Error("No admin token - set it in Upload page.");
+      if (!token) throw new Error("No active admin session.");
 
       const res = await fetch(
         `${API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}/social-posts/${encodeURIComponent(platformId)}`,
         {
           method: "PUT",
+          credentials: "include",
           headers: {
-            "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
           },
           body: JSON.stringify(payload)
@@ -1024,15 +1167,32 @@
       return json;
     }
 
+    async function publishSocialPost(platformId){
+      const token = getAdminToken();
+      if (!token) throw new Error("No active admin session.");
+
+      const res = await fetch(
+        `${API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}/social-posts/${encodeURIComponent(platformId)}/publish`,
+        {
+          method: "POST",
+          credentials: "include"
+        }
+      );
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
+      return json;
+    }
+
     async function deleteSocialPost(platformId){
       const token = getAdminToken();
-      if (!token) throw new Error("No admin token - set it in Upload page.");
+      if (!token) throw new Error("No active admin session.");
 
       const res = await fetch(
         `${API_BASE}/api/admin/artworks/${encodeURIComponent(a.id)}/social-posts/${encodeURIComponent(platformId)}`,
         {
           method: "DELETE",
-          headers: { "Authorization": `Bearer ${token}` }
+          credentials: "include"
         }
       );
       if (res.status === 404) return;
@@ -1042,6 +1202,15 @@
 
     function renderSocialEditor(post) {
       const platformId = String(post.platformId || "").trim();
+      const platform = getSocialPlatformById(platformId);
+      const platformConfig = platform?.config || {};
+      const postingMode = String(platformConfig?.postingMode || "manual").trim().toLowerCase() || "manual";
+      const isBluesky = platformId === "bluesky";
+      const isLinkedIn = platformId === "linkedin";
+      const isApiPublishEnabled = (isBluesky || isLinkedIn) && postingMode === "api";
+      const platformOpenLabel = isBluesky ? "Open Bluesky" : (isLinkedIn ? "Open LinkedIn" : "");
+      const platformPreviewTitle = isBluesky ? "Bluesky preview" : (isLinkedIn ? "LinkedIn preview" : "Post preview");
+      const publishLabel = isBluesky ? "Publish to Bluesky" : (isLinkedIn ? "Publish to LinkedIn" : "Publish");
       const statusInput = el("select", {},
         ...SOCIAL_STATUSES.map((s) =>
           el("option", { value:s, selected: (post.status || "draft") === s ? "" : null }, s)
@@ -1053,6 +1222,34 @@
       const errorInput = el("input", { placeholder:"Last error message (optional)", value: post.errorMessage || "" });
 
       const useDescriptionBtn = el("button", { class:"btn mini", type:"button" }, "Use description");
+      const copyCaptionBtn = el("button", { class:"btn mini", type:"button" }, "Copy caption");
+      const copyPackageBtn = el("button", { class:"btn mini", type:"button" }, "Copy post package");
+      const openArtworkBtn = el("button", { class:"btn mini", type:"button" }, "Open artwork page");
+      const openImageBtn = el("button", { class:"btn mini", type:"button" }, "Open artwork image");
+      const openPlatformBtn = (isBluesky || isLinkedIn)
+        ? el("button", { class:"btn mini", type:"button" }, platformOpenLabel)
+        : null;
+      const publishBtn = isApiPublishEnabled
+        ? el("button", { class:"btn mini", type:"button" }, publishLabel)
+        : null;
+      const markPostedBtn = !isApiPublishEnabled
+        ? el("button", { class:"btn mini", type:"button" }, "Mark posted")
+        : null;
+      const extractIdBtn = (isBluesky || isLinkedIn) && !isApiPublishEnabled
+        ? el("button", { class:"btn mini", type:"button" }, "Extract ID")
+        : null;
+      const previewTitle = el("strong", {}, platformPreviewTitle);
+      const previewCount = el("span", { class:"pill" }, "0 chars");
+      const previewText = el("div", { class:"social-posting-previewtext" }, "");
+      const previewMeta = el("div", { class:"social-posting-previewmeta sub" });
+      const previewActionNodes = [copyCaptionBtn, copyPackageBtn, openArtworkBtn, openImageBtn];
+      if (openPlatformBtn) previewActionNodes.push(openPlatformBtn);
+      const previewWrap = el("div", { class:"social-posting-preview" },
+        el("div", { class:"social-posting-previewhead" }, previewTitle, previewCount),
+        previewText,
+        previewMeta,
+        el("div", { class:"social-posting-previewactions" }, ...previewActionNodes)
+      );
 
       const buildPayload = () => ({
         status: statusInput.value,
@@ -1061,6 +1258,48 @@
         externalPostId: externalIdInput.value,
         errorMessage: errorInput.value
       });
+
+      const syncDerivedExternalId = ({ overwrite = false } = {}) => {
+        const derived = extractExternalPostId(platformId, urlInput.value);
+        if (!derived) return false;
+        if (!overwrite && String(externalIdInput.value || "").trim()) return false;
+        externalIdInput.value = derived;
+        return true;
+      };
+
+      const syncPreview = () => {
+        const packageData = buildSocialPostPackage(
+          platformId,
+          captionInput.value,
+          urlInput.value,
+          externalIdInput.value
+        );
+        const finalCaption = packageData.caption;
+        const limit = getSocialCharacterLimit(platformId);
+        const count = finalCaption.length;
+        previewText.textContent = finalCaption || "No caption composed yet.";
+        previewMeta.innerHTML = "";
+        const metaLines = [];
+        metaLines.push(`Posting mode: ${packageData.postingMode}`);
+        metaLines.push(`Status: ${statusInput.value}`);
+        if (packageData.accountHandle) metaLines.push(`Handle: ${packageData.accountHandle}`);
+        if (packageData.artworkUrl) metaLines.push(`Artwork URL: ${packageData.artworkUrl}`);
+        if (packageData.imageUrl) metaLines.push(`Image URL: ${packageData.imageUrl}`);
+        if (packageData.altText) metaLines.push(`Alt text: ${packageData.altText}`);
+        if (packageData.postUrl) metaLines.push(`Live post URL: ${packageData.postUrl}`);
+        else if (statusInput.value === "posted") metaLines.push("Live post URL: missing");
+        if (packageData.externalPostId) metaLines.push(`External ID: ${packageData.externalPostId}`);
+        metaLines.forEach((line) => previewMeta.appendChild(el("div", {}, line)));
+        previewCount.textContent = limit ? `${count}/${limit} chars` : `${count} chars`;
+        previewWrap.classList.remove("is-warning", "is-error");
+        if (limit) {
+          if (count > limit) previewWrap.classList.add("is-error");
+          else if (count > Math.floor(limit * 0.9)) previewWrap.classList.add("is-warning");
+        }
+        if (statusInput.value === "posted" && !packageData.postUrl) {
+          previewWrap.classList.add("is-warning");
+        }
+      };
 
       const queueAutoSave = (delayMs = 0) => {
         clearSocialAutoSaveTimer(platformId);
@@ -1079,13 +1318,27 @@
         socialAutoSaveTimers.set(platformId, timer);
       };
 
-      statusInput.addEventListener("change", () => queueAutoSave(0));
+      statusInput.addEventListener("change", () => {
+        syncPreview();
+        queueAutoSave(0);
+      });
+      captionInput.addEventListener("input", syncPreview);
       captionInput.addEventListener("blur", () => queueAutoSave(0));
-      urlInput.addEventListener("blur", () => queueAutoSave(0));
+      urlInput.addEventListener("input", () => {
+        syncDerivedExternalId();
+        syncPreview();
+      });
+      urlInput.addEventListener("blur", () => {
+        syncDerivedExternalId();
+        syncPreview();
+        queueAutoSave(0);
+      });
+      externalIdInput.addEventListener("input", syncPreview);
       externalIdInput.addEventListener("blur", () => queueAutoSave(0));
       errorInput.addEventListener("blur", () => queueAutoSave(0));
 
       const savingNow = socialState.saving.has(platformId);
+      const publishingNow = socialState.publishing.has(platformId);
 
       useDescriptionBtn.addEventListener("click", async () => {
         const description = String(a.description || "").trim();
@@ -1102,7 +1355,101 @@
           if (!ok) return;
         }
         captionInput.value = description;
+        syncPreview();
         queueAutoSave(120);
+      });
+
+      copyCaptionBtn.addEventListener("click", async () => {
+        try {
+          await copyTextToClipboard(buildComposedSocialCaption(platformId, captionInput.value));
+          setStatusText(`Copied ${post.platformName || platformId} caption.`, 6000, "success");
+        } catch (err) {
+          setStatusText(`Copy failed: ${err?.message || err}`, 10000, "error");
+        }
+      });
+
+      copyPackageBtn.addEventListener("click", async () => {
+        try {
+          const packageData = buildSocialPostPackage(
+            platformId,
+            captionInput.value,
+            urlInput.value,
+            externalIdInput.value
+          );
+          await copyTextToClipboard(JSON.stringify(packageData, null, 2));
+          setStatusText(`Copied ${post.platformName || platformId} post package.`, 6000, "success");
+        } catch (err) {
+          setStatusText(`Copy failed: ${err?.message || err}`, 10000, "error");
+        }
+      });
+
+      openArtworkBtn.addEventListener("click", () => {
+        window.open(getArtworkPublicUrl(), "_blank", "noopener,noreferrer");
+      });
+
+      openImageBtn.addEventListener("click", () => {
+        const imageUrl = getArtworkImageUrl();
+        if (!imageUrl) {
+          setStatusText("No artwork image URL is available yet.", 10000, "warn");
+          return;
+        }
+        window.open(imageUrl, "_blank", "noopener,noreferrer");
+      });
+
+      openPlatformBtn?.addEventListener("click", () => {
+        const fallbackTarget = isLinkedIn ? "https://www.linkedin.com/feed/" : "https://bsky.app";
+        const target = String(platformConfig?.profileUrl || "").trim() || fallbackTarget;
+        window.open(target, "_blank", "noopener,noreferrer");
+      });
+
+      extractIdBtn?.addEventListener("click", () => {
+        const applied = syncDerivedExternalId({ overwrite: true });
+        syncPreview();
+        if (!applied) {
+          setStatusText(`Paste a valid ${post.platformName || platformId} post URL first.`, 10000, "warn");
+          urlInput.focus();
+          return;
+        }
+        queueAutoSave(0);
+        setStatusText(`Extracted ${post.platformName || platformId} post ID from the URL.`, 6000, "success");
+      });
+
+      markPostedBtn?.addEventListener("click", () => {
+        if (!String(urlInput.value || "").trim()) {
+          setStatusText("Paste the live post URL before marking this post as posted.", 10000, "warn");
+          urlInput.focus();
+          return;
+        }
+        syncDerivedExternalId();
+        statusInput.value = "posted";
+        syncPreview();
+        queueAutoSave(0);
+        setStatusText(`${post.platformName || platformId} marked as posted.`, 6000, "success");
+      });
+
+      publishBtn?.addEventListener("click", async () => {
+        const ok = await confirmToast(
+          `Publish this artwork to ${post.platformName || platformId} now?`,
+          { confirmLabel: "Publish", cancelLabel: "Cancel", tone: "warn" }
+        );
+        if (!ok) return;
+
+        clearSocialAutoSaveTimer(platformId);
+        socialState.publishing.add(platformId);
+        renderSocialPanel();
+
+        try {
+          await saveSocialPost(platformId, buildPayload());
+          await publishSocialPost(platformId);
+          setStatusText(`Published to ${post.platformName || platformId}.`, 10000, "success");
+          await loadSocialPanel(platformId);
+        } catch (err) {
+          setStatusText(`${post.platformName || platformId} publish failed: ${err?.message || err}`, 10000, "error");
+          await loadSocialPanel(platformId);
+        } finally {
+          socialState.publishing.delete(platformId);
+          renderSocialPanel();
+        }
       });
 
       const unbindBtn = el("button", { class:"btn mini", type:"button" }, "Unbind");
@@ -1131,9 +1478,13 @@
         }
       });
 
+      syncDerivedExternalId();
+      syncPreview();
+
       return [
         el("div", { class:"social-posting-head" },
           el("strong", {}, post.platformName || platformId),
+          el("span", { class:"pill" }, isApiPublishEnabled ? "API mode" : "Manual mode"),
           post.platformEnabled ? el("span", { class:"pill" }, "Enabled") : el("span", { class:"pill" }, "Disabled"),
           post.postedAt ? el("span", { class:"pill" }, `Posted: ${String(post.postedAt).slice(0, 10)}`) : null
         ),
@@ -1144,14 +1495,17 @@
           buildSocialField("Error", errorInput)
         ),
         buildSocialField("Caption", captionInput),
+        previewWrap,
         el("div", { class:"social-posting-actions" },
           unbindBtn,
           useDescriptionBtn,
-          el("span", { class:"social-posting-muted" }, savingNow ? "Saving..." : (post.updatedAt ? `Updated ${String(post.updatedAt).slice(0, 19).replace("T", " ")}` : "Not saved yet"))
+          extractIdBtn,
+          markPostedBtn,
+          publishBtn,
+          el("span", { class:"social-posting-muted" }, publishingNow ? "Publishing..." : (savingNow ? "Saving..." : (post.updatedAt ? `Updated ${String(post.updatedAt).slice(0, 19).replace("T", " ")}` : "Not saved yet")))
         )
       ];
     }
-
     function renderSocialPanel(){
       const enabledCount = (socialState.posts || []).filter((p) =>
         p?.platformEnabled == null ? true : !!p.platformEnabled
@@ -1656,6 +2010,15 @@
     // No auto-write on load.
     // Saves occur only after explicit user edits/actions.
   
+
+
+
+
+
+
+
+
+
 
 
 

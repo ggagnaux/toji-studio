@@ -9,6 +9,7 @@ import { requireAdmin } from "./auth.js";
 import { VARIANTS_DIR } from "./db.js";
 import { publicRouter } from "./routes/public.js";
 import { adminRouter } from "./routes/admin.js";
+import { adminSessionRouter } from "./routes/admin-session.js";
 import { uploadRouter } from "./routes/upload.js";
 import { seriesRouter } from "./routes/series.js";
 
@@ -57,7 +58,7 @@ app.use(helmet({
     }
   }
 }));
-app.use(cors({ origin: process.env.CORS_ORIGIN || true }));
+app.use(cors({ origin: process.env.CORS_ORIGIN || true, credentials: true }));
 app.use(express.json({ limit: "2mb" }));
 
 // Serve ONLY variants (never serve /storage/originals)
@@ -68,8 +69,9 @@ app.use("/media", express.static(VARIANTS_DIR, {
 
 // Public read APIs
 app.use("/api", publicRouter);
+app.use("/api", adminSessionRouter);
 
-// Admin APIs (token protected)
+// Admin APIs (session/cookie protected, with temporary token fallback)
 app.use("/api", (req, res, next) => {
   if (req.path.startsWith("/admin")) return requireAdmin(req, res, next);
   next();
@@ -95,4 +97,3 @@ if (siteRoot) {
 
 const port = Number(process.env.PORT || 5179);
 app.listen(port, () => console.log(`API listening on http://localhost:${port}`));
-

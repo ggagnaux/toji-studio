@@ -60,8 +60,6 @@ const webQuality = document.getElementById("webQuality");
 const resetImageVariantsBtn = document.getElementById("resetImageVariantsBtn");
 const imageVariantStatus = document.getElementById("imageVariantStatus");
 const imageVariantCurrent = document.getElementById("imageVariantCurrent");
-const exportDatabaseBtn = document.getElementById("exportDatabaseBtn");
-const exportDatabaseStatus = document.getElementById("exportDatabaseStatus");
 const contactEmailAddress = document.getElementById("contactEmailAddress");
 const contactEmailCurrent = document.getElementById("contactEmailCurrent");
 const splashPreviewBtn = document.getElementById("splashPreviewBtn");
@@ -80,7 +78,6 @@ const SETTINGS_TAB_COLORS = {
   aiIntegration: "#cc5f2f",
   variants: "#8a63d2",
   contact: "#d15353",
-  export: "#7d8f34"
 };
 
 if (splashPreviewModal && splashPreviewModal.parentElement !== document.body) {
@@ -203,21 +200,9 @@ function setImageVariantStatus(message, tone = "") {
       : "";
 }
 
-function setExportDatabaseStatus(message, tone = "") {
-  if (!exportDatabaseStatus) return;
-  exportDatabaseStatus.textContent = message || "";
-  exportDatabaseStatus.style.color = tone === "error"
-    ? "#d15353"
-    : tone === "success"
-      ? "var(--accent)"
-      : "";
-}
 
-function buildExportTimestamp() {
-  return new Date()
-    .toISOString()
-    .replace(/[:.]/g, "-");
-}
+
+
 
 function renderImageVariantSettings(settings) {
   const normalized = normalizeImageVariantSettings(settings);
@@ -509,7 +494,7 @@ function syncSplashModeUI(){
 async function loadImageVariantSettings() {
   renderImageVariantSettings(DEFAULT_IMAGE_VARIANTS);
   if (!getAdminToken()) {
-    setImageVariantStatus("Set admin token in Upload page to load backend variant settings.");
+    setImageVariantStatus("Sign in to the admin to load backend variant settings.");
     return;
   }
   try {
@@ -550,7 +535,7 @@ function persistSettings({ refreshBanner = false } = {}){
 
 async function saveImageVariantSettings() {
   if (!getAdminToken()) {
-    setImageVariantStatus("Set admin token in Upload page to save backend variant settings.", "error");
+    setImageVariantStatus("Sign in to the admin to save backend variant settings.", "error");
     return;
   }
   const payload = collectImageVariantSettings();
@@ -569,47 +554,7 @@ async function saveImageVariantSettings() {
   }
 }
 
-async function exportDatabaseJson() {
-  if (!getAdminToken()) {
-    setExportDatabaseStatus("Set admin token in Upload page to export the database.", "error");
-    return;
-  }
 
-  setExportDatabaseStatus("Preparing export...");
-  try {
-    const res = await fetch(`${API_BASE}/api/admin/export/database.json`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${getAdminToken()}`
-      }
-    });
-
-    if (!res.ok) {
-      let message = `${res.status} ${res.statusText}`;
-      try {
-        const payload = await res.json();
-        if (payload?.error) message = payload.error;
-      } catch {}
-      throw new Error(message);
-    }
-
-    const blob = await res.blob();
-    const disposition = res.headers.get("content-disposition") || "";
-    const filenameMatch = disposition.match(/filename="?([^"]+)"?/i);
-    const filename = filenameMatch?.[1] || `toji-database-export-${buildExportTimestamp()}.json`;
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(blobUrl);
-    setExportDatabaseStatus(`Downloaded ${filename}.`, "success");
-  } catch (error) {
-    setExportDatabaseStatus(`Export failed: ${error?.message || error}`, "error");
-  }
-}
 
 syncSplashModeUI();
 await loadContactSettings();
@@ -683,9 +628,6 @@ resetImageVariantsBtn?.addEventListener("click", async () => {
   void saveImageVariantSettings();
 });
 
-exportDatabaseBtn?.addEventListener("click", () => {
-  void exportDatabaseJson();
-});
 
 splashPreviewBtn?.addEventListener("click", () => {
   void openSplashPreviewModal();
@@ -732,6 +674,8 @@ window.addEventListener("keydown", (event) => {
     cycleSplashPreviewMode(1);
   }
 });
+
+
 
 
 

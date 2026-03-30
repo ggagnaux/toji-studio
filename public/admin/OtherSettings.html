@@ -17,16 +17,7 @@
     </section>
 
     <div class="admin-layout">
-      <aside class="sidebar" aria-label="Studio navigation">
-        <a href="index.html">Image Manager</a>
-        <a href="upload.html">Upload</a>
-        <a href="series.html">Series Manager</a>
-        <a href="linkmanager.html">Link Manager</a>
-        <a href="HomePageManager.html">Home Page Manager</a>
-        <a href="SocialMediaManager.html">Social Media Manager</a>
-        <a class="active" href="OtherSettings.html">Other Settings</a>
-        <a href="SecurityManager.html">Security Manager</a>
-      </aside>
+      <aside class="sidebar" aria-label="Studio navigation"></aside>
 
       <section>
         <article class="card">
@@ -37,7 +28,6 @@
               <button class="other-settings-tabbtn" id="otherTabAiIntegration" type="button" role="tab" aria-selected="false" aria-controls="otherPaneAiIntegration" data-settings-tab="aiIntegration">Ai Integration</button>
               <button class="other-settings-tabbtn" id="otherTabVariants" type="button" role="tab" aria-selected="false" aria-controls="otherPaneVariants" data-settings-tab="variants">Image Variants</button>
               <button class="other-settings-tabbtn" id="otherTabContact" type="button" role="tab" aria-selected="false" aria-controls="otherPaneContact" data-settings-tab="contact">Contact</button>
-              <button class="other-settings-tabbtn other-settings-tabbtn--export" id="otherTabExport" type="button" role="tab" aria-selected="false" aria-controls="otherPaneExport" data-settings-tab="export">Data Export</button>
             </div>
 
             <div class="other-settings-tabcontent">
@@ -193,15 +183,6 @@
                   <input id="contactEmailAddress" type="email" placeholder="you@example.com" autocomplete="email" />
                 </div>
               </section>
-
-              <section class="other-settings-tabpane" id="otherPaneExport" role="tabpanel" aria-labelledby="otherTabExport" data-settings-pane="export" hidden>
-                <p class="title" style="margin:0">Database Export</p>
-                <p class="sub" style="margin-top:8px">Download a JSON snapshot of the current database tables for backup or migration.</p>
-                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px">
-                  <button class="btn" id="exportDatabaseBtn" type="button">Export database JSON</button>
-                  <span class="sub" id="exportDatabaseStatus" aria-live="polite"></span>
-                </div>
-              </section>
             </div>
 
 	          </div>
@@ -215,6 +196,10 @@
   <script type="module" src="./js/other-settings.js"></script>
 </body>
 </html>
+
+
+
+
 
 
 

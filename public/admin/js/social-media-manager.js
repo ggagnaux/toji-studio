@@ -1,4 +1,4 @@
-﻿import { ensureBaseStyles, setYearFooter, showToast, apiFetch, confirmToast } from "../admin.js";
+import { ensureBaseStyles, setYearFooter, showToast, apiFetch, confirmToast } from "../admin.js";
 
 ensureBaseStyles();
 setYearFooter();
@@ -67,6 +67,81 @@ function parseTagsInput(v) {
 }
 
 const categoryOptions = ["social", "video", "newsletter", "portfolio", "other"];
+
+function getPlatformFormMeta(platform) {
+  const id = cleanSlug(platform?.id);
+  if (id === "bluesky") {
+    return {
+      intro: "Configure Bluesky for the manual-first workflow. Save the public profile, caption defaults, and optional credentials for later API mode.",
+      postingModeDefault: "manual",
+      handleLabel: "Bluesky handle",
+      handlePlaceholder: "@studio.bsky.social",
+      profileLabel: "Bluesky profile URL",
+      profilePlaceholder: "https://bsky.app/profile/your-handle",
+      accountIdLabel: "DID / account id",
+      accountIdPlaceholder: "did:plc:...",
+      hashtagsLabel: "Default hashtags",
+      hashtagsPlaceholder: "art, painting, toji-studios",
+      suffixLabel: "Default caption suffix",
+      suffixPlaceholder: "Optional CTA or portfolio link appended to Bluesky captions.",
+      notesLabel: "Bluesky notes",
+      notesPlaceholder: "Publishing guidance, thread ideas, or reminders for manual posting.",
+      clientIdLabel: "Identifier / login",
+      clientIdPlaceholder: "handle or email",
+      clientSecretLabel: "App password",
+      clientSecretPlaceholder: "xxxx-xxxx-xxxx-xxxx",
+      accessTokenLabel: "Access JWT",
+      refreshTokenLabel: "Refresh JWT"
+    };
+  }
+  if (id === "linkedin") {
+    return {
+      intro: "Configure LinkedIn for the manual-first workflow. Save the public page/profile, caption defaults, and optional API credentials for later direct posting.",
+      postingModeDefault: "manual",
+      handleLabel: "LinkedIn page handle",
+      handlePlaceholder: "company/your-studio",
+      profileLabel: "LinkedIn profile/page URL",
+      profilePlaceholder: "https://www.linkedin.com/company/your-page/",
+      accountIdLabel: "Organization URN / account id",
+      accountIdPlaceholder: "urn:li:organization:123456 or 123456",
+      hashtagsLabel: "Default hashtags",
+      hashtagsPlaceholder: "digitalart, illustration, conceptart",
+      suffixLabel: "Default caption suffix",
+      suffixPlaceholder: "Optional CTA or portfolio link appended to LinkedIn captions.",
+      notesLabel: "LinkedIn notes",
+      notesPlaceholder: "Posting guidance, audience notes, or reminders for manual publishing.",
+      clientIdLabel: "Client ID",
+      clientIdPlaceholder: "LinkedIn app client ID",
+      clientSecretLabel: "Client secret",
+      clientSecretPlaceholder: "LinkedIn app client secret",
+      accessTokenLabel: "Access token",
+      refreshTokenLabel: "Refresh token"
+    };
+  }
+
+  return {
+    intro: "Configure platform defaults and credentials used by the artwork social-post workflow.",
+    postingModeDefault: "api",
+    handleLabel: "Account handle",
+    handlePlaceholder: "@account",
+    profileLabel: "Profile URL",
+    profilePlaceholder: "https://...",
+    accountIdLabel: "Account/Page ID",
+    accountIdPlaceholder: "",
+    hashtagsLabel: "Default hashtags",
+    hashtagsPlaceholder: "tag1, tag2",
+    suffixLabel: "Default caption suffix",
+    suffixPlaceholder: "Optional default suffix appended to captions.",
+    notesLabel: "Notes",
+    notesPlaceholder: "Setup notes for this platform.",
+    clientIdLabel: "Client ID",
+    clientIdPlaceholder: "",
+    clientSecretLabel: "Client secret",
+    clientSecretPlaceholder: "",
+    accessTokenLabel: "Access token",
+    refreshTokenLabel: "Refresh token"
+  };
+}
 let platforms = [];
 let activePlatformId = "";
 const TAB_BORDER_PALETTE = ["#2a97d4", "#2ea97d", "#d18b2e", "#d15353", "#8a63d2", "#cf5ea8", "#3aa5a0", "#7e8c2b"];
@@ -135,7 +210,45 @@ function ensureSocialManagerStyles() {
     }
     .smm-details{
       display:grid;
+      gap:0;
+    }
+    .smm-section-tabbar{
+      display:flex;
+      gap:0;
+      flex-wrap:wrap;
+      border-bottom:1px solid var(--line);
+      margin-top:4px;
+    }
+    .smm-section-tab{
+      border:1px solid transparent;
+      border-bottom:1px solid color-mix(in srgb, var(--smm-section-color, var(--smm-active-color, var(--accent))) 38%, var(--line));
+      background:transparent;
+      color:var(--muted);
+      border-radius:10px 10px 0 0;
+      padding:8px 12px;
+      cursor:pointer;
+      font-size:13px;
+      margin-bottom:-1px;
+    }
+    .smm-section-tab[aria-selected="true"]{
+      border-color: color-mix(in srgb, var(--smm-section-color, var(--smm-active-color, var(--accent))) 88%, var(--line));
+      border-bottom-color: transparent;
+      background: color-mix(in srgb, var(--smm-section-color, var(--smm-active-color, var(--accent))) 16%, var(--panel));
+      color: var(--text);
+    }
+    .smm-section-pane{
+      display:grid;
       gap:10px;
+      padding-top:0;
+    }
+    .smm-section-panel{
+      display:grid;
+      gap:10px;
+      padding:12px;
+      border:1px solid color-mix(in srgb, var(--smm-section-color, var(--smm-active-color, var(--accent))) 52%, var(--line));
+      border-top:0;
+      border-radius:0 0 12px 12px;
+      background: color-mix(in srgb, var(--smm-section-color, var(--smm-active-color, var(--accent))) 10%, var(--panel));
     }
     .smm-details.is-disabled{
       opacity:.5;
@@ -357,6 +470,7 @@ function selectOption(list, value) {
 function platformPanel(platform, accentColor) {
   const config = platform.config || {};
   const auth = platform.auth || {};
+  const meta = getPlatformFormMeta(platform);
 
   const card = document.createElement("div");
   card.className = "card";
@@ -380,26 +494,24 @@ function platformPanel(platform, accentColor) {
   enabledInput.style.minWidth = "0";
   enabledInput.style.height = "auto";
 
-  const postingModeInput = selectOption(["api", "manual", "webhook"], cleanText(config.postingMode) || "api");
-  const handleInput = input("text", cleanText(config.accountHandle), "@account");
-  const profileUrlInput = input("url", cleanText(config.profileUrl), "https://...");
+  const postingModeInput = selectOption(["api", "manual", "webhook"], cleanText(config.postingMode) || meta.postingModeDefault);
+  const handleInput = input("text", cleanText(config.accountHandle), meta.handlePlaceholder);
+  const profileUrlInput = input("url", cleanText(config.profileUrl), meta.profilePlaceholder);
   const iconLocationInput = input("text", getPlatformTabIconSrc(platform), "Remote URL or local filesystem path");
-  const hashtagsInput = input("text", Array.isArray(config.defaultHashtags) ? config.defaultHashtags.join(", ") : cleanText(config.defaultHashtags), "tag1, tag2");
-  const suffixInput = textArea(cleanText(config.defaultCaptionSuffix), "Optional default suffix appended to captions.");
-  const notesInput = textArea(cleanText(config.notes), "Setup notes for this platform.");
+  const hashtagsInput = input("text", Array.isArray(config.defaultHashtags) ? config.defaultHashtags.join(", ") : cleanText(config.defaultHashtags), meta.hashtagsPlaceholder);
+  const suffixInput = textArea(cleanText(config.defaultCaptionSuffix), meta.suffixPlaceholder);
+  const notesInput = textArea(cleanText(config.notes), meta.notesPlaceholder);
 
-  const clientIdInput = input("text", cleanText(auth.clientId), "");
-  const clientSecretInput = input("password", cleanText(auth.clientSecret), "");
+  const clientIdInput = input("text", cleanText(auth.clientId), meta.clientIdPlaceholder);
+  const clientSecretInput = input("password", cleanText(auth.clientSecret), meta.clientSecretPlaceholder);
   const accessTokenInput = input("password", cleanText(auth.accessToken), "");
   const refreshTokenInput = input("password", cleanText(auth.refreshToken), "");
-  const accountIdInput = input("text", cleanText(auth.accountId), "");
+  const accountIdInput = input("text", cleanText(auth.accountId), meta.accountIdPlaceholder);
 
   const panelTitle = document.createElement("div");
-  panelTitle.style.display = "inline-flex";
-  panelTitle.style.alignItems = "center";
-  panelTitle.style.gap = "10px";
-  panelTitle.style.flexWrap = "wrap";
-  panelTitle.innerHTML = `<strong>${platform.name}</strong><span class="sub">[slug: ${platform.id}]</span>`;
+  panelTitle.style.display = "grid";
+  panelTitle.style.gap = "6px";
+  panelTitle.innerHTML = `<div style="display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap"><strong>${platform.name}</strong><span class="sub">[slug: ${platform.id}]</span></div><div class="sub">${meta.intro}</div>`;
 
   const enabledRow = document.createElement("label");
   enabledRow.className = "smm-toggle";
@@ -415,6 +527,23 @@ function platformPanel(platform, accentColor) {
   enabledStateBadge.setAttribute("aria-live", "polite");
   const detailsBlock = document.createElement("div");
   detailsBlock.className = "smm-details";
+  const detailTabBar = document.createElement("div");
+  detailTabBar.className = "smm-section-tabbar";
+  detailTabBar.setAttribute("role", "tablist");
+  detailTabBar.setAttribute("aria-label", `${platform.name} settings sections`);
+  const detailTabBtn = document.createElement("button");
+  detailTabBtn.type = "button";
+  detailTabBtn.className = "btn mini smm-section-tab";
+  detailTabBtn.textContent = "Detail";
+  detailTabBtn.setAttribute("role", "tab");
+  detailTabBtn.style.setProperty("--smm-section-color", accentColor || "var(--accent)");
+  const securityTabBtn = document.createElement("button");
+  securityTabBtn.type = "button";
+  securityTabBtn.className = "btn mini smm-section-tab";
+  securityTabBtn.textContent = "Security";
+  securityTabBtn.setAttribute("role", "tab");
+  securityTabBtn.style.setProperty("--smm-section-color", "#8a63d2");
+  detailTabBar.append(detailTabBtn, securityTabBtn);
   const syncEnabledUi = () => {
     enabledStateBadge.textContent = enabledInput.checked ? "Enabled" : "Disabled";
     enabledStateBadge.classList.toggle("is-enabled", !!enabledInput.checked);
@@ -437,11 +566,11 @@ function platformPanel(platform, accentColor) {
     buildField("Display name", nameInput),
     buildField("Category", categoryInput),
     buildField("Posting mode", postingModeInput),
-    buildField("Account handle", handleInput),
-    buildField("Profile URL", profileUrlInput),
+    buildField(meta.handleLabel, handleInput),
+    buildField(meta.profileLabel, profileUrlInput),
     buildField("Icon location", iconLocationInput),
-    buildField("Default hashtags", hashtagsInput),
-    buildField("Account/Page ID", accountIdInput)
+    buildField(meta.hashtagsLabel, hashtagsInput),
+    buildField(meta.accountIdLabel, accountIdInput)
   );
 
   const authGrid = document.createElement("div");
@@ -449,11 +578,34 @@ function platformPanel(platform, accentColor) {
   authGrid.style.gap = "10px";
   authGrid.style.gridTemplateColumns = "repeat(auto-fit, minmax(220px, 1fr))";
   authGrid.append(
-    buildField("Client ID", clientIdInput),
-    buildField("Client secret", clientSecretInput),
-    buildField("Access token", accessTokenInput),
-    buildField("Refresh token", refreshTokenInput)
+    buildField(meta.clientIdLabel, clientIdInput),
+    buildField(meta.clientSecretLabel, clientSecretInput),
+    buildField(meta.accessTokenLabel, accessTokenInput),
+    buildField(meta.refreshTokenLabel, refreshTokenInput)
   );
+
+  const detailPane = document.createElement("section");
+  detailPane.className = "smm-section-pane smm-section-panel";
+  detailPane.setAttribute("role", "tabpanel");
+  detailPane.style.setProperty("--smm-section-color", accentColor || "var(--accent)");
+  const securityPane = document.createElement("section");
+  securityPane.className = "smm-section-pane smm-section-panel";
+  securityPane.setAttribute("role", "tabpanel");
+  securityPane.style.setProperty("--smm-section-color", "#8a63d2");
+
+  const setInnerTab = (tabName) => {
+    const showDetail = tabName !== "security";
+    detailTabBtn.classList.toggle("is-active", showDetail);
+    securityTabBtn.classList.toggle("is-active", !showDetail);
+    detailTabBtn.setAttribute("aria-selected", showDetail ? "true" : "false");
+    securityTabBtn.setAttribute("aria-selected", showDetail ? "false" : "true");
+    detailPane.hidden = !showDetail;
+    detailPane.style.display = showDetail ? "grid" : "none";
+    securityPane.hidden = showDetail;
+    securityPane.style.display = showDetail ? "none" : "grid";
+  };
+  detailTabBtn.addEventListener("click", () => setInnerTab("detail"));
+  securityTabBtn.addEventListener("click", () => setInnerTab("security"));
 
   const footer = document.createElement("div");
   footer.style.display = "flex";
@@ -473,19 +625,19 @@ function platformPanel(platform, accentColor) {
   let saving = false;
 
   function buildPayload() {
-      return {
-        name: cleanText(nameInput.value) || platform.name,
-        category: cleanText(categoryInput.value) || "social",
-        enabled: !!enabledInput.checked,
+    return {
+      name: cleanText(nameInput.value) || platform.name,
+      category: cleanText(categoryInput.value) || "social",
+      enabled: !!enabledInput.checked,
+      iconLocation: normalizePlatformIconLocation(iconLocationInput.value),
+      config: {
+        postingMode: cleanText(postingModeInput.value) || meta.postingModeDefault,
+        accountHandle: cleanText(handleInput.value),
+        profileUrl: cleanText(profileUrlInput.value),
         iconLocation: normalizePlatformIconLocation(iconLocationInput.value),
-        config: {
-          postingMode: cleanText(postingModeInput.value) || "api",
-          accountHandle: cleanText(handleInput.value),
-          profileUrl: cleanText(profileUrlInput.value),
-          iconLocation: normalizePlatformIconLocation(iconLocationInput.value),
-          defaultHashtags: parseTagsInput(hashtagsInput.value),
-          defaultCaptionSuffix: cleanText(suffixInput.value),
-          notes: cleanText(notesInput.value)
+        defaultHashtags: parseTagsInput(hashtagsInput.value),
+        defaultCaptionSuffix: cleanText(suffixInput.value),
+        notes: cleanText(notesInput.value)
       },
       auth: {
         clientId: cleanText(clientIdInput.value),
@@ -573,7 +725,7 @@ function platformPanel(platform, accentColor) {
   }
 
   const deleteBtn = document.createElement("button");
-  deleteBtn.className = "btn mini";
+  deleteBtn.className = "btn mini danger";
   deleteBtn.type = "button";
   deleteBtn.style.borderColor = "color-mix(in srgb, #d15353 56%, var(--line))";
   deleteBtn.textContent = "Delete";
@@ -600,14 +752,15 @@ function platformPanel(platform, accentColor) {
   });
 
   footer.append(deleteBtn, autoSaveHint, status);
-  detailsBlock.append(
-    buildField("Default caption suffix", suffixInput),
-    buildField("Notes", notesInput),
+  detailPane.append(
+    buildField(meta.suffixLabel, suffixInput),
+    buildField(meta.notesLabel, notesInput),
     document.createElement("hr"),
-    settingsGrid,
-    document.createElement("hr"),
-    authGrid
+    settingsGrid
   );
+  securityPane.append(authGrid);
+  detailsBlock.append(detailTabBar, detailPane, securityPane);
+  setInnerTab("detail");
   syncEnabledUi();
   body.append(panelTitle, enabledRow, detailsBlock, footer);
   card.append(body);
@@ -716,7 +869,8 @@ platformCreateForm?.addEventListener("submit", async (e) => {
         enabled: true,
         iconLocation: normalizePlatformIconLocation(iconLocation),
         config: {
-          iconLocation: normalizePlatformIconLocation(iconLocation)
+          iconLocation: normalizePlatformIconLocation(iconLocation),
+          postingMode: selectedPlatform?.id === "bluesky" ? "manual" : "api"
         }
       })
     });
@@ -734,6 +888,12 @@ platformCreateForm?.addEventListener("submit", async (e) => {
 });
 
 loadPlatforms();
+
+
+
+
+
+
 
 
 

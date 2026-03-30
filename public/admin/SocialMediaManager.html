@@ -16,22 +16,17 @@
     </section>
 
     <div class="admin-layout">
-      <aside class="sidebar" aria-label="Studio navigation">
-        <a href="index.html">Image Manager</a>
-        <a href="upload.html">Upload</a>
-        <a href="series.html">Series Manager</a>
-        <a href="linkmanager.html">Link Manager</a>
-        <a href="HomePageManager.html">Home Page Manager</a>
-        <a class="active" href="SocialMediaManager.html">Social Media Manager</a>
-        <a href="OtherSettings.html">Other Settings</a>
-        <a href="SecurityManager.html">Security Manager</a>
-      </aside>
+      <aside class="sidebar" aria-label="Studio navigation"></aside>
 
       <section style="display:grid; gap:14px">
         <article class="card">
           <div class="meta">
-            <div style="display:flex; gap:10px; align-items:center; justify-content:flex-start; flex-wrap:wrap">
-              <p class="title" style="margin:0">Platform configuration</p>
+            <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap">
+              <div>
+                <p class="title" style="margin:0">Platform configuration</p>
+                <p class="sub" style="margin-top:8px">Bluesky is the current focus. Add supported platforms and save platform-specific publishing defaults here.</p>
+              </div>
+              <button class="btn primary" id="openPlatformCreateDialogBtn" type="button">Add platform</button>
             </div>
             <p class="sub" id="platformSummary" style="margin-top:8px">Loading...</p>
             <div id="platformList" style="display:grid; gap:12px; margin-top:12px"></div>
@@ -82,3 +77,9 @@
   <script type="module" src="./js/social-media-manager.js"></script>
 </body>
 </html>
+
+
+
+
+
+

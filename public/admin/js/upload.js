@@ -1,493 +1,389 @@
-    import {
-      loadState, saveState, el, setYearFooter, ensureBaseStyles,
-      upsertTag,
-      patchArtworkToBackend,
-      getAdminToken, setAdminToken,
-      apiFetch, API_BASE, showToast
-    } from "../admin.js";
+import {
+  ensureBaseStyles,
+  setYearFooter,
+  el,
+  loadStateAutoSync,
+  saveState,
+  getAdminToken,
+  apiFetch,
+  showToast,
+  API_BASE
+} from "../admin.js";
 
-    ensureBaseStyles();
-    setYearFooter();
+ensureBaseStyles();
+setYearFooter();
 
-    const state = await loadState();
-    state.artworks ||= [];
-    state.tags ||= [];
-    state.series ||= [];
+(async function(){
+  const state = await loadStateAutoSync();
 
-    const files = document.getElementById("files");
-    const uploadOriginalsPanel = document.getElementById("uploadOriginalsPanel");
-    const list = document.getElementById("list");
-    const statusSelect = document.getElementById("statusSelect");
-    const statusPills = Array.from(document.querySelectorAll("[data-status-pill]"));
+  const fileInput = document.getElementById("files");
+  const filePickerShell = fileInput?.closest(".file-picker-shell");
+  const statusEl = document.getElementById("status");
+  const list = document.getElementById("list");
+  const statusSelect = document.getElementById("statusSelect");
+  const statusPills = Array.from(document.querySelectorAll("[data-status-pill]"));
+  const tagFilterPills = Array.from(document.querySelectorAll("[data-tag-filter]"));
+  const progressWrap = document.getElementById("uploadProgressWrap");
+  const progressBar = document.getElementById("uploadProgressBar");
+  const progressLabel = document.getElementById("uploadProgressLabel");
+  const uiBlocker = document.getElementById("uiBlocker");
+  const uiBlockerTitle = document.getElementById("uiBlockerTitle");
+  const uiBlockerSub = document.getElementById("uiBlockerSub");
+  const selectedBatchTags = new Set();
+  const selectedTagFilters = new Set();
+  const newIds = [];
 
-    const tokenInput = document.getElementById("token");
-    const uiBlocker = document.getElementById("uiBlocker");
-    const uiBlockerTitle = document.getElementById("uiBlockerTitle");
-    const uiBlockerSub = document.getElementById("uiBlockerSub");
+  function getApiBase() {
+    return API_BASE;
+  }
 
-    const newIds = [];
-    let uiLocked = false;
+  function requireAdminSession() {
+    if (getAdminToken()) return;
+    const next = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.href = `login.html?next=${encodeURIComponent(next)}`;
+    throw new Error("Please sign in to continue.");
+  }
 
-    const syncStatusPills = () => {
-      const current = String(statusSelect?.value || "draft").toLowerCase();
-      for (const btn of statusPills) {
-        const value = String(btn.getAttribute("data-status-pill") || "").toLowerCase();
-        const active = value === current;
-        btn.classList.toggle("active", active);
-        btn.setAttribute("aria-pressed", active ? "true" : "false");
-      }
-    };
-    if (statusSelect && !statusSelect.value) statusSelect.value = "draft";
+  function showUiBlocker(title, subtitle) {
+    if (!uiBlocker) return;
+    if (uiBlockerTitle) uiBlockerTitle.textContent = title || "Please wait...";
+    if (uiBlockerSub) uiBlockerSub.textContent = subtitle || "";
+    uiBlocker.style.display = "block";
+  }
+
+  function hideUiBlocker() {
+    if (uiBlocker) uiBlocker.style.display = "none";
+  }
+
+  function flashFilePicker() {
+    if (!filePickerShell) return;
+    filePickerShell.classList.remove("upload-section-flash");
+    void filePickerShell.offsetWidth;
+    filePickerShell.classList.add("upload-section-flash");
+    window.setTimeout(() => {
+      filePickerShell.classList.remove("upload-section-flash");
+    }, 1500);
+    if (fileInput && typeof fileInput.focus === "function") fileInput.focus();
+  }
+
+  function mergeUploadedArtwork(item) {
+    if (!item?.id) return;
+    if (!Array.isArray(state.artworks)) state.artworks = [];
+    const idx = state.artworks.findIndex((entry) => entry?.id === item.id);
+    if (idx >= 0) state.artworks[idx] = { ...state.artworks[idx], ...item };
+    else state.artworks.unshift(item);
+  }
+
+  function getAllTags() {
+    const source = Array.isArray(state.artworks) ? state.artworks : [];
+    const out = new Set();
+    source.forEach((artwork) => {
+      const tags = Array.isArray(artwork?.tags)
+        ? artwork.tags
+        : String(artwork?.tags || "")
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean);
+      tags.forEach((tag) => out.add(String(tag || "").trim().toLowerCase()));
+    });
+    return Array.from(out).filter(Boolean);
+  }
+
+  function getAllKnownSeries() {
+    const direct = Array.isArray(state.series) ? state.series : [];
+    const names = new Set();
+    direct.forEach((series) => {
+      const value = typeof series === "string" ? series : (series?.name || series?.title || series?.slug || "");
+      if (value) names.add(String(value).trim());
+    });
+    const artworkSeries = Array.isArray(state.artworks) ? state.artworks : [];
+    artworkSeries.forEach((artwork) => {
+      const value = String(artwork?.series || "").trim();
+      if (value) names.add(value);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }
+
+  function tagMatchesActiveFilters(tag) {
+    if (!selectedTagFilters.size) return false;
+    const normalized = String(tag || "").trim().toLowerCase();
+    if (!normalized) return false;
+    return Array.from(selectedTagFilters).some((filter) => {
+      if (filter === "0-9") return /^\d/.test(normalized);
+      return normalized.startsWith(filter);
+    });
+  }
+
+  function syncTagFilterPills() {
+    tagFilterPills.forEach((btn) => {
+      const value = String(btn.getAttribute("data-tag-filter") || "").toLowerCase();
+      const active = selectedTagFilters.has(value);
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function syncStatusPills() {
+    const current = String(statusSelect?.value || "draft").toLowerCase();
     statusPills.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const value = String(btn.getAttribute("data-status-pill") || "").toLowerCase();
-        if (!value || !statusSelect) return;
-        statusSelect.value = value;
-        syncStatusPills();
-      });
+      const value = String(btn.getAttribute("data-status-pill") || "").toLowerCase();
+      const active = value === current;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
     });
-    syncStatusPills();
-
-    function setStatus(msg, tone = "info"){
-      if (!msg) return;
-      showToast(msg, { tone, duration: 10000 });
-    }
-    function setTokenStatus(msg, tone = "success"){
-      if (!msg) return;
-      showToast(msg, { tone, duration: 10000 });
-    }
-    function flashUploadOriginalsPanel(){
-      if (!uploadOriginalsPanel) return;
-      uploadOriginalsPanel.classList.remove("upload-section-flash");
-      // Force reflow so the animation restarts on repeated clicks.
-      void uploadOriginalsPanel.offsetWidth;
-      uploadOriginalsPanel.classList.add("upload-section-flash");
-    }
-    function ensureUploadOriginalsPanelInView(){
-      if (!uploadOriginalsPanel) return;
-      const rect = uploadOriginalsPanel.getBoundingClientRect();
-      const vh = window.innerHeight || document.documentElement.clientHeight || 0;
-      const isFullyVisible = rect.top >= 0 && rect.bottom <= vh;
-      if (!isFullyVisible) {
-        uploadOriginalsPanel.scrollIntoView({ behavior: "smooth", block: "start", inline: "nearest" });
-      }
-    }
-    function setUiLocked(on, title = "Uploading and processing...", sub = "Please wait. Interaction is temporarily disabled."){
-      uiLocked = !!on;
-      if (uiBlocker) uiBlocker.style.display = on ? "block" : "none";
-      if (uiBlockerTitle) uiBlockerTitle.textContent = title;
-      if (uiBlockerSub) uiBlockerSub.textContent = sub;
-    }
-    window.addEventListener("keydown", (e) => {
-      if (!uiLocked) return;
-      e.preventDefault();
-      e.stopPropagation();
-    }, true);
-    function setUploadProgress(pct){
-      const wrap = document.getElementById("uploadProgressWrap");
-      const bar = document.getElementById("uploadProgressBar");
-      const label = document.getElementById("uploadProgressLabel");
-      const p = Math.max(0, Math.min(100, Number(pct) || 0));
-      if (wrap) wrap.style.display = "block";
-      if (bar) bar.style.width = `${p}%`;
-      if (label) label.textContent = `Uploading: ${Math.round(p)}%`;
-    }
-    function hideUploadProgress(){
-      const wrap = document.getElementById("uploadProgressWrap");
-      if (wrap) wrap.style.display = "none";
-    }
-
-    // ---- tag helpers ----
-    function normTag(t){
-      return String(t || "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, " ")
-        .replace(/^[#]+/, "");
-    }
-    function normSeries(s){
-      return String(s || "").trim().replace(/\s+/g, " ");
-    }
-    function parseTags(raw){
-      return Array.from(new Set(
-        String(raw || "")
-          .split(/[,;\n]+/g)
-          .map(normTag)
-          .filter(Boolean)
-      )).sort((a,b)=>a.localeCompare(b));
-    }
-    function allKnownTags(){
-      const set = new Set();
-
-      (state.tags || []).forEach(t => {
-        const nt = normTag(t);
-        if (nt) set.add(nt);
-      });
-
-      (state.artworks || []).forEach(a => (a.tags || []).forEach(t => {
-        const nt = normTag(t);
-        if (nt) set.add(nt);
-      }));
-
-      selectedBatchTags.forEach(t => {
-        const nt = normTag(t);
-        if (nt) set.add(nt);
-      });
-
-      return Array.from(set).sort((a,b)=>a.localeCompare(b));
-    }
-    function allKnownSeries(){
-      const set = new Set();
-      (state.series || []).forEach(s => {
-        const ns = normSeries(s);
-        if (ns) set.add(ns);
-      });
-      (state.artworks || []).forEach(a => {
-        const ns = normSeries(a.series);
-        if (ns) set.add(ns);
-      });
-      return Array.from(set).sort((a,b)=>a.localeCompare(b));
-    }
-
-    const selectedBatchTags = new Set();
-
-    function getSelectedBatchTags(){
-      return Array.from(selectedBatchTags).sort((a,b)=>a.localeCompare(b));
-    }
-
-    function renderTagPills(){
-      const host = document.getElementById("tagPills");
-      if (!host) return;
-      host.innerHTML = "";
-
-      const tags = allKnownTags();
-      if (!tags.length){
-        host.appendChild(el("span", { class:"sub" }, "No tags available yet."));
-        return;
-      }
-
-      for (const tag of tags){
-        const active = selectedBatchTags.has(tag);
-        const btn = el(
-          "button",
-          {
-            type: "button",
-            class: `chip${active ? " active" : ""}`,
-            "aria-pressed": active ? "true" : "false"
-          },
-          tag
-        );
-
-        btn.addEventListener("click", () => {
-          if (selectedBatchTags.has(tag)) selectedBatchTags.delete(tag);
-          else selectedBatchTags.add(tag);
-          renderTagPills();
-        });
-
-        host.appendChild(btn);
-      }
-    }
-
-    function addTagsFromInput(){
-      const input = document.getElementById("newTagInput");
-      if (!input) return;
-      const tags = parseTags(input.value);
-      if (!tags.length) return;
-      for (const t of tags) selectedBatchTags.add(t);
-      input.value = "";
+    if (statusSelect && !statusSelect.value) statusSelect.value = "draft";
+  }
+  statusPills.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const value = String(btn.getAttribute("data-status-pill") || "").toLowerCase();
+      if (!value || !statusSelect) return;
+      statusSelect.value = value;
+      syncStatusPills();
+    });
+  });
+  tagFilterPills.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const value = String(btn.getAttribute("data-tag-filter") || "").toLowerCase();
+      if (!value) return;
+      if (selectedTagFilters.has(value)) selectedTagFilters.delete(value);
+      else selectedTagFilters.add(value);
+      syncTagFilterPills();
       renderTagPills();
-    }
-    function renderSeriesOptions(){
-      const seriesSelect = document.getElementById("series");
-      if (!seriesSelect) return;
-      const current = seriesSelect.value || "";
-      seriesSelect.innerHTML = "";
-      seriesSelect.appendChild(new Option("No change", ""));
-      for (const s of allKnownSeries()){
-        seriesSelect.appendChild(new Option(s, s));
-      }
-      if ([...seriesSelect.options].some(o => o.value === current)) {
-        seriesSelect.value = current;
-      }
-    }
-
-    // Seed token input
-    tokenInput.value = getAdminToken();
-
-    document.getElementById("saveToken").addEventListener("click", () => {
-      setAdminToken(tokenInput.value);
-      setTokenStatus("Saved.");
     });
+  });
+  syncStatusPills();
+  syncTagFilterPills();
 
-    document.getElementById("addTagBtn").addEventListener("click", addTagsFromInput);
-    document.getElementById("newTagInput").addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
-      addTagsFromInput();
-    });
+  function setStatus(msg){ statusEl.textContent = msg || ""; }
+  function normalizeTags(value) {
+    if (Array.isArray(value)) return value.map(v => String(v || "").trim()).filter(Boolean);
+    return String(value || "")
+      .split(",")
+      .map(v => v.trim())
+      .filter(Boolean);
+  }
 
-    function renderNew(){
-      list.innerHTML = "";
+  function parseTags(value){
+    return Array.from(new Set(normalizeTags(value).map(v => v.toLowerCase())));
+  }
 
-      if (!newIds.length){
-        list.appendChild(el("div", { class:"sub" }, "No uploads yet."));
-        return;
-      }
+  function renderTagPills(){
+    const host = document.getElementById("tagPills");
+    if (!host) return;
+    host.innerHTML = "";
 
-      let rendered = 0;
-
-      for (const id of newIds){
-        const a = state.artworks.find(x => x.id === id);
-        if (!a) continue;
-
-        rendered++;
-
-        list.appendChild(
-          el("a", { class:"card", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"box-shadow:none; display:flex; align-items:center; gap:12px; padding:10px;" },
-            el("div", { class:"thumbSm" }, el("img", { src:a.thumb, alt:a.title, loading:"lazy" })),
-            el("div", { class:"meta" },
-              el("p", { class:"title" }, a.title || "Untitled"),
-              el("p", { class:"sub" }, `ID: ${a.id} • Open to edit →`)
-            )
-          )
-        );
-      }
-
-      if (!rendered){
-        list.appendChild(
-          el("div", { class:"sub" }, "Uploads were created, but no matching items were found in local state (check backend id field).")
-        );
-      }
+    if (!selectedTagFilters.size) {
+      host.appendChild(el("span", { class: "sub" }, "Select one or more filters to show matching tags."));
+      return;
     }
 
-    function normalizeMediaUrl(p){
-      // backend returns "/media/....jpg"
-      // For local dev (front-end on 5173), need absolute URL.
-      if (!p) return p;
-      if (p.startsWith("http")) return p;
-      if (p.startsWith("/")) return `${API_BASE}${p}`;
-      return p;
+    const tags = getAllTags().sort((a,b)=> a.localeCompare(b));
+    const filtered = tags.filter((tag) => tagMatchesActiveFilters(tag));
+    const visible = Array.from(new Set([...filtered, ...Array.from(selectedBatchTags).filter((tag) => tagMatchesActiveFilters(tag))])).sort((a,b)=> a.localeCompare(b));
+
+    if (!visible.length) {
+      host.appendChild(el("span", { class: "sub" }, "No tags match the current filter."));
+      return;
     }
 
-    function normalizeArtworkId(a){
-      const v = a?.id || a?.artworkId || a?._id || a?.uuid;
-      return v == null ? "" : String(v).trim();
-    }
-    function uploadWithProgress(path, formData, onProgress){
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", `${API_BASE}${path}`, true);
-        const token = getAdminToken();
-        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-
-        xhr.upload.onprogress = (ev) => {
-          if (!ev.lengthComputable) return;
-          onProgress?.((ev.loaded / ev.total) * 100);
-        };
-
-        xhr.onerror = () => reject(new Error("Network error"));
-        xhr.onabort = () => reject(new Error("Upload aborted"));
-        xhr.onload = () => {
-          const text = xhr.responseText || "";
-          let payload = null;
-          try { payload = text ? JSON.parse(text) : null; } catch {}
-          if (xhr.status < 200 || xhr.status >= 300) {
-            reject(new Error(payload?.error || `${xhr.status} ${xhr.statusText}`));
-            return;
-          }
-          resolve(payload);
-        };
-
-        xhr.send(formData);
-      });
-    }
-
-    async function applyBatchToIds(ids){
-      const targets = Array.from(new Set((ids || []).map(x => String(x || "").trim()).filter(Boolean)));
-      if (!targets.length) return { total: 0, ok: 0, failed: 0, skipped: true };
-
-      if (!getAdminToken()) {
-        setStatus("Uploaded, but batch metadata not applied (missing admin token).");
-        return { total: targets.length, ok: 0, failed: targets.length, skipped: true };
-      }
-
-      const tags = getSelectedBatchTags();
-      const series = document.getElementById("series").value.trim();
-      const year = document.getElementById("year").value.trim();
-      const status = statusSelect?.value || "draft";
-
-      const basePatch = {};
-      if (series) basePatch.series = series;
-      if (year) basePatch.year = year;
-      if (status) basePatch.status = status;
-
-      const now = new Date().toISOString();
-
-      const hasWork = tags.length || Object.keys(basePatch).length;
-      if (!hasWork) return { total: targets.length, ok: targets.length, failed: 0, skipped: true };
-
-      setStatus(`Applying batch metadata to ${targets.length} item(s)...`);
-
-      try{
-        const jobs = targets.map(async (id) => {
-          const a = state.artworks.find(x => x.id === id);
-          if (!a) throw new Error("Artwork not found in local state");
-
-          const patch = { ...basePatch };
-
-          if (tags.length){
-            const merged = Array.from(new Set([...(a.tags||[]).map(normTag).filter(Boolean), ...tags]))
-              .sort((x,y)=>x.localeCompare(y));
-            patch.tags = merged;
-          }
-
-          if (patch.status === "published" && !a.publishedAt) {
-            patch.publishedAt = now; // backend may ignore, fine
-          }
-
-          // Local-first
-          Object.assign(a, patch, { updatedAt: now });
-
-          // Write-through
-          const updated = await patchArtworkToBackend(id, patch);
-          if (updated){
-            if (updated.thumb) updated.thumb = normalizeMediaUrl(updated.thumb);
-            if (updated.image) updated.image = normalizeMediaUrl(updated.image);
-            Object.assign(a, updated);
-          }
-        });
-
-        const settled = await Promise.allSettled(jobs);
-        const failedIds = settled
-          .map((result, i) => ({ result, id: targets[i] }))
-          .filter(x => x.result.status === "rejected")
-          .map(x => x.id);
-        const okCount = targets.length - failedIds.length;
-
-        // Maintain global tag/series pools locally
-        for (const t of tags) upsertTag(state, t);
-        if (series && !(state.series || []).includes(series)) state.series.push(series);
-
-        saveState(state);
-        renderNew();
+    for (const tag of visible){
+      const active = selectedBatchTags.has(tag);
+      const btn = el("button", {
+        type: "button",
+        class: `btn mini ${active ? "primary" : ""}`,
+        style: active ? "" : "opacity:.88"
+      }, tag);
+      btn.addEventListener("click", () => {
+        if (selectedBatchTags.has(tag)) selectedBatchTags.delete(tag);
+        else selectedBatchTags.add(tag);
         renderTagPills();
-        renderSeriesOptions();
-        if (!failedIds.length) {
-          setStatus(`Upload + batch metadata applied to ${okCount}/${targets.length} item(s).`);
-        } else {
-          const preview = failedIds.slice(0, 4).join(", ");
-          const more = failedIds.length > 4 ? ` +${failedIds.length - 4} more` : "";
-          setStatus(`Batch metadata applied to ${okCount}/${targets.length}. Failed IDs: ${preview}${more}`);
-        }
-        return { total: targets.length, ok: okCount, failed: failedIds.length };
-      }catch(err){
-        saveState(state);
-        setStatus(`Batch apply failed: ${err?.message || err}`);
-        return { total: targets.length, ok: 0, failed: targets.length };
-      }
+      });
+
+      host.appendChild(btn);
+    }
+  }
+
+  function addTagsFromInput(){
+    const input = document.getElementById("newTagInput");
+    if (!input) return;
+    const tags = parseTags(input.value);
+    if (!tags.length) return;
+    for (const t of tags) selectedBatchTags.add(t);
+    input.value = "";
+    renderTagPills();
+  }
+
+  function renderSeriesOptions(){
+    const seriesSelect = document.getElementById("series");
+    if (!seriesSelect) return;
+    const current = seriesSelect.value || "";
+    seriesSelect.innerHTML = "";
+    seriesSelect.appendChild(new Option("No change", ""));
+    for (const s of getAllKnownSeries()){
+      seriesSelect.appendChild(new Option(s, s));
+    }
+    if ([...seriesSelect.options].some(o => o.value === current)) {
+      seriesSelect.value = current;
+    }
+  }
+
+  document.getElementById("addTagBtn").addEventListener("click", addTagsFromInput);
+  document.getElementById("newTagInput").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    addTagsFromInput();
+  });
+
+  function renderNew(){
+    list.innerHTML = "";
+
+    if (!newIds.length){
+      list.appendChild(el("div", { class:"sub" }, "No uploads yet."));
+      return;
     }
 
-    document.getElementById("uploadBtn").addEventListener("click", async () => {
-      const arr = Array.from(files.files || []);
-      if (!arr.length) {
-        setStatus("Pick at least one image.");
-        ensureUploadOriginalsPanelInView();
-        flashUploadOriginalsPanel();
+    let rendered = 0;
+
+    for (const id of newIds){
+      const a = state.artworks.find(x => x.id === id);
+      if (!a) continue;
+
+      rendered++;
+
+      list.appendChild(
+        el("a", { class:"card", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"box-shadow:none; display:flex; align-items:center; gap:12px; padding:10px;" },
+          el("div", { class:"thumbSm" }, el("img", { src:a.thumb, alt:a.title, loading:"lazy" })),
+          el("div", { class:"meta" },
+            el("p", { class:"title" }, a.title || "Untitled"),
+            el("p", { class:"sub" }, `ID: ${a.id} - Open to edit ->`)
+          )
+        )
+      );
+    }
+
+    if (!rendered){
+      list.appendChild(
+        el("div", { class:"sub" }, "Uploads were created, but no matching items were found in local state (check backend id field).")
+      );
+    }
+  }
+
+  function uploadWithProgress(path, formData, onProgress){
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${getApiBase()}${path}`, true);
+      xhr.withCredentials = true;
+      const token = getAdminToken();
+      if (token && token !== "__session__") xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+      xhr.upload.onprogress = (evt) => {
+        if (!evt.lengthComputable) return;
+        const pct = Math.max(0, Math.min(100, Math.round((evt.loaded / evt.total) * 100)));
+        onProgress?.(pct);
+      };
+
+      xhr.onload = () => {
+        let data = null;
+        try { data = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch {}
+        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+        else reject(new Error(data?.error || `Upload failed (${xhr.status})`));
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(formData);
+    });
+  }
+
+  async function refreshStateFromBackend(){
+    try {
+      const rows = await apiFetch("/api/admin/artworks", { method: "GET" });
+      const normalized = (rows || []).map((a) => ({
+        ...a,
+        featured: !!a.featured,
+        tags: Array.isArray(a.tags) ? a.tags : (typeof a.tags === "string" ? JSON.parse(a.tags || "[]") : []),
+        thumb: a.thumb?.startsWith("/") ? `${getApiBase()}${a.thumb}` : a.thumb,
+        image: a.image?.startsWith("/") ? `${getApiBase()}${a.image}` : a.image
+      }));
+      state.artworks = normalized;
+      saveState(state);
+      renderTagPills();
+    } catch (err) {
+      console.warn("Failed to refresh uploaded artworks from backend", err);
+    }
+  }
+
+  document.getElementById("uploadBtn").addEventListener("click", async () => {
+    try {
+      requireAdminSession();
+      const files = [...(fileInput.files || [])];
+      if (!files.length){
+        setStatus("Choose one or more image files.");
+        showToast("Select one or more files first.", { tone: "warn" });
+        flashFilePicker();
         return;
       }
 
-      if (!getAdminToken()) return setStatus("Set and save your admin token first.");
+      const series = document.getElementById("series")?.value || "";
+      const year = String(document.getElementById("year")?.value || "").trim();
+      const uploadStatus = statusSelect?.value || "draft";
+      const tags = Array.from(selectedBatchTags);
 
-      setStatus(`Uploading ${arr.length} file(s)…`);
+      const fd = new FormData();
+      for (const f of files) fd.append("files", f, f.name);
+      if (series) fd.append("series", series);
+      if (year) fd.append("year", year);
+      if (uploadStatus) fd.append("status", uploadStatus);
+      if (tags.length) fd.append("tags", JSON.stringify(tags));
 
-      setUiLocked(true);
-      setUploadProgress(0);
+      showUiBlocker("Uploading and processing...", "Please wait. Interaction is temporarily disabled.");
+      progressWrap.style.display = "block";
+      progressBar.style.width = "0%";
+      progressLabel.textContent = "Uploading: 0%";
+      setStatus("Uploading originals and generating variants...");
 
-      try{
-        const fd = new FormData();
-        for (const f of arr) fd.append("files", f);
-        const uploadTags = getSelectedBatchTags();
-        const uploadSeries = document.getElementById("series").value.trim();
-        const uploadYear = document.getElementById("year").value.trim();
-        const uploadStatus = statusSelect?.value || "draft";
+      const out = await uploadWithProgress("/api/admin/upload", fd, (pct) => {
+        progressBar.style.width = `${pct}%`;
+        progressLabel.textContent = `Uploading: ${pct}%`;
+      });
 
-        if (uploadTags.length) fd.append("tags", JSON.stringify(uploadTags));
-        if (uploadSeries) fd.append("series", uploadSeries);
-        if (uploadYear) fd.append("year", uploadYear);
-        if (uploadStatus) fd.append("status", uploadStatus);
-
-        const result = await uploadWithProgress("/api/admin/upload", fd, setUploadProgress);
-        setUploadProgress(100);
-
-        const created = result?.created || [];
-        const skipped = Array.isArray(result?.skipped) ? result.skipped : [];
-        const skippedDupes = skipped.filter((x) => String(x?.reason || "") === "duplicate_filename");
-
-        if (!created.length){
-          if (skippedDupes.length) {
-            setStatus(`Skipped ${skippedDupes.length} duplicate file name(s). No new uploads were created.`, "warn");
-          } else {
-            setStatus("Upload succeeded, but nothing returned.");
-          }
-          return;
-        }
-
-        // Merge returned records into local admin state
-        const createdIds = [];
-        for (const a of created){
-          // --- normalize id coming from backend ---
-          const normId = normalizeArtworkId(a);
-          if (!normId) {
-            console.warn("Upload returned item without id:", a);
-            continue;
-          }
-          a.id = normId;
-          if (!Array.isArray(a.tags)) a.tags = [];
-
-          // Ensure URLs are usable
-          a.thumb = normalizeMediaUrl(a.thumb);
-          a.image = normalizeMediaUrl(a.image);
-
-          // Dedup by id
-          const idx = state.artworks.findIndex(x => x.id === a.id);
-          if (idx >= 0) state.artworks.splice(idx, 1);
-          state.artworks.unshift(a);
-
-          // Keep newIds unique
-          const nidx = newIds.indexOf(a.id);
-          if (nidx >= 0) newIds.splice(nidx, 1);
-          newIds.unshift(a.id);
-          createdIds.push(a.id);
-        }
-
-        if (!createdIds.length){
-          setStatus("Upload succeeded, but no valid artwork IDs were returned.");
-          saveState(state);
-          renderNew();
-          return;
-        }
-
-        saveState(state);
-        renderNew();
-
-        // Safety pass: if anything is still missing after upload write-through, patch it.
-        const needsPatchPass = uploadTags.length || uploadSeries || uploadYear;
-        if (needsPatchPass) await applyBatchToIds(createdIds);
-
-        if (skippedDupes.length) {
-          setStatus(`Uploaded ${createdIds.length} image(s). Skipped ${skippedDupes.length} duplicate file name(s).`, "warn");
-        }
-
-      }catch(err){
-        setStatus(`Upload failed: ${err?.message || err}`);
-      } finally {
-        setUiLocked(false);
-        setTimeout(() => hideUploadProgress(), 800);
+      const created = Array.isArray(out?.created) ? out.created : (Array.isArray(out?.items) ? out.items : []);
+      const skipped = Array.isArray(out?.skipped) ? out.skipped : [];
+      for (const item of created){
+        if (item?.id) newIds.unshift(item.id);
+        mergeUploadedArtwork(item);
       }
-    });
+      saveState(state);
+      await refreshStateFromBackend();
+      renderTagPills();
+      renderSeriesOptions();
+      renderNew();
+      const statusParts = [];
+      statusParts.push(`Uploaded ${created.length} image${created.length === 1 ? "" : "s"}.`);
+      if (skipped.length) statusParts.push(`Skipped ${skipped.length} duplicate${skipped.length === 1 ? "" : "s"}.`);
+      setStatus(statusParts.join(" "));
+      progressBar.style.width = "100%";
+      progressLabel.textContent = "Upload complete";
+      showToast(statusParts.join(" "), { tone: skipped.length ? "warn" : "success" });
+      if (fileInput) fileInput.value = "";
+    } catch (e) {
+      console.error(e);
+      setStatus(e.message || "Upload failed");
+      showToast(e.message || "Upload failed", { tone: "warn" });
+    } finally {
+      window.setTimeout(() => {
+        progressWrap.style.display = "none";
+        progressBar.style.width = "0%";
+        progressLabel.textContent = "Uploading: 0%";
+        hideUiBlocker();
+      }, 350);
+    }
+  });
 
-    renderTagPills();
-    renderSeriesOptions();
-    renderNew();
-  
+  renderTagPills();
+  renderSeriesOptions();
+  renderNew();
+})();
+
+
+
+
 

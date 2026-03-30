@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -6,6 +6,43 @@
   <title>Studio &mdash; Dashboard</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
   <link rel="stylesheet" href="css/index.css" />
+  <style>
+    .dashboard-filter-toggle{
+      display:inline-grid;
+      grid-template-columns:repeat(5, minmax(0, 1fr));
+      gap:0;
+      border:1px solid var(--line);
+      border-radius:14px;
+      overflow:hidden;
+      background: color-mix(in srgb, var(--panel) 92%, var(--muted) 8%);
+      width:min(100%, 540px);
+      margin-right:12px;
+    }
+    .dashboard-filter-toggle [data-tab]{
+      border:0;
+      border-right:1px solid var(--line);
+      border-radius:0;
+      padding:9px 12px;
+      justify-content:center;
+      background:transparent;
+      box-shadow:none;
+      cursor:pointer;
+      color:var(--muted);
+    }
+    .dashboard-filter-toggle [data-tab]:last-child{
+      border-right:0;
+    }
+    .dashboard-filter-toggle [data-tab]:hover{
+      transform:none;
+      box-shadow:none;
+      background: color-mix(in srgb, var(--panel) 82%, var(--accent-soft) 18%);
+    }
+    .dashboard-filter-toggle [data-tab].active{
+      background: var(--accent-soft);
+      color: var(--text);
+      border-color: var(--accent-border);
+    }
+  </style>
 </head>
 <body>
   <header id="siteHeader"></header>
@@ -16,21 +53,8 @@
       <p>Manage drafts, published work, and hidden pieces.</p>
     </section>
 
-    <div class="admin-layout">
-      <aside class="sidebar" aria-label="Studio navigation">
-        <a class="active" href="index.html">Image Manager</a>
-        <a href="upload.html">Upload</a>
-        <a href="series.html">Series Manager</a>
-        <a href="linkmanager.html">Link Manager</a>
-        <a href="HomePageManager.html">Home Page Manager</a>
-        <a href="SocialMediaManager.html">Social Media Manager</a>
-        <a href="OtherSettings.html">Other Settings</a>
-        <a href="SecurityManager.html">Security Manager</a>
-        <hr class="sep" />
-
-        <button class="btn" id="cleanupBtn" type="button">Cleanup files</button>
-        <span class="sub" id="cleanupStatus" aria-live="polite"></span>
-      </aside>
+	    <div class="admin-layout">
+	      <aside class="sidebar" aria-label="Studio navigation"></aside>
 
       <section>
         <div class="dashboard-controls">
@@ -41,11 +65,14 @@
         </div>
 
           <div class="filters" style="margin-top:18px">
-          <div class="chip active" data-tab="all">All</div>
-          <div class="chip" data-tab="published">Published</div>
-          <div class="chip" data-tab="draft">Draft</div>
-          <div class="chip" data-tab="hidden">Hidden</div>
-          <div class="chip" data-tab="featured">Featured</div>
+          <span class="sub" style="white-space:nowrap;">Quick Filters:</span>
+          <div class="dashboard-filter-toggle" role="group" aria-label="Quick filters">
+            <button class="btn active" type="button" data-tab="all">All</button>
+            <button class="btn" type="button" data-tab="published">Published</button>
+            <button class="btn" type="button" data-tab="draft">Draft</button>
+            <button class="btn" type="button" data-tab="hidden">Hidden</button>
+            <button class="btn" type="button" data-tab="featured">Featured</button>
+          </div>
 
           <div class="segmented" role="group" aria-label="Dashboard view mode">
             <button type="button" data-view-mode="rows" class="active">Rows</button>
@@ -143,7 +170,7 @@
               <th id="sortHeaderYear" aria-sort="none">
                 <button class="admin-sort-header" type="button" data-sort-header="year">Year<span class="admin-sort-icon" aria-hidden="true"></span></button>
               </th>
-              <th>Actions</th>
+              <th><span class="admin-header-label">Actions</span></th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -164,6 +191,10 @@
   <script type="module" src="./js/index.js"></script>
 </body>
 </html>
+
+
+
+
 
 
 

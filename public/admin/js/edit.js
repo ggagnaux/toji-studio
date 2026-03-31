@@ -698,6 +698,7 @@
         body: JSON.stringify(payload)
       });
 
+      let json = {};
       try { json = await res.json(); } catch {}
       if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
 
@@ -735,6 +736,7 @@
         body: JSON.stringify(payload)
       });
 
+      let json = {};
       try { json = await res.json(); } catch {}
       if (!res.ok) throw new Error(json?.error || `${res.status} ${res.statusText}`);
 
@@ -1974,6 +1976,9 @@
     // No auto-write on load.
     // Saves occur only after explicit user edits/actions.
   
+
+
+
 
 
 

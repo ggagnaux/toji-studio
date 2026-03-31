@@ -13,7 +13,9 @@ import {
   getImageVariantSettings,
   setImageVariantSettings,
   getContactSettings,
-  setContactSettings
+  setContactSettings,
+  getSplashSettings,
+  setSplashSettings
 } from "../db.js";
 import {
   ALLOWED_SOCIAL_PLATFORMS,
@@ -54,6 +56,15 @@ adminRouter.get("/admin/settings/contact", (req, res) => {
 
 adminRouter.put("/admin/settings/contact", (req, res) => {
   const saved = setContactSettings(req.body || {});
+  res.json(saved);
+});
+
+adminRouter.get("/admin/settings/splash", (req, res) => {
+  res.json(getSplashSettings());
+});
+
+adminRouter.put("/admin/settings/splash", (req, res) => {
+  const saved = setSplashSettings(req.body || {});
   res.json(saved);
 });
 function getDataTableDefinition(tableName) {

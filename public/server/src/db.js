@@ -201,6 +201,32 @@ export const CONTACT_SETTINGS_KEY = "contactSettings";
 export const DEFAULT_CONTACT_SETTINGS = Object.freeze({
   contactEmail: "you@example.com"
 });
+export const SPLASH_SETTINGS_KEY = "splashSettings";
+export const DEFAULT_SPLASH_ALLOWED_MODES = Object.freeze([
+  "tojistudios",
+  "nodes",
+  "flock",
+  "circles",
+  "matrix",
+  "life",
+  "plot",
+  "bounce",
+  "turningcircles",
+  "asteroids",
+  "tempest",
+  "missilecommand",
+  "radar",
+  "mountains",
+  "serpentinesphere",
+  "orbitalbeams"
+]);
+export const DEFAULT_SPLASH_SETTINGS = Object.freeze({
+  enabled: true,
+  mode: "nodes",
+  randomCycleEnabled: false,
+  randomCycleSeconds: 12,
+  allowedModes: DEFAULT_SPLASH_ALLOWED_MODES
+});
 
 function clampInt(value, fallback, min, max) {
   const n = Math.floor(Number(value));
@@ -215,6 +241,58 @@ export function normalizeImageVariantSettings(raw = {}) {
     thumbQuality: clampInt(input.thumbQuality, DEFAULT_IMAGE_VARIANT_SETTINGS.thumbQuality, 1, 100),
     webMaxWidth: clampInt(input.webMaxWidth, DEFAULT_IMAGE_VARIANT_SETTINGS.webMaxWidth, 64, 12000),
     webQuality: clampInt(input.webQuality, DEFAULT_IMAGE_VARIANT_SETTINGS.webQuality, 1, 100)
+  };
+}
+
+function normalizeSplashModeValue(value) {
+  const mode = String(value || "").trim().toLowerCase();
+  if (mode === "random") return "random";
+  return DEFAULT_SPLASH_ALLOWED_MODES.includes(mode) ? mode : DEFAULT_SPLASH_SETTINGS.mode;
+}
+
+function normalizeAllowedSplashModes(raw) {
+  let input = [];
+  if (Array.isArray(raw)) input = raw;
+  else if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        input = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        input = trimmed.split(",");
+      }
+    } else {
+      input = trimmed.split(",");
+    }
+  }
+  const seen = new Set();
+  const modes = [];
+  for (const item of input) {
+    const mode = String(item || "").trim().toLowerCase();
+    if (!DEFAULT_SPLASH_ALLOWED_MODES.includes(mode) || seen.has(mode)) continue;
+    seen.add(mode);
+    modes.push(mode);
+  }
+  return modes;
+}
+
+function normalizeBooleanSetting(value, fallback) {
+  if (typeof value === "boolean") return value;
+  if (value == null) return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return fallback;
+  return normalized !== "0" && normalized !== "false" && normalized !== "off" && normalized !== "no";
+}
+
+export function normalizeSplashSettings(raw = {}) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  return {
+    enabled: normalizeBooleanSetting(input.enabled, DEFAULT_SPLASH_SETTINGS.enabled),
+    mode: normalizeSplashModeValue(input.mode),
+    randomCycleEnabled: normalizeBooleanSetting(input.randomCycleEnabled, DEFAULT_SPLASH_SETTINGS.randomCycleEnabled),
+    randomCycleSeconds: clampInt(input.randomCycleSeconds, DEFAULT_SPLASH_SETTINGS.randomCycleSeconds, 1, 600),
+    allowedModes: normalizeAllowedSplashModes(input.allowedModes)
   };
 }
 
@@ -270,5 +348,17 @@ export function getContactSettings() {
 export function setContactSettings(value) {
   const normalized = normalizeContactSettings(value);
   setSettingJson(CONTACT_SETTINGS_KEY, normalized);
+  return normalized;
+}
+
+export function getSplashSettings() {
+  return normalizeSplashSettings(
+    getSettingJson(SPLASH_SETTINGS_KEY, DEFAULT_SPLASH_SETTINGS)
+  );
+}
+
+export function setSplashSettings(value) {
+  const normalized = normalizeSplashSettings(value);
+  setSettingJson(SPLASH_SETTINGS_KEY, normalized);
   return normalized;
 }

@@ -77,6 +77,37 @@ test("admin settings routes persist image variant and contact settings", async (
     });
     const contactGetBody = await contactGet.json();
     assert.deepEqual(contactGetBody, { contactEmail: "studio@example.com" });
+
+    const splashPut = await fetch(`${server.baseUrl}/api/admin/settings/splash`, {
+      method: "PUT",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        enabled: true,
+        mode: "random",
+        randomCycleEnabled: true,
+        randomCycleSeconds: 18,
+        allowedModes: ["nodes", "matrix", "radar"]
+      })
+    });
+    const splashBody = await splashPut.json();
+    assert.equal(splashPut.status, 200);
+    assert.deepEqual(splashBody, {
+      enabled: true,
+      mode: "random",
+      randomCycleEnabled: true,
+      randomCycleSeconds: 18,
+      allowedModes: ["nodes", "matrix", "radar"]
+    });
+
+    const splashGet = await fetch(`${server.baseUrl}/api/admin/settings/splash`, {
+      headers: authHeaders(false)
+    });
+    const splashGetBody = await splashGet.json();
+    assert.deepEqual(splashGetBody, splashBody);
+
+    const splashPublicGet = await fetch(`${server.baseUrl}/api/public/settings/splash`);
+    const splashPublicBody = await splashPublicGet.json();
+    assert.deepEqual(splashPublicBody, splashBody);
   });
 });
 

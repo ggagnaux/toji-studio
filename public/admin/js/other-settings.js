@@ -1,6 +1,14 @@
 import { applyBannerLogoBehavior } from "../../assets/js/header.js";
 import { initializeHomeSplash } from "../../assets/js/splash-runtime.js";
 import {
+  SPLASH_MODE_CATALOG,
+  SPLASH_MODE_IDS,
+  DEFAULT_ALLOWED_SPLASH_MODES,
+  normalizeSplashMode,
+  describeSplashMode,
+  normalizeAllowedSplashModes
+} from "../../assets/js/splash-mode-config.js";
+import {
   ensureBaseStyles,
   setYearFooter,
   apiFetch,
@@ -20,6 +28,7 @@ const SPLASH_MODE_KEY = "toji_splash_animation_mode_v1";
 const SPLASH_ANIMATION_ENABLED_KEY = "toji_splash_animation_enabled_v1";
 const SPLASH_RANDOM_CYCLE_ENABLED_KEY = "toji_splash_random_cycle_enabled_v1";
 const SPLASH_RANDOM_CYCLE_SECONDS_KEY = "toji_splash_random_cycle_seconds_v1";
+const SPLASH_ALLOWED_MODES_KEY = "toji_splash_allowed_modes_v1";
 const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
 const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
 const TAG_CAP_KEY = "toji_ai_tag_cap_v1";
@@ -41,6 +50,12 @@ const splashControlsBlock = document.getElementById("splashControlsBlock");
 const splashRandomOptions = document.getElementById("splashRandomOptions");
 const splashRandomCycleEnabled = document.getElementById("splashRandomCycleEnabled");
 const splashRandomCycleSeconds = document.getElementById("splashRandomCycleSeconds");
+const splashAllowedModes = document.getElementById("splashAllowedModes");
+const splashAllowedSummary = document.getElementById("splashAllowedSummary");
+const splashAllowedWarning = document.getElementById("splashAllowedWarning");
+const splashAllowAllBtn = document.getElementById("splashAllowAllBtn");
+const splashResetAllowedBtn = document.getElementById("splashResetAllowedBtn");
+const splashClearAllowedBtn = document.getElementById("splashClearAllowedBtn");
 const bannerBezierLogoEnabled = document.getElementById("bannerBezierLogoEnabled");
 const bannerBezierToggleBadge = document.getElementById("bannerBezierToggleBadge");
 const bannerBezierToggleLabel = document.getElementById("bannerBezierToggleLabel");
@@ -84,24 +99,7 @@ if (splashPreviewModal && splashPreviewModal.parentElement !== document.body) {
   document.body.appendChild(splashPreviewModal);
 }
 
-const SPLASH_PREVIEW_MODE_ORDER = Object.freeze([
-  "tojistudios",
-  "nodes",
-  "flock",
-  "circles",
-  "matrix",
-  "life",
-  "plot",
-  "bounce",
-  "turningcircles",
-  "asteroids",
-  "tempest",
-  "missilecommand",
-  "radar",
-  "mountains",
-  "serpentinesphere",
-  "orbitalbeams"
-]);
+const SPLASH_PREVIEW_MODE_ORDER = SPLASH_MODE_IDS;
 let splashPreviewModeIndex = 0;
 
 settingsTabButtons.forEach((btn) => {
@@ -109,47 +107,6 @@ settingsTabButtons.forEach((btn) => {
   const color = SETTINGS_TAB_COLORS[tab] || "var(--accent)";
   btn.style.setProperty("--other-settings-tab-color", color);
 });
-
-function normalizeSplashMode(value){
-  const mode = String(value || "").toLowerCase();
-  if (mode === "random") return "random";
-  if (mode === "tojistudios") return "tojistudios";
-  if (mode === "flock") return "flock";
-  if (mode === "circles") return "circles";
-  if (mode === "matrix") return "matrix";
-  if (mode === "life") return "life";
-  if (mode === "plot") return "plot";
-  if (mode === "bounce") return "bounce";
-  if (mode === "turningcircles") return "turningcircles";
-  if (mode === "asteroids") return "asteroids";
-  if (mode === "tempest") return "tempest";
-  if (mode === "missilecommand") return "missilecommand";
-  if (mode === "radar") return "radar";
-  if (mode === "mountains") return "mountains";
-  if (mode === "serpentinesphere") return "serpentinesphere";
-  if (mode === "orbitalbeams") return "orbitalbeams";
-  return "nodes";
-}
-
-function describeSplashMode(mode){
-  if (mode === "random") return "Randomize each visit";
-  if (mode === "tojistudios") return "Tojistudios dot chase";
-  if (mode === "flock") return "Flocking triangles (mouse follow)";
-  if (mode === "circles") return "Outlined circles grid (fill/unfill)";
-  if (mode === "matrix") return "Matrix digital rain";
-  if (mode === "life") return "Conway's Game of Life";
-  if (mode === "plot") return "Random x/y function plot";
-  if (mode === "bounce") return "Bouncing ball + logo deflect";
-  if (mode === "turningcircles") return "Turning circles + fade trails";
-  if (mode === "asteroids") return "Asteroids simulation (auto-play)";
-  if (mode === "tempest") return "Tempest simulation (auto-play)";
-  if (mode === "missilecommand") return "Missile Command simulation (auto-play)";
-  if (mode === "radar") return "Radar screen sweep";
-  if (mode === "mountains") return "Mountain night pan";
-  if (mode === "serpentinesphere") return "Serpentine sphere sweep";
-  if (mode === "orbitalbeams") return "Black Holes vs Bubbles";
-  return "Nodes and edges (existing)";
-}
 
 function normalizeCycleSeconds(value){
   const n = Math.floor(Number(value));
@@ -172,6 +129,92 @@ function normalizeTagCap(value){
   const n = Math.floor(Number(value));
   if (!Number.isFinite(n)) return 20;
   return Math.min(120, Math.max(1, n));
+}
+
+function normalizeBooleanSetting(value, fallback = false) {
+  if (typeof value === "boolean") return value;
+  if (value == null) return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return fallback;
+  return normalized !== "0" && normalized !== "false" && normalized !== "off" && normalized !== "no";
+}
+
+function normalizeSplashSettingsPayload(raw = {}) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  return {
+    enabled: normalizeBooleanSetting(input.enabled, true),
+    mode: normalizeSplashMode(input.mode),
+    randomCycleEnabled: normalizeBooleanSetting(input.randomCycleEnabled, false),
+    randomCycleSeconds: normalizeCycleSeconds(input.randomCycleSeconds),
+    allowedModes: normalizeAllowedSplashModes(input.allowedModes)
+  };
+}
+
+function getSplashSettingsFromLocalStorage() {
+  return normalizeSplashSettingsPayload({
+    enabled: localStorage.getItem(SPLASH_ANIMATION_ENABLED_KEY) !== "0",
+    mode: localStorage.getItem(SPLASH_MODE_KEY),
+    randomCycleEnabled: localStorage.getItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY) === "1",
+    randomCycleSeconds: localStorage.getItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY),
+    allowedModes: normalizeAllowedSplashModes(localStorage.getItem(SPLASH_ALLOWED_MODES_KEY))
+  });
+}
+
+function applySplashSettingsToLocalStorage(settings) {
+  const normalized = normalizeSplashSettingsPayload(settings);
+  localStorage.setItem(SPLASH_ANIMATION_ENABLED_KEY, normalized.enabled ? "1" : "0");
+  localStorage.setItem(SPLASH_MODE_KEY, normalized.mode);
+  localStorage.setItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY, normalized.randomCycleEnabled ? "1" : "0");
+  localStorage.setItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY, String(normalized.randomCycleSeconds));
+  localStorage.setItem(SPLASH_ALLOWED_MODES_KEY, JSON.stringify(normalized.allowedModes));
+  return normalized;
+}
+
+function populateSplashModeOptions() {
+  if (!splashMode) return;
+  const currentValue = normalizeSplashMode(splashMode.value || localStorage.getItem(SPLASH_MODE_KEY));
+  splashMode.innerHTML = [
+    `<option value="random">Randomize each visit</option>`,
+    ...SPLASH_MODE_CATALOG.map((mode) => `<option value="${mode.id}">${mode.label}</option>`)
+  ].join("");
+  splashMode.value = currentValue;
+}
+
+function getSelectedAllowedSplashModes() {
+  if (!splashAllowedModes) return normalizeAllowedSplashModes(localStorage.getItem(SPLASH_ALLOWED_MODES_KEY));
+  return Array.from(splashAllowedModes.querySelectorAll("[data-splash-allowed-mode]"))
+    .filter((input) => input.checked)
+    .map((input) => input.value);
+}
+
+function renderSplashAllowedModes() {
+  if (!splashAllowedModes) return;
+  const active = new Set(getSplashSettingsFromLocalStorage().allowedModes);
+  splashAllowedModes.innerHTML = "";
+  SPLASH_MODE_CATALOG.forEach((mode) => {
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.value = mode.id;
+    input.checked = active.has(mode.id);
+    input.setAttribute("data-splash-allowed-mode", mode.id);
+    const slider = document.createElement("span");
+    slider.className = "slider";
+    slider.setAttribute("aria-hidden", "true");
+    const switchWrap = document.createElement("span");
+    switchWrap.className = "switch";
+    switchWrap.append(input, slider);
+    const toggle = document.createElement("label");
+    toggle.className = "setting-toggle";
+    toggle.style.cursor = "pointer";
+    toggle.append(switchWrap, document.createTextNode(mode.label));
+    const card = document.createElement("div");
+    card.className = "splash-allowed-card";
+    card.append(toggle);
+    splashAllowedModes.appendChild(card);
+    input.addEventListener("change", () => {
+      void persistSplashSettings();
+    });
+  });
 }
 
 function clampInt(value, fallback, min, max) {
@@ -403,6 +446,15 @@ function updateRandomizeControls(){
       control.disabled = !splashEnabled;
     });
   }
+  if (splashAllowedModes) {
+    const controls = splashAllowedModes.querySelectorAll("input");
+    controls.forEach((control) => {
+      control.disabled = !splashEnabled;
+    });
+  }
+  [splashAllowAllBtn, splashResetAllowedBtn, splashClearAllowedBtn].forEach((btn) => {
+    if (btn) btn.disabled = !splashEnabled;
+  });
 
   // When enabled, restore per-control logic inside the splash block.
   if (splashEnabled) {
@@ -438,11 +490,9 @@ function ensureStaticBannerIconMarkup(){
 }
 
 function syncSplashModeUI(){
-  const mode = normalizeSplashMode(localStorage.getItem(SPLASH_MODE_KEY));
-  const splashEnabled = localStorage.getItem(SPLASH_ANIMATION_ENABLED_KEY) !== "0";
+  const splashSettings = getSplashSettingsFromLocalStorage();
+  const { enabled: splashEnabled, mode, randomCycleEnabled: cycleEnabled, randomCycleSeconds: cycleSeconds, allowedModes } = splashSettings;
   if (splashMode) splashMode.value = mode;
-  const cycleEnabled = localStorage.getItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY) === "1";
-  const cycleSeconds = normalizeCycleSeconds(localStorage.getItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY));
   const bannerBezierEnabled = localStorage.getItem(BANNER_BEZIER_LOGO_ENABLED_KEY) === "1";
   const bannerAnimationStyle = normalizeBannerLogoAnimationStyle(
     localStorage.getItem(BANNER_LOGO_ANIMATION_MODE_KEY)
@@ -452,6 +502,12 @@ function syncSplashModeUI(){
   if (splashAnimationEnabled) splashAnimationEnabled.checked = splashEnabled;
   if (splashRandomCycleEnabled) splashRandomCycleEnabled.checked = cycleEnabled;
   if (splashRandomCycleSeconds) splashRandomCycleSeconds.value = String(cycleSeconds);
+  if (splashAllowedModes) {
+    const allowedSet = new Set(allowedModes);
+    Array.from(splashAllowedModes.querySelectorAll("[data-splash-allowed-mode]")).forEach((input) => {
+      input.checked = allowedSet.has(input.value);
+    });
+  }
   if (bannerBezierLogoEnabled) bannerBezierLogoEnabled.checked = bannerBezierEnabled;
   if (bannerLogoAnimationStyle) bannerLogoAnimationStyle.value = bannerAnimationStyle;
   if (tagCap) tagCap.value = String(savedTagCap);
@@ -461,9 +517,25 @@ function syncSplashModeUI(){
     const cycleText = mode === "random"
       ? ` | Auto change: ${cycleEnabled ? `On (${cycleSeconds}s)` : "Off"}`
       : "";
+    const allowedText = ` | Allowed: ${allowedModes.length}/${SPLASH_MODE_IDS.length}`;
     splashModeCurrent.textContent = splashEnabled
-      ? `Current: ${describeSplashMode(mode)}${cycleText}`
+      ? `Current: ${describeSplashMode(mode)}${cycleText}${allowedText}`
       : "Current: Disabled";
+  }
+  if (splashAllowedSummary) {
+    splashAllowedSummary.textContent = `${allowedModes.length} of ${SPLASH_MODE_IDS.length} animations allowed`;
+  }
+  if (splashAllowedWarning) {
+    let warning = "";
+    if (!allowedModes.length) {
+      warning = splashEnabled
+        ? "No splash animations are currently allowed. Visitors will only see the static splash logo until at least one animation is enabled here."
+        : "No splash animations are currently allowed.";
+    } else if (mode !== "random" && !allowedModes.includes(mode)) {
+      warning = `The selected active animation (${describeSplashMode(mode)}) is currently disallowed, so visitors will see a static splash until it is re-enabled or you choose another active mode.`;
+    }
+    splashAllowedWarning.textContent = warning;
+    splashAllowedWarning.classList.toggle("is-warn", !!warning);
   }
   if (splashAnimationToggleBadge) {
     splashAnimationToggleBadge.textContent = splashEnabled ? "Enabled" : "Disabled";
@@ -491,6 +563,23 @@ function syncSplashModeUI(){
   updateRandomizeControls();
 }
 
+async function loadSplashSettings() {
+  const fallback = getSplashSettingsFromLocalStorage();
+  if (!getAdminToken()) {
+    applySplashSettingsToLocalStorage(fallback);
+    syncSplashModeUI();
+    return;
+  }
+  try {
+    const saved = await apiFetch("/api/admin/settings/splash", { method: "GET" });
+    applySplashSettingsToLocalStorage(saved);
+  } catch (error) {
+    console.warn("Failed to load backend splash settings; using local cache.", error);
+    applySplashSettingsToLocalStorage(fallback);
+  }
+  syncSplashModeUI();
+}
+
 async function loadImageVariantSettings() {
   renderImageVariantSettings(DEFAULT_IMAGE_VARIANTS);
   if (!getAdminToken()) {
@@ -514,14 +603,18 @@ function persistSettings({ refreshBanner = false } = {}){
   const mode = normalizeSplashMode(splashMode?.value);
   const cycleEnabled = !!splashRandomCycleEnabled?.checked;
   const cycleSeconds = normalizeCycleSeconds(splashRandomCycleSeconds?.value);
+  const allowedModes = getSelectedAllowedSplashModes();
   const bannerBezierEnabled = !!bannerBezierLogoEnabled?.checked;
   const bannerAnimationStyle = normalizeBannerLogoAnimationStyle(bannerLogoAnimationStyle?.value);
   const savedTagCap = normalizeTagCap(tagCap?.value);
   const aiEnabled = !!aiFeaturesEnabled?.checked;
-  localStorage.setItem(SPLASH_ANIMATION_ENABLED_KEY, splashEnabled ? "1" : "0");
-  localStorage.setItem(SPLASH_MODE_KEY, mode);
-  localStorage.setItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY, cycleEnabled ? "1" : "0");
-  localStorage.setItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY, String(cycleSeconds));
+  applySplashSettingsToLocalStorage({
+    enabled: splashEnabled,
+    mode,
+    randomCycleEnabled: cycleEnabled,
+    randomCycleSeconds: cycleSeconds,
+    allowedModes
+  });
   localStorage.setItem(BANNER_BEZIER_LOGO_ENABLED_KEY, bannerBezierEnabled ? "1" : "0");
   localStorage.setItem(BANNER_LOGO_ANIMATION_MODE_KEY, bannerAnimationStyle);
   localStorage.setItem(TAG_CAP_KEY, String(savedTagCap));
@@ -530,6 +623,22 @@ function persistSettings({ refreshBanner = false } = {}){
   if (refreshBanner) {
     ensureStaticBannerIconMarkup();
     applyBannerLogoBehavior(headerHost);
+  }
+}
+
+async function persistSplashSettings() {
+  persistSettings();
+  if (!getAdminToken()) return;
+  try {
+    const saved = await apiFetch("/api/admin/settings/splash", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(getSplashSettingsFromLocalStorage())
+    });
+    applySplashSettingsToLocalStorage(saved);
+    syncSplashModeUI();
+  } catch (error) {
+    console.warn("Failed to save backend splash settings; kept local cache.", error);
   }
 }
 
@@ -556,28 +665,53 @@ async function saveImageVariantSettings() {
 
 
 
+populateSplashModeOptions();
+renderSplashAllowedModes();
 syncSplashModeUI();
+await loadSplashSettings();
 await loadContactSettings();
 await loadImageVariantSettings();
 setSettingsTab("splash");
 
 splashAnimationEnabled?.addEventListener("change", () => {
   updateRandomizeControls();
-  persistSettings();
+  void persistSplashSettings();
 });
 
 splashMode?.addEventListener("change", () => {
   updateRandomizeControls();
-  persistSettings();
+  void persistSplashSettings();
 });
 
 splashRandomCycleEnabled?.addEventListener("change", () => {
   updateRandomizeControls();
-  persistSettings();
+  void persistSplashSettings();
 });
 
 splashRandomCycleSeconds?.addEventListener("change", () => {
-  persistSettings();
+  void persistSplashSettings();
+});
+
+splashAllowAllBtn?.addEventListener("click", () => {
+  Array.from(splashAllowedModes?.querySelectorAll("[data-splash-allowed-mode]") || []).forEach((input) => {
+    input.checked = true;
+  });
+  void persistSplashSettings();
+});
+
+splashResetAllowedBtn?.addEventListener("click", () => {
+  const defaults = new Set(DEFAULT_ALLOWED_SPLASH_MODES);
+  Array.from(splashAllowedModes?.querySelectorAll("[data-splash-allowed-mode]") || []).forEach((input) => {
+    input.checked = defaults.has(input.value);
+  });
+  void persistSplashSettings();
+});
+
+splashClearAllowedBtn?.addEventListener("click", () => {
+  Array.from(splashAllowedModes?.querySelectorAll("[data-splash-allowed-mode]") || []).forEach((input) => {
+    input.checked = false;
+  });
+  void persistSplashSettings();
 });
 
 bannerBezierLogoEnabled?.addEventListener("change", () => {

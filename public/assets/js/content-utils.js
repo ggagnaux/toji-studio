@@ -86,10 +86,6 @@ function ensureLightboxStyles() {
       grid-template-columns: 320px minmax(0, 1fr);
       gap: 0;
       min-height: 0;
-      transition: grid-template-columns .22s ease;
-    }
-    .lb-body.is-meta-collapsed{
-      grid-template-columns: 0 minmax(0, 1fr);
     }
     .lb-media{
       --lb-media-pad: clamp(18px, 2.4vw, 32px);
@@ -101,16 +97,6 @@ function ensureLightboxStyles() {
       min-width: 0;
       grid-column: 2;
       grid-row: 1;
-    }
-    .lb-media-tabbar{
-      position:absolute;
-      top:50%;
-      left:1px;
-      transform:translateY(-50%);
-      z-index:4;
-      display:flex;
-      justify-content:flex-start;
-      pointer-events:none;
     }
     .lb-media-frame{
       position: relative;
@@ -164,67 +150,6 @@ function ensureLightboxStyles() {
       min-width:0;
       grid-column: 1;
       grid-row: 1;
-      transition: opacity .18s ease, transform .18s ease, padding .18s ease, border-color .18s ease;
-    }
-    .lb-body.is-meta-collapsed .lb-meta{
-      opacity:0;
-      transform: translateX(-12px);
-      padding-left:0;
-      padding-right:0;
-      border-right-color: transparent;
-      pointer-events:none;
-    }
-    .lb-meta-tab{
-      pointer-events:auto;
-      position:relative;
-      z-index:3;
-      align-self:center;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-width:34px;
-      min-height:46px;
-      padding:9px 4px;
-      margin-left:0;
-      border:1px solid var(--line);
-      border-left:0;
-      border-radius:0 14px 14px 0;
-      background: color-mix(in srgb, var(--panel) 88%, transparent);
-      color:var(--text);
-      box-shadow: 0 8px 18px rgba(0,0,0,.28);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      clip-path: polygon(0 0, 72% 0, 100% 20%, 100% 80%, 72% 100%, 0 100%);
-      cursor:pointer;
-      transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease, box-shadow .18s ease, color .18s ease;
-    }
-    .lb-meta-tab:hover,
-    .lb-meta-tab:focus-visible{
-      color: var(--text);
-      background: color-mix(in srgb, var(--panel) 60%, var(--accent) 40%);
-      border-color: color-mix(in srgb, var(--accent-border) 88%, #ffffff 12%);
-      box-shadow: 0 10px 24px rgba(0,0,0,.28);
-      transform: translateX(1px);
-    }
-    .lb-meta-tab-label{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:5px;
-      width:14px;
-      height:23px;
-      user-select: none;
-    }
-    .lb-meta-tab-line{
-      display:block;
-      width:2px;
-      height:100%;
-      border-radius:999px;
-      background: currentColor;
-      opacity:.94;
-    }
-    .lb-body.is-meta-collapsed .lb-meta-tab{
-      opacity:.96;
     }
     .lb-meta .sub{ margin-top:8px; }
     .lb-tags{
@@ -260,54 +185,39 @@ function ensureLightboxStyles() {
     }
 	    .lb-actions{ display:flex; gap:8px; flex-wrap:wrap; }
 	    .lb-actions .btn{ padding:8px 10px; font-size:13px; }
-	    .lb-actions .btn,
-	    .lb-meta-tab{
-	      transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease, box-shadow .18s ease, color .18s ease;
-	    }
-		    .lb-actions .btn:hover,
-		    .lb-actions .btn:focus-visible,
-		    .lb-meta-tab:hover,
-		    .lb-meta-tab:focus-visible{
-		      color: var(--text);
-		      background: color-mix(in srgb, var(--panel) 62%, var(--accent) 38%);
-		      border-color: color-mix(in srgb, var(--accent-border) 88%, #ffffff 12%);
-		      box-shadow: 0 10px 24px rgba(0,0,0,.28);
-		      transform: translate(2px, 0);
+		    .lb-actions .btn{
+		      transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease, box-shadow .18s ease, color .18s ease;
 		    }
-		    @media (max-width: 920px){
-	      .lb-body{ grid-template-columns: 1fr; }
-	      .lb-body.is-meta-collapsed{ grid-template-columns: 1fr; }
-	      .lb-media{
-	        min-height: calc(100vh - 180px);
-          grid-column: auto;
-          grid-row: auto;
-	      }
-      .lb-media-frame{
-        min-height: calc(100vh - 180px);
-      }
-	      .lb-meta{
-          grid-column: auto;
-          grid-row: auto;
-	        border-left:0;
-	        border-top:1px solid var(--line);
-	        max-height: 28vh;
+			    .lb-actions .btn:hover,
+			    .lb-actions .btn:focus-visible{
+			      color: var(--text);
+			      background: color-mix(in srgb, var(--panel) 62%, var(--accent) 38%);
+			      border-color: color-mix(in srgb, var(--accent-border) 88%, #ffffff 12%);
+			      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+			      transform: translate(2px, 0);
+			    }
+			    @media (max-width: 920px){
+	      .lb{
 	        overflow:auto;
 	      }
-      .lb-body.is-meta-collapsed .lb-meta{
-        max-height:0;
-        min-height:0;
-        padding-top:0;
-        padding-bottom:0;
-        border-top-color: transparent;
-      }
-	      .lb-meta-tab{
-	        min-width:82px;
-          min-height:auto;
+	      .lb-body{ grid-template-columns: 1fr; }
+	      .lb-media{
+	        min-height: min(52vh, calc(100vh - 260px));
+          grid-column: auto;
+          grid-row: auto;
 	      }
-      .lb-body.is-meta-collapsed .lb-meta-tab{
-        opacity:.96;
-      }
-    }
+	      .lb-media-frame{
+	        min-height: min(52vh, calc(100vh - 260px));
+	      }
+		      .lb-meta{
+	          grid-column: auto;
+	          grid-row: auto;
+		        border-left:0;
+		        border-top:1px solid var(--line);
+		        max-height:none;
+		        overflow:visible;
+		      }
+	    }
   `;
   document.head.appendChild(style);
 }
@@ -330,21 +240,8 @@ export function createArtworkLightboxController() {
   const metaTags = el("div", { class: "lb-tags" }, metaTagsLabel, metaTagsValue);
   const metaDesc = el("div", { class: "sub", style: "font-size:15px; line-height:1.65" }, "");
 		  const meta = el("div", { class: "lb-meta" }, metaTitle, metaSub, metaTags, el("hr", { class: "sep" }), metaDesc);
-	  const metaTabLabel = el(
-	    "span",
-	    { class: "lb-meta-tab-label", "aria-hidden": "true" },
-	    el("span", { class: "lb-meta-tab-line" }),
-	    el("span", { class: "lb-meta-tab-line" })
-	  );
-  const metaTab = el("button", {
-    class: "lb-meta-tab",
-    type: "button",
-    "aria-expanded": "false",
-    "aria-label": "Show details panel"
-  }, metaTabLabel);
-  const mediaTabbar = el("div", { class: "lb-media-tabbar" }, metaTab);
-		  const media = el("div", { class: "lb-media" }, mediaTabbar, mediaFrame);
-  const body = el("div", { class: "lb-body is-meta-collapsed" }, media, meta);
+  const media = el("div", { class: "lb-media" }, mediaFrame);
+  const body = el("div", { class: "lb-body" }, media, meta);
 	  const panel = el("div", { class: "lb" }, top, body);
 
   backdrop.appendChild(panel);
@@ -354,14 +251,6 @@ export function createArtworkLightboxController() {
 		  let lastActive = null;
 		  let activeImg = null;
 		  let animationToken = 0;
-  let isMetaOpen = false;
-
-	  function syncMetaVisibility() {
-	    body.classList.toggle("is-meta-collapsed", !isMetaOpen);
-	    metaTab.setAttribute("aria-expanded", isMetaOpen ? "true" : "false");
-	    metaTab.setAttribute("aria-label", isMetaOpen ? "Hide details panel" : "Show details panel");
-	  }
-
 	  function renderImage(item, direction = 0) {
 	    const nextImg = el("img", {
 	      alt: item.alt || item.title || "Artwork",
@@ -428,8 +317,6 @@ export function createArtworkLightboxController() {
 	    lastActive = document.activeElement;
 	    currentList = list;
 	    currentIndex = Math.max(0, Math.min(list.length - 1, Number(idx) || 0));
-    isMetaOpen = false;
-    syncMetaVisibility();
 		    showCurrent(0);
 		    closeBtn.focus();
 		  }
@@ -474,10 +361,6 @@ export function createArtworkLightboxController() {
 	      wheelLock = false;
 	    }, 220);
 	  }, { passive: false });
-	  metaTab.addEventListener("click", () => {
-	    isMetaOpen = !isMetaOpen;
-	    syncMetaVisibility();
-	  });
 
 	  document.addEventListener("keydown", (e) => {
 	    if (backdrop.style.display !== "flex") return;
@@ -486,10 +369,8 @@ export function createArtworkLightboxController() {
 	    if (e.key === "ArrowLeft") prev();
 	  });
 
-  syncMetaVisibility();
-
-	  return { host: backdrop, open, close, next, prev };
-}
+		  return { host: backdrop, open, close, next, prev };
+	}
 
 
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, jsonArray, getContactSettings } from "../db.js";
+import { db, jsonArray, getContactSettings, getSplashSettings } from "../db.js";
 
 export const publicRouter = Router();
 
@@ -10,6 +10,10 @@ publicRouter.get("/public/site-meta", (req, res) => {
 
 publicRouter.get("/public/settings/contact", (req, res) => {
   res.json(getContactSettings());
+});
+
+publicRouter.get("/public/settings/splash", (req, res) => {
+  res.json(getSplashSettings());
 });
 
 publicRouter.get("/public/external-links", (req, res) => {

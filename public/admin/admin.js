@@ -15,17 +15,18 @@ const ADMIN_NAV_ITEMS = Object.freeze([
   { href: "linkmanager.html", label: "Link Manager" },
   { href: "HomePageManager.html", label: "Home Page Manager" },
   { href: "SocialMediaManager.html", label: "Social Media Manager" },
-  { href: "SocialQueue.html", label: "Bluesky Queue" },
+  { href: "SocialQueue.html", label: "Social Media Queue" },
   { href: "DataManager.html", label: "Data Manager" },
   { href: "OtherSettings.html", label: "Other Settings" },
   { href: "SecurityManager.html", label: "Security Manager" }
 ]);
-const ADMIN_QUICK_NAV_ITEMS = Object.freeze([
-  { href: "index.html", label: "Admin Home" },
-  { href: "SocialMediaManager.html", label: "Social Media Manager" },
-  { href: "SocialQueue.html", label: "Bluesky Queue" },
-  { href: "DataManager.html", label: "Data Manager" }
-]);
+// GVG
+// const ADMIN_QUICK_NAV_ITEMS = Object.freeze([
+//   { href: "index.html", label: "Admin Home" },
+//   { href: "SocialMediaManager.html", label: "Social Media Manager" },
+//   { href: "SocialQueue.html", label: "Bluesky Queue" },
+//   { href: "DataManager.html", label: "Data Manager" }
+// ]);
 
 function normalizeAdminPathname(pathname) {
   return String(pathname || "").replace(/\\/g, "/").toLowerCase();
@@ -57,19 +58,20 @@ function renderAdminSidebarNav() {
   }
 }
 
-function renderAdminQuickNav() {
-  const host = document.querySelector("[data-admin-quicknav]");
-  if (!host) return;
-  host.innerHTML = "";
-  ADMIN_QUICK_NAV_ITEMS.forEach((item) => {
-    const link = document.createElement("a");
-    link.className = "btn mini";
-    link.href = item.href;
-    link.textContent = item.label;
-    if (isActiveAdminHref(item.href)) link.classList.add("active");
-    host.appendChild(link);
-  });
-}
+// GVG
+// function renderAdminQuickNav() {
+//   const host = document.querySelector("[data-admin-quicknav]");
+//   if (!host) return;
+//   host.innerHTML = "";
+//   ADMIN_QUICK_NAV_ITEMS.forEach((item) => {
+//     const link = document.createElement("a");
+//     link.className = "btn mini";
+//     link.href = item.href;
+//     link.textContent = item.label;
+//     if (isActiveAdminHref(item.href)) link.classList.add("active");
+//     host.appendChild(link);
+//   });
+// }
 
 function enforceAdminSession() {
   if (typeof window === "undefined") return;
@@ -726,12 +728,14 @@ function initAdminNavMenu() {
 function initAdminSidebarControls() {
   const sidebar = document.querySelector(".sidebar");
   if (!sidebar) {
-    renderAdminQuickNav();
+    // GVG
+    //renderAdminQuickNav();
     return;
   }
 
   renderAdminSidebarNav();
-  renderAdminQuickNav();
+  // GVG
+  //renderAdminQuickNav();
   if (sidebar.querySelector("[data-admin-logout]")) return;
 
   const logoutBtn = document.createElement("button");
@@ -904,9 +908,13 @@ export async function apiFetch(path, opts = {}) {
   const headers = {
     ...(opts.headers || {})
   };
+  const hasBody = opts.body != null;
+  const contentTypeKey = Object.keys(headers).find((key) => key.toLowerCase() === "content-type");
+  if (hasBody && !contentTypeKey && typeof opts.body === "string") {
+    headers["Content-Type"] = "application/json";
+  }
   const token = getStoredAdminToken();
   if (token) headers.Authorization = `Bearer ${token}`;
-
   const res = await fetch(url, {
     ...opts,
     credentials: "include",

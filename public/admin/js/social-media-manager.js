@@ -1,4 +1,4 @@
-import { ensureBaseStyles, setYearFooter, showToast, apiFetch, confirmToast } from "../admin.js";
+import { ensureBaseStyles, setYearFooter, showToast, apiFetch, confirmToast, el } from "../admin.js";
 import {
   categoryOptions,
   cleanSlug,
@@ -61,12 +61,12 @@ function ensureSocialManagerStyles() {
       gap:8px;
     }
     .smm-tab-icon{
-      width: 16px;
-      height: 16px;
-      border-radius: 4px;
+      width:16px;
+      height:16px;
+      border-radius:4px;
       background: color-mix(in srgb, var(--smm-tab-color, var(--accent)) 14%, transparent);
-      flex: 0 0 auto;
-      display: inline-block;
+      flex:0 0 auto;
+      display:inline-block;
     }
     .smm-tab-icon img{
       display:block;
@@ -86,64 +86,216 @@ function ensureSocialManagerStyles() {
       margin-top:0;
     }
     .smm-panel{
-      border-radius:0 0 10px 10px;
+      border-radius:0 0 14px 14px;
       margin-top:0;
-      border-color: color-mix(in srgb, var(--smm-active-color, var(--accent)) 80%, var(--line));
-      border-top-color: color-mix(in srgb, var(--smm-active-color, var(--accent)) 80%, var(--line));
-      background: color-mix(in srgb, var(--smm-active-color, var(--accent)) 8%, var(--panel));
+      padding:16px 14px 18px;
+      border:1px solid color-mix(in srgb, var(--smm-active-color, var(--accent)) 80%, var(--line));
+      border-top-color: color-mix(in srgb, var(--smm-active-color, var(--accent)) 92%, var(--line));
+      background:
+        linear-gradient(180deg, color-mix(in srgb, var(--smm-active-color, var(--accent)) 9%, var(--panel)) 0%, color-mix(in srgb, var(--smm-active-color, var(--accent)) 5%, var(--panel)) 100%);
+      box-shadow: inset 0 1px 0 color-mix(in srgb, var(--smm-active-color, var(--accent)) 24%, transparent);
     }
-    .smm-details{
+    .smm-header-copy{
       display:grid;
-      gap:0;
+      gap:8px;
+      margin-bottom:14px;
     }
-    .smm-section-tabbar{
+    .smm-title-row{
       display:flex;
-      gap:0;
+      align-items:baseline;
+      gap:10px;
       flex-wrap:wrap;
-      border-bottom:1px solid var(--line);
-      margin-top:4px;
     }
-    .smm-section-tab{
-      border:1px solid transparent;
-      border-bottom:1px solid color-mix(in srgb, var(--smm-section-color, var(--smm-active-color, var(--accent))) 38%, var(--line));
-      background:transparent;
+    .smm-title-row h3{
+      margin:0;
+      font-size: 18px;
+    }
+    .smm-slug{
       color:var(--muted);
-      border-radius:10px 10px 0 0;
-      padding:8px 12px;
-      cursor:pointer;
       font-size:13px;
-      margin-bottom:-1px;
     }
-    .smm-section-tab[aria-selected="true"]{
-      border-color: color-mix(in srgb, var(--smm-section-color, var(--smm-active-color, var(--accent))) 88%, var(--line));
-      border-bottom-color: transparent;
-      background: color-mix(in srgb, var(--smm-section-color, var(--smm-active-color, var(--accent))) 16%, var(--panel));
-      color: var(--text);
-    }
-    .smm-section-pane{
-      display:grid;
-      gap:10px;
-      padding-top:0;
-    }
-    .smm-section-panel{
-      display:grid;
-      gap:10px;
-      padding:12px;
-      border:1px solid color-mix(in srgb, var(--smm-section-color, var(--smm-active-color, var(--accent))) 52%, var(--line));
-      border-top:0;
-      border-radius:0 0 12px 12px;
-      background: color-mix(in srgb, var(--smm-section-color, var(--smm-active-color, var(--accent))) 10%, var(--panel));
-    }
-    .smm-details.is-disabled{
-      opacity:.5;
-      filter:saturate(.65);
-      pointer-events:none;
-    }
-    .smm-toggle{
-      display:inline-flex;
+    .smm-toggle-row{
+      display:flex;
       align-items:center;
       gap:12px;
-      padding:6px 0;
+      flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+    .smm-switch{
+      position:relative;
+      display:inline-flex;
+      align-items:center;
+      cursor:pointer;
+    }
+    .smm-switch input{
+      position:absolute;
+      opacity:0;
+      pointer-events:none;
+    }
+    .smm-switch-track{
+      width:56px;
+      height:30px;
+      border-radius:999px;
+      border:1px solid color-mix(in srgb, var(--smm-active-color, var(--accent)) 44%, var(--line));
+      background: color-mix(in srgb, var(--smm-active-color, var(--accent)) 8%, var(--panel));
+      position:relative;
+      transition:background .18s ease, border-color .18s ease;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.18);
+    }
+    .smm-switch-thumb{
+      position:absolute;
+      top:3px;
+      left:3px;
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      background: #eef3ff;
+      transition:transform .18s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,.24);
+    }
+    .smm-switch input:checked + .smm-switch-track{
+      background: color-mix(in srgb, var(--smm-active-color, var(--accent)) 24%, var(--panel));
+      border-color: color-mix(in srgb, var(--smm-active-color, var(--accent)) 76%, var(--line));
+    }
+    .smm-switch input:checked + .smm-switch-track .smm-switch-thumb{
+      transform:translateX(26px);
+    }
+    .smm-state{
+      display:inline-flex;
+      align-items:center;
+      min-height:30px;
+      padding:0 22px;
+      border-radius:999px;
+      border:1px solid color-mix(in srgb, #36b67e 44%, var(--line));
+      background: color-mix(in srgb, #36b67e 16%, var(--panel));
+      color: color-mix(in srgb, #6ce7ae 72%, var(--text));
+      font-size:13px;
+      font-weight:600;
+      cursor:pointer;
+      user-select:none;
+      transition:transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+    }
+    .smm-state[data-enabled="false"]{
+      border-color: color-mix(in srgb, #aa6370 48%, var(--line));
+      background: color-mix(in srgb, #aa6370 14%, var(--panel));
+      color: color-mix(in srgb, #f2d2d9 78%, var(--text));
+    }
+    .smm-state:hover{
+      transform:translateY(-1px);
+      box-shadow:0 6px 16px rgba(0,0,0,.18);
+    }
+    .smm-state:focus-visible{
+      outline:2px solid color-mix(in srgb, var(--smm-active-color, var(--accent)) 72%, white);
+      outline-offset:2px;
+    }
+    .smm-text-stack{
+      display:grid;
+      gap:16px;
+    }
+    .smm-divider{
+      height:1px;
+      margin:18px 0;
+      background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--line) 88%, var(--smm-active-color, var(--accent))) 12%, color-mix(in srgb, var(--line) 88%, var(--smm-active-color, var(--accent))) 88%, transparent 100%);
+      opacity:.55;
+    }
+    .smm-grid{
+      display:grid;
+      gap:14px 12px;
+    }
+    .smm-grid--details{
+      grid-template-columns:repeat(auto-fit, minmax(190px, 1fr));
+    }
+    .smm-grid--auth{
+      grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+    }
+    .smm-span-all{
+      grid-column:1 / -1;
+    }
+    .smm-panel .field{
+      margin-top:0;
+      min-width:0;
+    }
+    .smm-panel .field > label:first-child,
+    .smm-panel .field > .sub:first-child{
+      display:block;
+      margin-bottom:8px;
+    }
+    .smm-panel input,
+    .smm-panel select,
+    .smm-panel textarea{
+      font-size:15px;
+      background: color-mix(in srgb, var(--bg) 34%, var(--panel));
+      border-color: color-mix(in srgb, var(--smm-active-color, var(--accent)) 34%, var(--line));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 8px 18px rgba(0,0,0,.12);
+    }
+    .smm-panel input:hover,
+    .smm-panel select:hover,
+    .smm-panel textarea:hover{
+      border-color: color-mix(in srgb, var(--smm-active-color, var(--accent)) 52%, var(--line));
+      background: color-mix(in srgb, var(--bg) 28%, var(--panel));
+    }
+    .smm-panel input:focus,
+    .smm-panel select:focus,
+    .smm-panel textarea:focus{
+      outline:none;
+      border-color: color-mix(in srgb, var(--smm-active-color, var(--accent)) 72%, white);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--smm-active-color, var(--accent)) 18%, transparent), 0 10px 22px rgba(0,0,0,.18);
+      background: color-mix(in srgb, var(--bg) 22%, var(--panel));
+    }
+    .smm-panel input[readonly],
+    .smm-panel select:disabled{
+      background: color-mix(in srgb, var(--bg) 18%, var(--panel));
+      color: color-mix(in srgb, var(--muted) 82%, var(--text));
+      border-color: color-mix(in srgb, var(--line) 92%, var(--smm-active-color, var(--accent)));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    .smm-panel textarea{
+      min-height:84px;
+    }
+    .smm-text-stack textarea{
+      min-height:44px;
+    }
+    .smm-grid--auth textarea{
+      min-height:44px;
+    }
+    .smm-actions{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+    .smm-actions .sub{
+      margin:0;
+    }
+    .smm-body{
+      border:0;
+      padding:0;
+      margin:0;
+      min-width:0;
+      display:grid;
+      gap:0;
+    }
+    .smm-body[disabled]{
+      opacity:.6;
+      filter:saturate(.72);
+    }
+    @media (max-width: 900px){
+      .smm-grid--details{
+        grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+      }
+    }
+    @media (max-width: 640px){
+      .smm-panel{
+        padding:14px 12px 16px;
+      }
+      .smm-grid--details,
+      .smm-grid--auth{
+        grid-template-columns:1fr;
+      }
+      .smm-title-row{
+        gap:6px;
+      }
     }
   `;
   document.head.appendChild(style);
@@ -152,6 +304,7 @@ function ensureSocialManagerStyles() {
 function setDialogOpen(open) {
   if (!platformCreateDialog) return;
   platformCreateDialog.hidden = !open;
+  platformCreateDialog.style.display = open ? "flex" : "none";
   platformCreateDialog.setAttribute("aria-hidden", open ? "false" : "true");
   if (open) {
     lastFocusedBeforeDialog = document.activeElement;
@@ -223,6 +376,12 @@ function field(label, input, hint = "") {
   return el("div", { class: "field" }, ...nodes);
 }
 
+function fieldSpanAll(label, input, hint = "") {
+  const node = field(label, input, hint);
+  node.classList.add("smm-span-all");
+  return node;
+}
+
 function saveIndicator() {
   return el("div", { class: "sub", "aria-live": "polite" }, "");
 }
@@ -265,8 +424,8 @@ function createTextInput(value = "", placeholder = "") {
   return el("input", { type: "text", value: cleanText(value), placeholder });
 }
 
-function createTextarea(value = "", placeholder = "") {
-  const node = el("textarea", { rows: "3", placeholder });
+function createTextarea(value = "", placeholder = "", rows = 2) {
+  const node = el("textarea", { rows: String(rows), placeholder });
   node.value = cleanText(value);
   return node;
 }
@@ -287,33 +446,95 @@ function createSelect(options, value = "") {
 function renderPlatformPanel(platform) {
   const record = toPlatformRecord(platform);
   const meta = getPlatformFormMeta(record);
-  const panel = el("div", { class: "card smm-panel" });
+  const color = paletteColorForId(record.id);
+  const panel = el("div", { class: "card smm-panel", style: `--smm-active-color:${color};` });
   const title = el("h3", {}, record.name || record.id || "Platform");
+  const slug = el("span", { class: "smm-slug" }, `[slug: ${record.id || "platform"}]`);
   const intro = el("div", { class: "sub" }, meta.intro);
   const status = saveIndicator();
 
   const nameInput = createTextInput(record.name, "Platform name");
+  nameInput.readOnly = true;
+  nameInput.title = "Display name is fixed by the configured platform.";
   const categoryInput = createSelect(categoryOptions, selectOption(categoryOptions, record.category || "social"));
+  categoryInput.disabled = true;
+  categoryInput.title = "Category is fixed by the configured platform.";
   const iconLocationInput = createTextInput(record.iconLocation, "/assets/... or https://...");
   const postingModeInput = createSelect(["manual", "api"], cleanText(record.config?.postingMode || meta.postingModeDefault || "manual"));
   const handleInput = createTextInput(record.config?.accountHandle, meta.handlePlaceholder);
   const profileUrlInput = createTextInput(record.config?.profileUrl, meta.profilePlaceholder);
   const accountIdInput = createTextInput(record.config?.accountId, meta.accountIdPlaceholder);
   const hashtagsInput = createTextInput((record.config?.defaultHashtags || []).join(", "), meta.hashtagsPlaceholder);
-  const captionSuffixInput = createTextarea(record.config?.defaultCaptionSuffix, meta.suffixPlaceholder);
-  const notesInput = createTextarea(record.config?.notes, meta.notesPlaceholder);
+  const captionSuffixInput = createTextarea(record.config?.defaultCaptionSuffix, meta.suffixPlaceholder, 1);
+  const notesInput = createTextarea(record.config?.notes, meta.notesPlaceholder, 1);
   const clientIdInput = createTextInput(record.auth?.clientId, meta.clientIdPlaceholder);
   const clientSecretInput = createTextInput(record.auth?.clientSecret, meta.clientSecretPlaceholder);
-  const accessTokenInput = createTextarea(record.auth?.accessToken, "");
-  const refreshTokenInput = createTextarea(record.auth?.refreshToken, "");
+  const accessTokenInput = createTextarea(record.auth?.accessToken, "", 1);
+  const refreshTokenInput = createTextarea(record.auth?.refreshToken, "", 1);
   const enabledInput = el("input", { type: "checkbox" });
   enabledInput.checked = !!record.enabled;
+  const enabledTrack = el("span", { class: "smm-switch-track", "aria-hidden": "true" }, el("span", { class: "smm-switch-thumb" }));
+  const enabledToggle = el("label", { class: "smm-switch", "aria-label": "Toggle platform enabled" }, enabledInput, enabledTrack);
+  const stateBadge = el("span", {
+    class: "smm-state",
+    "data-enabled": enabledInput.checked ? "true" : "false",
+    role: "button",
+    tabindex: "0",
+    "aria-pressed": enabledInput.checked ? "true" : "false",
+    title: "Toggle enabled state"
+  }, enabledInput.checked ? "Enabled" : "Disabled");
 
-  const saveBtn = el("button", { class: "btn", type: "button" }, "Save");
   const deleteBtn = el("button", { class: "btn danger", type: "button" }, "Delete");
+  const bodyFieldset = el("fieldset", { class: "smm-body" });
+  const autosaveInputs = [
+    nameInput,
+    categoryInput,
+    iconLocationInput,
+    postingModeInput,
+    handleInput,
+    profileUrlInput,
+    accountIdInput,
+    hashtagsInput,
+    captionSuffixInput,
+    notesInput,
+    clientIdInput,
+    clientSecretInput,
+    accessTokenInput,
+    refreshTokenInput,
+    enabledInput
+  ];
+  let autosaveTimer = null;
+  let savingNow = false;
+  let queuedSave = false;
+
+  function syncEnabledState() {
+    const label = enabledInput.checked ? "Enabled" : "Disabled";
+    stateBadge.textContent = label;
+    stateBadge.dataset.enabled = enabledInput.checked ? "true" : "false";
+    stateBadge.setAttribute("aria-pressed", enabledInput.checked ? "true" : "false");
+    bodyFieldset.disabled = !enabledInput.checked;
+  }
+
+  function toggleEnabledState() {
+    enabledInput.checked = !enabledInput.checked;
+    syncEnabledState();
+    scheduleAutosave();
+  }
+
+  enabledInput.addEventListener("change", syncEnabledState);
+  stateBadge.addEventListener("click", toggleEnabledState);
+  stateBadge.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleEnabledState();
+  });
 
   async function savePlatform() {
-    saveBtn.disabled = true;
+    if (savingNow) {
+      queuedSave = true;
+      return;
+    }
+    savingNow = true;
     deleteBtn.disabled = true;
     status.textContent = "Saving...";
     try {
@@ -340,19 +561,37 @@ function renderPlatformPanel(platform) {
       });
       const nextRecord = toPlatformRecord(saved);
       platforms = platforms.map((item) => (item.id === nextRecord.id ? nextRecord : item));
-      status.textContent = "Saved.";
-      showToast(`Saved ${nextRecord.name || nextRecord.id}.`);
-      render();
+      Object.assign(record, nextRecord);
+      syncEnabledState();
+      status.textContent = `Auto-saved ${String(nextRecord.updatedAt || "").slice(11, 19) || ""}`.trim();
     } catch (err) {
       status.textContent = String(err?.message || err || "Failed to save platform.");
       showToast(status.textContent, { tone: "error" });
     } finally {
-      saveBtn.disabled = false;
+      savingNow = false;
       deleteBtn.disabled = false;
+      if (queuedSave) {
+        queuedSave = false;
+        savePlatform();
+      }
     }
   }
 
-  saveBtn.addEventListener("click", savePlatform);
+  function scheduleAutosave() {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    status.textContent = "Auto-save pending...";
+    autosaveTimer = setTimeout(() => {
+      autosaveTimer = null;
+      savePlatform();
+    }, 450);
+  }
+
+  autosaveInputs.forEach((input) => {
+    input.addEventListener("input", scheduleAutosave);
+    input.addEventListener("change", scheduleAutosave);
+  });
+  syncEnabledState();
+  status.textContent = "Auto-save enabled";
   deleteBtn.addEventListener("click", async () => {
     if (!(await confirmToast(`Delete ${record.name || record.id}?`, { confirmText: "Delete", tone: "danger" }))) return;
     deleteBtn.disabled = true;
@@ -368,28 +607,39 @@ function renderPlatformPanel(platform) {
     }
   });
 
-  panel.append(
-    title,
-    intro,
-    el("div", { class: "grid cols-2" },
-      field("Name", nameInput),
+  bodyFieldset.append(
+    el("div", { class: "smm-text-stack" },
+      fieldSpanAll(meta.suffixLabel, captionSuffixInput),
+      fieldSpanAll(meta.notesLabel, notesInput)
+    ),
+    el("div", { class: "smm-divider", "aria-hidden": "true" }),
+    el("div", { class: "smm-grid smm-grid--details" },
+      field("Display name", nameInput),
       field("Category", categoryInput),
-      field("Icon location", iconLocationInput),
       field("Posting mode", postingModeInput),
       field(meta.handleLabel, handleInput),
       field(meta.profileLabel, profileUrlInput),
-      field(meta.accountIdLabel, accountIdInput),
+      field("Icon location", iconLocationInput),
       field(meta.hashtagsLabel, hashtagsInput),
-      field(meta.suffixLabel, captionSuffixInput),
-      field(meta.notesLabel, notesInput),
+      field(meta.accountIdLabel, accountIdInput)
+    ),
+    el("div", { class: "smm-divider", "aria-hidden": "true" }),
+    el("div", { class: "smm-grid smm-grid--auth" },
       field(meta.clientIdLabel, clientIdInput),
       field(meta.clientSecretLabel, clientSecretInput),
       field(meta.accessTokenLabel, accessTokenInput),
-      field(meta.refreshTokenLabel, refreshTokenInput),
-      field("Enabled", el("label", { class: "smm-toggle" }, enabledInput, el("span", {}, enabledInput.checked ? "Enabled" : "Disabled")))
+      field(meta.refreshTokenLabel, refreshTokenInput)
+    )
+  );
+
+  panel.append(
+    el("div", { class: "smm-header-copy" },
+      el("div", { class: "smm-title-row" }, title, slug),
+      intro
     ),
-    el("div", { class: "row", style: "gap:8px;" }, saveBtn, deleteBtn),
-    status
+    el("div", { class: "smm-toggle-row" }, enabledToggle, stateBadge),
+    bodyFieldset,
+    el("div", { class: "smm-actions" }, deleteBtn, status)
   );
 
   return panel;
@@ -508,3 +758,4 @@ platformCreateForm?.addEventListener("submit", async (e) => {
 });
 
 loadData();
+

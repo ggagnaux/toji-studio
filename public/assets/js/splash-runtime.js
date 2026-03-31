@@ -1,5 +1,6 @@
 import { ensureSplashP5 } from "./p5-loader.js";
 import { mountSplashLogoIconAnimation } from "./logo-icon-animation.js";
+import { SPLASH_MODE_IDS, normalizeSplashMode, normalizeAllowedSplashModes } from "./splash-mode-config.js";
 
 export async function initializeHomeSplash(options = {}) {
   const {
@@ -31,6 +32,7 @@ export async function initializeHomeSplash(options = {}) {
       const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "random" | "nodes" | "flock" | "circles" | "matrix" | "life" | "plot" | "bounce" | "turningcircles" | "asteroids" | "tempest" | "missilecommand" | "radar" | "mountains" | "serpentinesphere" | "orbitalbeams"
       const SPLASH_RANDOM_CYCLE_ENABLED_KEY = "toji_splash_random_cycle_enabled_v1";
       const SPLASH_RANDOM_CYCLE_SECONDS_KEY = "toji_splash_random_cycle_seconds_v1";
+      const SPLASH_ALLOWED_MODES_KEY = "toji_splash_allowed_modes_v1";
       const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
       const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
       const DEFAULT_SPLASH_LOGO_MARKUP = `
@@ -46,6 +48,61 @@ export async function initializeHomeSplash(options = {}) {
         <span class="sr-only">Toji Studios</span>
       `;
       const TOJI_STUDIOS_WORD = "tojistudios";
+      let splashSettings = null;
+
+      function normalizeBooleanSetting(value, fallback = false) {
+        if (typeof value === "boolean") return value;
+        if (value == null) return fallback;
+        const normalized = String(value).trim().toLowerCase();
+        if (!normalized) return fallback;
+        return normalized !== "0" && normalized !== "false" && normalized !== "off" && normalized !== "no";
+      }
+
+      function readSplashSettingsFromLocalStorage() {
+        const cycleRaw = Math.floor(Number(localStorage.getItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY)));
+        return {
+          enabled: localStorage.getItem(SPLASH_ANIMATION_ENABLED_KEY) !== "0",
+          mode: normalizeSplashMode(localStorage.getItem(SPLASH_ANIMATION_MODE_KEY)),
+          randomCycleEnabled: localStorage.getItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY) === "1",
+          randomCycleSeconds: Number.isFinite(cycleRaw) ? Math.min(600, Math.max(1, cycleRaw)) : 12,
+          allowedModes: normalizeAllowedSplashModes(localStorage.getItem(SPLASH_ALLOWED_MODES_KEY))
+        };
+      }
+
+      function writeSplashSettingsToLocalStorage(settings) {
+        const normalized = settings || readSplashSettingsFromLocalStorage();
+        localStorage.setItem(SPLASH_ANIMATION_ENABLED_KEY, normalizeBooleanSetting(normalized.enabled, true) ? "1" : "0");
+        localStorage.setItem(SPLASH_ANIMATION_MODE_KEY, normalizeSplashMode(normalized.mode));
+        localStorage.setItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY, normalizeBooleanSetting(normalized.randomCycleEnabled, false) ? "1" : "0");
+        localStorage.setItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY, String(Math.min(600, Math.max(1, Math.floor(Number(normalized.randomCycleSeconds) || 12)))));
+        localStorage.setItem(SPLASH_ALLOWED_MODES_KEY, JSON.stringify(normalizeAllowedSplashModes(normalized.allowedModes)));
+      }
+
+      async function loadSplashSettings() {
+        const localSettings = readSplashSettingsFromLocalStorage();
+        const isAdminPreview = forceShow || String(location.pathname || "").includes("/admin/");
+        if (isAdminPreview) return localSettings;
+        try {
+          const res = await fetch(`/api/public/settings/splash`, { credentials: "same-origin" });
+          const json = await res.json().catch(() => null);
+          if (!res.ok || !json || typeof json !== "object") return localSettings;
+          const merged = {
+            enabled: normalizeBooleanSetting(json.enabled, localSettings.enabled),
+            mode: normalizeSplashMode(json.mode),
+            randomCycleEnabled: normalizeBooleanSetting(json.randomCycleEnabled, localSettings.randomCycleEnabled),
+            randomCycleSeconds: Math.min(600, Math.max(1, Math.floor(Number(json.randomCycleSeconds) || localSettings.randomCycleSeconds || 12))),
+            allowedModes: normalizeAllowedSplashModes(json.allowedModes)
+          };
+          writeSplashSettingsToLocalStorage(merged);
+          return merged;
+        } catch {
+          return localSettings;
+        }
+      }
+
+      function getAllowedSplashModes() {
+        return normalizeAllowedSplashModes(splashSettings?.allowedModes);
+      }
 
       function isTojiStudiosSplashMode(mode) {
         return String(mode || "").toLowerCase() === "tojistudios";
@@ -476,54 +533,20 @@ export async function initializeHomeSplash(options = {}) {
       }
 
       function isSplashAnimationEnabled() {
-        const raw = localStorage.getItem(SPLASH_ANIMATION_ENABLED_KEY);
-        if (raw == null) return true;
-        const value = String(raw).trim().toLowerCase();
-        return value !== "0" && value !== "false" && value !== "off" && value !== "no";
+        if (forceShow) return true;
+        return normalizeBooleanSetting(splashSettings?.enabled, true);
       }
   
       function getConfiguredSplashAnimationMode() {
-        const forcedMode = String(forceMode || "").toLowerCase();
-        if (forcedMode === "random") return "random";
-        if (forcedMode === "tojistudios") return "tojistudios";
-        if (forcedMode === "flock") return "flock";
-        if (forcedMode === "circles") return "circles";
-        if (forcedMode === "matrix") return "matrix";
-        if (forcedMode === "life") return "life";
-        if (forcedMode === "plot") return "plot";
-        if (forcedMode === "bounce") return "bounce";
-        if (forcedMode === "turningcircles") return "turningcircles";
-        if (forcedMode === "asteroids") return "asteroids";
-        if (forcedMode === "tempest") return "tempest";
-        if (forcedMode === "missilecommand") return "missilecommand";
-        if (forcedMode === "radar") return "radar";
-        if (forcedMode === "mountains") return "mountains";
-        if (forcedMode === "serpentinesphere") return "serpentinesphere";
-        if (forcedMode === "orbitalbeams") return "orbitalbeams";
-        if (forcedMode === "nodes") return "nodes";
-
-        const mode = String(localStorage.getItem(SPLASH_ANIMATION_MODE_KEY) || "").toLowerCase();
-        if (mode === "random") return "random";
-        if (mode === "tojistudios") return "tojistudios";
-        if (mode === "flock") return "flock";
-        if (mode === "circles") return "circles";
-        if (mode === "matrix") return "matrix";
-        if (mode === "life") return "life";
-        if (mode === "plot") return "plot";
-        if (mode === "bounce") return "bounce";
-        if (mode === "turningcircles") return "turningcircles";
-        if (mode === "asteroids") return "asteroids";
-        if (mode === "tempest") return "tempest";
-        if (mode === "missilecommand") return "missilecommand";
-        if (mode === "radar") return "radar";
-        if (mode === "mountains") return "mountains";
-        if (mode === "serpentinesphere") return "serpentinesphere";
-        if (mode === "orbitalbeams") return "orbitalbeams";
-        return "nodes";
+        const forced = String(forceMode || "").trim().toLowerCase();
+        if (forced === "random") return "random";
+        if (SPLASH_MODE_IDS.includes(forced)) return forced;
+        return normalizeSplashMode(splashSettings?.mode);
       }
   
       function pickRandomSplashMode(preferDifferent = false) {
-        const choices = ["tojistudios", "nodes", "flock", "circles", "matrix", "life", "plot", "bounce", "turningcircles", "asteroids", "tempest", "missilecommand", "radar", "mountains", "serpentinesphere", "orbitalbeams"];
+        const choices = getAllowedSplashModes();
+        if (!choices.length) return "";
         let picked = choices[Math.floor(Math.random() * choices.length)];
         if (preferDifferent && activeSplashMode && choices.length > 1) {
           let tries = 0;
@@ -537,8 +560,10 @@ export async function initializeHomeSplash(options = {}) {
   
       function getSplashAnimationMode() {
         const configured = getConfiguredSplashAnimationMode();
+        const allowedModes = getAllowedSplashModes();
         if (configured === "random") return pickRandomSplashMode();
-        return configured;
+        if (!allowedModes.length) return "";
+        return allowedModes.includes(configured) ? configured : "";
       }
   
       function getBannerLogoAnimationMode() {
@@ -550,9 +575,8 @@ export async function initializeHomeSplash(options = {}) {
       }
   
       function getRandomCycleConfig() {
-        const enabled = localStorage.getItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY) === "1";
-        const n = Math.floor(Number(localStorage.getItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY)));
-        const seconds = Number.isFinite(n) ? Math.min(600, Math.max(1, n)) : 12;
+        const enabled = normalizeBooleanSetting(splashSettings?.randomCycleEnabled, false);
+        const seconds = Math.min(600, Math.max(1, Math.floor(Number(splashSettings?.randomCycleSeconds) || 12)));
         return { enabled, seconds };
       }
 
@@ -765,6 +789,13 @@ export async function initializeHomeSplash(options = {}) {
         const splashMode = forcedMode || getSplashAnimationMode();
         activeSplashMode = splashMode;
         renderSplashLogoForeground(splashMode);
+        if (!splashMode) {
+          stopSplashLogo3dAnimation();
+          stopSplashForegroundAnimation();
+          clearSplashLogoCornerTimer();
+          splashP5Host.innerHTML = "";
+          return;
+        }
         if (isTojiStudiosSplashMode(splashMode)) {
           stopSplashLogo3dAnimation();
           clearSplashLogoCornerTimer();
@@ -1102,18 +1133,23 @@ export async function initializeHomeSplash(options = {}) {
             serpentineTrail.length = 0;
             const basePad = Math.max(10, Math.min(30, Math.min(p.width, p.height) * 0.03));
             const radius = Math.max(4, Math.min(12, Math.min(p.width, p.height) * 0.012));
-            const rowStep = Math.max(radius * 3.3, Math.min(54, p.height * 0.08));
+            const chooseDirection = () => {
+              const angle = p.random(Math.PI * 2);
+              return {
+                vx: Math.cos(angle),
+                vy: Math.sin(angle)
+              };
+            };
+            const direction = chooseDirection();
             serpentineHead = {
-              x: basePad,
-              y: basePad,
+              x: p.width * 0.5,
+              y: p.height * 0.5,
               pad: basePad,
               radius,
-              rowStep,
-              dir: 1,
-              phase: "horizontal",
-              targetY: basePad,
-              speedX: Math.max(1.8, p.width * 0.0036),
-              speedY: Math.max(2.2, p.height * 0.009)
+              vx: direction.vx,
+              vy: direction.vy,
+              speed: Math.max(1.8, Math.min(p.width, p.height) * 0.0048),
+              nextTurnAt: p.millis() + 10000
             };
             serpentineTrailEmitAt = p.millis();
             serpentineNextFallAt = p.millis() + p.random(320, 760);
@@ -1125,7 +1161,15 @@ export async function initializeHomeSplash(options = {}) {
             const now = p.millis();
             const minX = head.pad;
             const maxX = Math.max(minX, p.width - head.pad);
+            const minY = head.pad;
             const maxY = Math.max(head.pad, p.height - head.pad);
+
+            if (now >= head.nextTurnAt) {
+              const angle = p.random(Math.PI * 2);
+              head.vx = Math.cos(angle);
+              head.vy = Math.sin(angle);
+              head.nextTurnAt = now + 10000;
+            }
 
             if (now >= serpentineTrailEmitAt) {
               serpentineTrail.push({
@@ -1159,28 +1203,16 @@ export async function initializeHomeSplash(options = {}) {
               serpentineNextFallAt = now + p.random(280, 760);
             }
 
-            if (head.phase === "horizontal") {
-              head.x += head.speedX * head.dir;
-              const reachedRight = head.dir > 0 && head.x >= maxX;
-              const reachedLeft = head.dir < 0 && head.x <= minX;
-              if (reachedRight || reachedLeft) {
-                head.x = reachedRight ? maxX : minX;
-                head.phase = "vertical";
-                head.targetY = head.y + head.rowStep;
-              }
-            } else {
-              head.y += head.speedY;
-              if (head.y >= maxY) {
-                head.x = minX;
-                head.y = head.pad;
-                head.dir = 1;
-                head.phase = "horizontal";
-                head.targetY = head.pad;
-              } else if (head.y >= head.targetY) {
-                head.y = head.targetY;
-                head.phase = "horizontal";
-                head.dir *= -1;
-              }
+            head.x += head.vx * head.speed;
+            head.y += head.vy * head.speed;
+
+            if (head.x <= minX || head.x >= maxX) {
+              head.x = p.constrain(head.x, minX, maxX);
+              head.vx *= -1;
+            }
+            if (head.y <= minY || head.y >= maxY) {
+              head.y = p.constrain(head.y, minY, maxY);
+              head.vy *= -1;
             }
 
             for (let i = serpentineTrail.length - 1; i >= 0; i -= 1) {
@@ -5466,6 +5498,8 @@ export async function initializeHomeSplash(options = {}) {
         }
       }
   
+      splashSettings = await loadSplashSettings();
+
       if (showSplash) {
         splashClosing = false;
         const activeMode = getSplashAnimationMode();
@@ -5563,3 +5597,4 @@ export async function initializeHomeSplash(options = {}) {
       });
       // ---- Data source: Admin localStorage first, fallback JSON ----
 }
+

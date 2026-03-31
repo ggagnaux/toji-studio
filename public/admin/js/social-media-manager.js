@@ -1,4 +1,13 @@
 import { ensureBaseStyles, setYearFooter, showToast, apiFetch, confirmToast } from "../admin.js";
+import {
+  categoryOptions,
+  cleanSlug,
+  cleanText,
+  getPlatformFormMeta,
+  normalizePlatformIconLocation,
+  parseTagsInput,
+  resolvePlatformIconSrc
+} from "./social-platform-utils.js";
 
 ensureBaseStyles();
 setYearFooter();
@@ -17,137 +26,12 @@ const platformCreateStatus = document.getElementById("platformCreateStatus");
 const platformCreateDialogPanel = platformCreateDialog?.querySelector('[role="dialog"]');
 let lastFocusedBeforeDialog = null;
 let allowedPlatformOptions = [];
-
-function cleanText(v) {
-  return String(v || "").trim();
-}
-
-function normalizePlatformIconLocation(raw) {
-  const text = cleanText(raw).replace(/\\/g, "/");
-  if (!text) return "";
-  if (/^(https?:)?\/\//i.test(text) || text.startsWith("data:")) return text;
-  if (text.startsWith("/public/")) return text.slice("/public".length);
-  if (text.startsWith("/")) return text;
-  const marker = "/assets/";
-  const markerIndex = text.toLowerCase().indexOf(marker);
-  if (markerIndex >= 0) return text.slice(markerIndex);
-  return `/${text.replace(/^\/+/, "")}`;
-}
-
-function resolvePlatformIconSrc(raw) {
-  const normalized = normalizePlatformIconLocation(raw);
-  if (!normalized) return "";
-  if (/^(https?:)?\/\//i.test(normalized) || normalized.startsWith("data:")) return normalized;
-
-  const pathname = String(window.location.pathname || "");
-  const isPublicPreview = pathname === "/public" || pathname.startsWith("/public/");
-  if (isPublicPreview && normalized.startsWith("/assets/")) {
-    return `/public${normalized}`;
-  }
-
-  return normalized;
-}
-function cleanSlug(v) {
-  return cleanText(v)
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 64);
-}
-
-function parseTagsInput(v) {
-  return Array.from(
-    new Set(
-      cleanText(v)
-        .split(/[,;\n]+/g)
-        .map((t) => cleanText(t.replace(/^#+/, "")).toLowerCase())
-        .filter(Boolean)
-    )
-  );
-}
-
-const categoryOptions = ["social", "video", "newsletter", "portfolio", "other"];
-
-function getPlatformFormMeta(platform) {
-  const id = cleanSlug(platform?.id);
-  if (id === "bluesky") {
-    return {
-      intro: "Configure Bluesky for the manual-first workflow. Save the public profile, caption defaults, and optional credentials for later API mode.",
-      postingModeDefault: "manual",
-      handleLabel: "Bluesky handle",
-      handlePlaceholder: "@studio.bsky.social",
-      profileLabel: "Bluesky profile URL",
-      profilePlaceholder: "https://bsky.app/profile/your-handle",
-      accountIdLabel: "DID / account id",
-      accountIdPlaceholder: "did:plc:...",
-      hashtagsLabel: "Default hashtags",
-      hashtagsPlaceholder: "art, painting, toji-studios",
-      suffixLabel: "Default caption suffix",
-      suffixPlaceholder: "Optional CTA or portfolio link appended to Bluesky captions.",
-      notesLabel: "Bluesky notes",
-      notesPlaceholder: "Publishing guidance, thread ideas, or reminders for manual posting.",
-      clientIdLabel: "Identifier / login",
-      clientIdPlaceholder: "handle or email",
-      clientSecretLabel: "App password",
-      clientSecretPlaceholder: "xxxx-xxxx-xxxx-xxxx",
-      accessTokenLabel: "Access JWT",
-      refreshTokenLabel: "Refresh JWT"
-    };
-  }
-  if (id === "linkedin") {
-    return {
-      intro: "Configure LinkedIn for the manual-first workflow. Save the public page/profile, caption defaults, and optional API credentials for later direct posting.",
-      postingModeDefault: "manual",
-      handleLabel: "LinkedIn page handle",
-      handlePlaceholder: "company/your-studio",
-      profileLabel: "LinkedIn profile/page URL",
-      profilePlaceholder: "https://www.linkedin.com/company/your-page/",
-      accountIdLabel: "Organization URN / account id",
-      accountIdPlaceholder: "urn:li:organization:123456 or 123456",
-      hashtagsLabel: "Default hashtags",
-      hashtagsPlaceholder: "digitalart, illustration, conceptart",
-      suffixLabel: "Default caption suffix",
-      suffixPlaceholder: "Optional CTA or portfolio link appended to LinkedIn captions.",
-      notesLabel: "LinkedIn notes",
-      notesPlaceholder: "Posting guidance, audience notes, or reminders for manual publishing.",
-      clientIdLabel: "Client ID",
-      clientIdPlaceholder: "LinkedIn app client ID",
-      clientSecretLabel: "Client secret",
-      clientSecretPlaceholder: "LinkedIn app client secret",
-      accessTokenLabel: "Access token",
-      refreshTokenLabel: "Refresh token"
-    };
-  }
-
-  return {
-    intro: "Configure platform defaults and credentials used by the artwork social-post workflow.",
-    postingModeDefault: "api",
-    handleLabel: "Account handle",
-    handlePlaceholder: "@account",
-    profileLabel: "Profile URL",
-    profilePlaceholder: "https://...",
-    accountIdLabel: "Account/Page ID",
-    accountIdPlaceholder: "",
-    hashtagsLabel: "Default hashtags",
-    hashtagsPlaceholder: "tag1, tag2",
-    suffixLabel: "Default caption suffix",
-    suffixPlaceholder: "Optional default suffix appended to captions.",
-    notesLabel: "Notes",
-    notesPlaceholder: "Setup notes for this platform.",
-    clientIdLabel: "Client ID",
-    clientIdPlaceholder: "",
-    clientSecretLabel: "Client secret",
-    clientSecretPlaceholder: "",
-    accessTokenLabel: "Access token",
-    refreshTokenLabel: "Refresh token"
-  };
-}
 let platforms = [];
 let activePlatformId = "";
 const TAB_BORDER_PALETTE = ["#2a97d4", "#2ea97d", "#d18b2e", "#d15353", "#8a63d2", "#cf5ea8", "#3aa5a0", "#7e8c2b"];
 
 function getPlatformTabIconSrc(platform) {
-  return resolvePlatformIconSrc(platform?.iconLocation || platform?.config?.iconLocation);
+  return resolvePlatformIconSrc(platform?.iconLocation || platform?.config?.iconLocation, String(window.location.pathname || ""));
 }
 
 function ensureSocialManagerStyles() {
@@ -258,643 +142,369 @@ function ensureSocialManagerStyles() {
     .smm-toggle{
       display:inline-flex;
       align-items:center;
-      gap:8px;
-      cursor:pointer;
-      user-select:none;
-    }
-    .smm-toggle-status-badge{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-width:82px;
-      padding:2px 8px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      font-size:12px;
-      line-height:1.35;
-      font-weight:700;
-      letter-spacing:.01em;
-      color:var(--text);
-      background:color-mix(in srgb, var(--panel) 80%, transparent);
-    }
-    .smm-toggle-status-badge.is-enabled{
-      color:#2ea97d;
-      border-color:color-mix(in srgb, #2ea97d 65%, var(--line));
-      background:color-mix(in srgb, #2ea97d 18%, var(--panel));
-    }
-    .smm-toggle-status-badge.is-disabled{
-      color:#d15353;
-      border-color:color-mix(in srgb, #d15353 65%, var(--line));
-      background:color-mix(in srgb, #d15353 14%, var(--panel));
-    }
-    .smm-toggle input{
-      position:absolute;
-      width:1px;
-      height:1px;
-      overflow:hidden;
-      clip:rect(0 0 0 0);
-      white-space:nowrap;
-      border:0;
-      margin:-1px;
-      padding:0;
-    }
-    .smm-toggle-slider{
-      width:46px;
-      height:26px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background: color-mix(in srgb, var(--panel) 84%, transparent);
-      position:relative;
-      transition: background .18s ease, border-color .18s ease;
-      flex:0 0 auto;
-    }
-    .smm-toggle-slider::after{
-      content:"";
-      position:absolute;
-      top:3px;
-      left:3px;
-      width:18px;
-      height:18px;
-      border-radius:50%;
-      background:var(--text);
-      transition: transform .18s ease;
-    }
-    .smm-toggle input:checked + .smm-toggle-slider{
-      background:var(--accent-soft);
-      border-color: var(--accent-border);
-    }
-    .smm-toggle input:checked + .smm-toggle-slider::after{
-      transform: translateX(20px);
+      gap:12px;
+      padding:6px 0;
     }
   `;
   document.head.appendChild(style);
 }
-ensureSocialManagerStyles();
 
-function openPlatformCreateDialog() {
+function setDialogOpen(open) {
   if (!platformCreateDialog) return;
-  lastFocusedBeforeDialog = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-  platformCreateDialog.style.display = "flex";
-  platformCreateDialog.setAttribute("aria-hidden", "false");
-  document.body.style.overflow = "hidden";
-  window.setTimeout(() => {
+  platformCreateDialog.hidden = !open;
+  platformCreateDialog.setAttribute("aria-hidden", open ? "false" : "true");
+  if (open) {
+    lastFocusedBeforeDialog = document.activeElement;
     platformNewId?.focus();
-  }, 0);
+  } else if (lastFocusedBeforeDialog && typeof lastFocusedBeforeDialog.focus === "function") {
+    lastFocusedBeforeDialog.focus();
+  }
 }
 
-function closePlatformCreateDialog() {
-  if (!platformCreateDialog) return;
-  platformCreateDialog.style.display = "none";
-  platformCreateDialog.setAttribute("aria-hidden", "true");
-  document.body.style.overflow = "";
-  if (platformCreateStatus) platformCreateStatus.textContent = "";
-  (lastFocusedBeforeDialog || openPlatformCreateDialogBtn)?.focus();
-  lastFocusedBeforeDialog = null;
+function setCreateStatus(message = "", tone = "info") {
+  if (!platformCreateStatus) return;
+  platformCreateStatus.textContent = String(message || "");
+  platformCreateStatus.className = tone === "error" ? "sub error" : "sub";
 }
 
-openPlatformCreateDialogBtn?.addEventListener("click", () => {
-  openPlatformCreateDialog();
-});
-
-platformNewId?.addEventListener("change", () => {
-  const selected = allowedPlatformOptions.find((platform) => platform.id === cleanSlug(platformNewId.value)) || null;
-  if (platformNewName) platformNewName.value = selected?.name || "";
-});
-
-closePlatformCreateDialogBtn?.addEventListener("click", () => {
-  closePlatformCreateDialog();
-});
-
-cancelPlatformCreateDialogBtn?.addEventListener("click", () => {
-  closePlatformCreateDialog();
-});
-
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && platformCreateDialog?.getAttribute("aria-hidden") === "false") {
-    closePlatformCreateDialog();
+function syncCreateDialogFields() {
+  const selectedId = cleanSlug(platformNewId?.value);
+  const option = allowedPlatformOptions.find((item) => cleanSlug(item?.id) === selectedId) || null;
+  if (platformNewName) platformNewName.value = cleanText(option?.name || selectedId);
+  if (platformNewIconLocation) {
+    const iconLocation = normalizePlatformIconLocation(option?.iconLocation || "");
+    platformNewIconLocation.value = iconLocation;
   }
-});
-
-platformCreateDialog?.addEventListener("keydown", (event) => {
-  if (event.key !== "Tab" || !platformCreateDialogPanel) return;
-  const focusable = Array.from(
-    platformCreateDialogPanel.querySelectorAll(
-      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    )
-  ).filter((node) => node instanceof HTMLElement && node.offsetParent !== null);
-  if (!focusable.length) {
-    event.preventDefault();
-    return;
-  }
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  const active = document.activeElement;
-  if (event.shiftKey && active === first) {
-    event.preventDefault();
-    last.focus();
-    return;
-  }
-  if (!event.shiftKey && active === last) {
-    event.preventDefault();
-    first.focus();
-  }
-});
-
-function tabColorAt(index) {
-  return TAB_BORDER_PALETTE[index % TAB_BORDER_PALETTE.length];
 }
 
-function buildField(label, node) {
-  const wrap = document.createElement("div");
-  wrap.className = "field";
-  wrap.style.marginTop = "0";
-
-  const title = document.createElement("div");
-  title.className = "sub";
-  title.textContent = label;
-  wrap.appendChild(title);
-  wrap.appendChild(node);
-  return wrap;
+function paletteColorForId(id) {
+  const source = cleanSlug(id) || "platform";
+  let total = 0;
+  for (let i = 0; i < source.length; i += 1) total += source.charCodeAt(i);
+  return TAB_BORDER_PALETTE[total % TAB_BORDER_PALETTE.length];
 }
 
-function input(type, value = "", placeholder = "") {
-  const node = document.createElement("input");
-  node.type = type;
-  node.value = value;
-  if (placeholder) node.placeholder = placeholder;
+function parseJsonObject(raw, fallback = {}) {
+  if (raw == null) return { ...fallback };
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+  const text = cleanText(raw);
+  if (!text) return { ...fallback };
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+  } catch {}
+  return { ...fallback };
+}
+
+function toPlatformRecord(row) {
+  const config = parseJsonObject(row?.config, parseJsonObject(row?.configJson, {}));
+  const auth = parseJsonObject(row?.auth, parseJsonObject(row?.authJson, {}));
+  const iconLocation = normalizePlatformIconLocation(row?.iconLocation || config?.iconLocation || "");
+  return {
+    ...row,
+    id: cleanSlug(row?.id),
+    name: cleanText(row?.name),
+    category: cleanText(row?.category) || "social",
+    enabled: !!row?.enabled,
+    iconLocation,
+    config: { ...config, iconLocation },
+    auth
+  };
+}
+
+function selectOption(options, fallback = "") {
+  const cleanFallback = cleanText(fallback).toLowerCase();
+  return options.find((option) => cleanText(option).toLowerCase() === cleanFallback) || options[0] || fallback;
+}
+
+function field(label, input, hint = "") {
+  const nodes = [el("label", {}, label), input];
+  if (hint) nodes.push(el("div", { class: "sub" }, hint));
+  return el("div", { class: "field" }, ...nodes);
+}
+
+function saveIndicator() {
+  return el("div", { class: "sub", "aria-live": "polite" }, "");
+}
+
+function inputValue(input, fallback = "") {
+  return cleanText(input?.value || fallback);
+}
+
+function setSummary(message = "") {
+  if (platformSummary) platformSummary.textContent = message;
+}
+
+function buildPlatformPayload(platform, inputs) {
+  const meta = getPlatformFormMeta(platform);
+  const hashtags = parseTagsInput(inputs.hashtags?.value);
+  return {
+    name: cleanText(platform?.name || inputs.name?.value),
+    category: selectOption(categoryOptions, cleanText(inputs.category?.value) || "social"),
+    enabled: !!inputs.enabled?.checked,
+    iconLocation: normalizePlatformIconLocation(inputs.iconLocation?.value || ""),
+    config: {
+      postingMode: cleanText(inputs.postingMode?.value) || meta.postingModeDefault || "manual",
+      accountHandle: inputValue(inputs.handle),
+      profileUrl: inputValue(inputs.profileUrl),
+      accountId: inputValue(inputs.accountId),
+      defaultHashtags: hashtags,
+      defaultCaptionSuffix: inputValue(inputs.captionSuffix),
+      notes: inputValue(inputs.notes)
+    },
+    auth: {
+      clientId: inputValue(inputs.clientId),
+      clientSecret: inputValue(inputs.clientSecret),
+      accessToken: inputValue(inputs.accessToken),
+      refreshToken: inputValue(inputs.refreshToken)
+    }
+  };
+}
+
+function createTextInput(value = "", placeholder = "") {
+  return el("input", { type: "text", value: cleanText(value), placeholder });
+}
+
+function createTextarea(value = "", placeholder = "") {
+  const node = el("textarea", { rows: "3", placeholder });
+  node.value = cleanText(value);
   return node;
 }
 
-function updateCreateFormOptions() {
-  if (!platformNewId || !platformNewName) return;
-  const existingIds = new Set(platforms.map((platform) => cleanSlug(platform.id)));
-  const availableOptions = allowedPlatformOptions.filter((platform) => !existingIds.has(cleanSlug(platform.id)));
-  const currentValue = cleanSlug(platformNewId.value);
-
-  platformNewId.innerHTML = "";
-  platformNewId.appendChild(new Option("Select a platform...", ""));
-  for (const platform of availableOptions) {
-    platformNewId.appendChild(new Option(platform.name, platform.id));
-  }
-
-  const selectedValue = availableOptions.some((platform) => platform.id === currentValue)
-    ? currentValue
-    : (availableOptions[0]?.id || "");
-  platformNewId.value = selectedValue;
-  const selected = allowedPlatformOptions.find((platform) => platform.id === selectedValue) || null;
-  platformNewName.value = selected?.name || "";
-
-  if (openPlatformCreateDialogBtn) openPlatformCreateDialogBtn.disabled = availableOptions.length === 0;
-}
-
-function textArea(value = "", placeholder = "") {
-  const node = document.createElement("textarea");
-  node.value = value;
-  if (placeholder) node.placeholder = placeholder;
-  node.style.minHeight = "84px";
-  return node;
-}
-
-function selectOption(list, value) {
-  const select = document.createElement("select");
-  for (const item of list) {
-    const option = document.createElement("option");
-    option.value = item;
-    option.textContent = item;
-    if (item === value) option.selected = true;
+function createSelect(options, value = "") {
+  const select = el("select", {});
+  options.forEach((optionValue) => {
+    const option = el("option", { value: optionValue }, optionValue);
+    if (optionValue === value) option.selected = true;
     select.appendChild(option);
+  });
+  if (![...select.options].some((option) => option.value === value) && select.options.length) {
+    select.value = select.options[0].value;
   }
   return select;
 }
 
-function platformPanel(platform, accentColor) {
-  const config = platform.config || {};
-  const auth = platform.auth || {};
-  const meta = getPlatformFormMeta(platform);
+function renderPlatformPanel(platform) {
+  const record = toPlatformRecord(platform);
+  const meta = getPlatformFormMeta(record);
+  const panel = el("div", { class: "card smm-panel" });
+  const title = el("h3", {}, record.name || record.id || "Platform");
+  const intro = el("div", { class: "sub" }, meta.intro);
+  const status = saveIndicator();
 
-  const card = document.createElement("div");
-  card.className = "card";
-  card.classList.add("smm-panel");
-  card.style.boxShadow = "none";
-  card.style.setProperty("--smm-active-color", accentColor || "var(--line)");
-  card.style.borderColor = accentColor || "var(--line)";
-  card.style.overflow = "hidden";
+  const nameInput = createTextInput(record.name, "Platform name");
+  const categoryInput = createSelect(categoryOptions, selectOption(categoryOptions, record.category || "social"));
+  const iconLocationInput = createTextInput(record.iconLocation, "/assets/... or https://...");
+  const postingModeInput = createSelect(["manual", "api"], cleanText(record.config?.postingMode || meta.postingModeDefault || "manual"));
+  const handleInput = createTextInput(record.config?.accountHandle, meta.handlePlaceholder);
+  const profileUrlInput = createTextInput(record.config?.profileUrl, meta.profilePlaceholder);
+  const accountIdInput = createTextInput(record.config?.accountId, meta.accountIdPlaceholder);
+  const hashtagsInput = createTextInput((record.config?.defaultHashtags || []).join(", "), meta.hashtagsPlaceholder);
+  const captionSuffixInput = createTextarea(record.config?.defaultCaptionSuffix, meta.suffixPlaceholder);
+  const notesInput = createTextarea(record.config?.notes, meta.notesPlaceholder);
+  const clientIdInput = createTextInput(record.auth?.clientId, meta.clientIdPlaceholder);
+  const clientSecretInput = createTextInput(record.auth?.clientSecret, meta.clientSecretPlaceholder);
+  const accessTokenInput = createTextarea(record.auth?.accessToken, "");
+  const refreshTokenInput = createTextarea(record.auth?.refreshToken, "");
+  const enabledInput = el("input", { type: "checkbox" });
+  enabledInput.checked = !!record.enabled;
 
-  const body = document.createElement("div");
-  body.className = "meta";
-  body.style.display = "grid";
-  body.style.gap = "10px";
-  body.style.paddingTop = "12px";
-
-  const nameInput = input("text", cleanText(platform.name), "Platform name");
-  const categoryInput = selectOption(categoryOptions, cleanText(platform.category) || "social");
-  const enabledInput = input("checkbox");
-  enabledInput.checked = !!platform.enabled;
-  enabledInput.style.width = "auto";
-  enabledInput.style.minWidth = "0";
-  enabledInput.style.height = "auto";
-
-  const postingModeInput = selectOption(["api", "manual", "webhook"], cleanText(config.postingMode) || meta.postingModeDefault);
-  const handleInput = input("text", cleanText(config.accountHandle), meta.handlePlaceholder);
-  const profileUrlInput = input("url", cleanText(config.profileUrl), meta.profilePlaceholder);
-  const iconLocationInput = input("text", getPlatformTabIconSrc(platform), "Remote URL or local filesystem path");
-  const hashtagsInput = input("text", Array.isArray(config.defaultHashtags) ? config.defaultHashtags.join(", ") : cleanText(config.defaultHashtags), meta.hashtagsPlaceholder);
-  const suffixInput = textArea(cleanText(config.defaultCaptionSuffix), meta.suffixPlaceholder);
-  const notesInput = textArea(cleanText(config.notes), meta.notesPlaceholder);
-
-  const clientIdInput = input("text", cleanText(auth.clientId), meta.clientIdPlaceholder);
-  const clientSecretInput = input("password", cleanText(auth.clientSecret), meta.clientSecretPlaceholder);
-  const accessTokenInput = input("password", cleanText(auth.accessToken), "");
-  const refreshTokenInput = input("password", cleanText(auth.refreshToken), "");
-  const accountIdInput = input("text", cleanText(auth.accountId), meta.accountIdPlaceholder);
-
-  const panelTitle = document.createElement("div");
-  panelTitle.style.display = "grid";
-  panelTitle.style.gap = "6px";
-  panelTitle.innerHTML = `<div style="display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap"><strong>${platform.name}</strong><span class="sub">[slug: ${platform.id}]</span></div><div class="sub">${meta.intro}</div>`;
-
-  const enabledRow = document.createElement("label");
-  enabledRow.className = "smm-toggle";
-  enabledRow.style.display = "inline-flex";
-  enabledRow.style.alignItems = "center";
-  enabledRow.style.gap = "8px";
-  enabledRow.style.cursor = "pointer";
-  const enabledSlider = document.createElement("span");
-  enabledSlider.className = "smm-toggle-slider";
-  enabledSlider.setAttribute("aria-hidden", "true");
-  const enabledStateBadge = document.createElement("span");
-  enabledStateBadge.className = "smm-toggle-status-badge";
-  enabledStateBadge.setAttribute("aria-live", "polite");
-  const detailsBlock = document.createElement("div");
-  detailsBlock.className = "smm-details";
-  const detailTabBar = document.createElement("div");
-  detailTabBar.className = "smm-section-tabbar";
-  detailTabBar.setAttribute("role", "tablist");
-  detailTabBar.setAttribute("aria-label", `${platform.name} settings sections`);
-  const detailTabBtn = document.createElement("button");
-  detailTabBtn.type = "button";
-  detailTabBtn.className = "btn mini smm-section-tab";
-  detailTabBtn.textContent = "Detail";
-  detailTabBtn.setAttribute("role", "tab");
-  detailTabBtn.style.setProperty("--smm-section-color", accentColor || "var(--accent)");
-  const securityTabBtn = document.createElement("button");
-  securityTabBtn.type = "button";
-  securityTabBtn.className = "btn mini smm-section-tab";
-  securityTabBtn.textContent = "Security";
-  securityTabBtn.setAttribute("role", "tab");
-  securityTabBtn.style.setProperty("--smm-section-color", "#8a63d2");
-  detailTabBar.append(detailTabBtn, securityTabBtn);
-  const syncEnabledUi = () => {
-    enabledStateBadge.textContent = enabledInput.checked ? "Enabled" : "Disabled";
-    enabledStateBadge.classList.toggle("is-enabled", !!enabledInput.checked);
-    enabledStateBadge.classList.toggle("is-disabled", !enabledInput.checked);
-    const disabled = !enabledInput.checked;
-    detailsBlock.classList.toggle("is-disabled", disabled);
-    const controls = detailsBlock.querySelectorAll("input, select, textarea, button");
-    controls.forEach((node) => {
-      node.disabled = disabled;
-    });
-  };
-  enabledInput.addEventListener("change", syncEnabledUi);
-  enabledRow.append(enabledInput, enabledSlider, enabledStateBadge);
-
-  const settingsGrid = document.createElement("div");
-  settingsGrid.style.display = "grid";
-  settingsGrid.style.gap = "10px";
-  settingsGrid.style.gridTemplateColumns = "repeat(auto-fit, minmax(220px, 1fr))";
-  settingsGrid.append(
-    buildField("Display name", nameInput),
-    buildField("Category", categoryInput),
-    buildField("Posting mode", postingModeInput),
-    buildField(meta.handleLabel, handleInput),
-    buildField(meta.profileLabel, profileUrlInput),
-    buildField("Icon location", iconLocationInput),
-    buildField(meta.hashtagsLabel, hashtagsInput),
-    buildField(meta.accountIdLabel, accountIdInput)
-  );
-
-  const authGrid = document.createElement("div");
-  authGrid.style.display = "grid";
-  authGrid.style.gap = "10px";
-  authGrid.style.gridTemplateColumns = "repeat(auto-fit, minmax(220px, 1fr))";
-  authGrid.append(
-    buildField(meta.clientIdLabel, clientIdInput),
-    buildField(meta.clientSecretLabel, clientSecretInput),
-    buildField(meta.accessTokenLabel, accessTokenInput),
-    buildField(meta.refreshTokenLabel, refreshTokenInput)
-  );
-
-  const detailPane = document.createElement("section");
-  detailPane.className = "smm-section-pane smm-section-panel";
-  detailPane.setAttribute("role", "tabpanel");
-  detailPane.style.setProperty("--smm-section-color", accentColor || "var(--accent)");
-  const securityPane = document.createElement("section");
-  securityPane.className = "smm-section-pane smm-section-panel";
-  securityPane.setAttribute("role", "tabpanel");
-  securityPane.style.setProperty("--smm-section-color", "#8a63d2");
-
-  const setInnerTab = (tabName) => {
-    const showDetail = tabName !== "security";
-    detailTabBtn.classList.toggle("is-active", showDetail);
-    securityTabBtn.classList.toggle("is-active", !showDetail);
-    detailTabBtn.setAttribute("aria-selected", showDetail ? "true" : "false");
-    securityTabBtn.setAttribute("aria-selected", showDetail ? "false" : "true");
-    detailPane.hidden = !showDetail;
-    detailPane.style.display = showDetail ? "grid" : "none";
-    securityPane.hidden = showDetail;
-    securityPane.style.display = showDetail ? "none" : "grid";
-  };
-  detailTabBtn.addEventListener("click", () => setInnerTab("detail"));
-  securityTabBtn.addEventListener("click", () => setInnerTab("security"));
-
-  const footer = document.createElement("div");
-  footer.style.display = "flex";
-  footer.style.gap = "10px";
-  footer.style.alignItems = "center";
-  footer.style.flexWrap = "wrap";
-
-  const status = document.createElement("span");
-  status.className = "sub";
-  status.setAttribute("aria-live", "polite");
-
-  const autoSaveHint = document.createElement("span");
-  autoSaveHint.className = "sub";
-  autoSaveHint.textContent = "Auto-save enabled";
-
-  let saveTimer = null;
-  let saving = false;
-
-  function buildPayload() {
-    return {
-      name: cleanText(nameInput.value) || platform.name,
-      category: cleanText(categoryInput.value) || "social",
-      enabled: !!enabledInput.checked,
-      iconLocation: normalizePlatformIconLocation(iconLocationInput.value),
-      config: {
-        postingMode: cleanText(postingModeInput.value) || meta.postingModeDefault,
-        accountHandle: cleanText(handleInput.value),
-        profileUrl: cleanText(profileUrlInput.value),
-        iconLocation: normalizePlatformIconLocation(iconLocationInput.value),
-        defaultHashtags: parseTagsInput(hashtagsInput.value),
-        defaultCaptionSuffix: cleanText(suffixInput.value),
-        notes: cleanText(notesInput.value)
-      },
-      auth: {
-        clientId: cleanText(clientIdInput.value),
-        clientSecret: cleanText(clientSecretInput.value),
-        accessToken: cleanText(accessTokenInput.value),
-        refreshToken: cleanText(refreshTokenInput.value),
-        accountId: cleanText(accountIdInput.value)
-      }
-    };
-  }
-
-  let lastSavedPayload = JSON.stringify(buildPayload());
+  const saveBtn = el("button", { class: "btn", type: "button" }, "Save");
+  const deleteBtn = el("button", { class: "btn danger", type: "button" }, "Delete");
 
   async function savePlatform() {
-    if (saving) return;
-    const payload = buildPayload();
-    const payloadJson = JSON.stringify(payload);
-    if (payloadJson === lastSavedPayload) return;
-
-    saving = true;
+    saveBtn.disabled = true;
+    deleteBtn.disabled = true;
     status.textContent = "Saving...";
     try {
-      await apiFetch(`/api/admin/social/platforms/${encodeURIComponent(platform.id)}`, {
+      const payload = buildPlatformPayload(record, {
+        name: nameInput,
+        category: categoryInput,
+        enabled: enabledInput,
+        iconLocation: iconLocationInput,
+        postingMode: postingModeInput,
+        handle: handleInput,
+        profileUrl: profileUrlInput,
+        accountId: accountIdInput,
+        hashtags: hashtagsInput,
+        captionSuffix: captionSuffixInput,
+        notes: notesInput,
+        clientId: clientIdInput,
+        clientSecret: clientSecretInput,
+        accessToken: accessTokenInput,
+        refreshToken: refreshTokenInput
+      });
+      const saved = await apiFetch(`/api/admin/social/platforms/${encodeURIComponent(record.id)}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-
-      platform.name = payload.name;
-      platform.category = payload.category;
-      platform.enabled = payload.enabled;
-      platform.iconLocation = payload.iconLocation;
-      platform.config = payload.config;
-      platform.auth = payload.auth;
-
-      lastSavedPayload = payloadJson;
+      const nextRecord = toPlatformRecord(saved);
+      platforms = platforms.map((item) => (item.id === nextRecord.id ? nextRecord : item));
       status.textContent = "Saved.";
-      renderPlatformConfiguration();
+      showToast(`Saved ${nextRecord.name || nextRecord.id}.`);
+      render();
     } catch (err) {
-      status.textContent = "Save failed.";
-      showToast(`Save failed: ${err?.message || err}`, { tone: "error" });
+      status.textContent = String(err?.message || err || "Failed to save platform.");
+      showToast(status.textContent, { tone: "error" });
     } finally {
-      saving = false;
-    }
-  }
-
-  function scheduleAutoSave() {
-    clearTimeout(saveTimer);
-    status.textContent = "Unsaved changes...";
-    saveTimer = window.setTimeout(() => {
-      savePlatform();
-    }, 500);
-  }
-
-  const autoSaveNodes = [
-    nameInput,
-    categoryInput,
-    enabledInput,
-    postingModeInput,
-    handleInput,
-    profileUrlInput,
-    iconLocationInput,
-    hashtagsInput,
-    suffixInput,
-    notesInput,
-    clientIdInput,
-    clientSecretInput,
-    accessTokenInput,
-    refreshTokenInput,
-    accountIdInput
-  ];
-  for (const node of autoSaveNodes) {
-    const tag = String(node.tagName || "").toLowerCase();
-    const type = String(node.type || "").toLowerCase();
-    const isTextbox =
-      tag === "textarea" ||
-      (tag === "input" && ["text", "url", "password", "search", ""].includes(type));
-    if (tag === "select" || type === "checkbox") {
-      node.addEventListener("change", scheduleAutoSave);
-    } else if (isTextbox) {
-      node.addEventListener("blur", scheduleAutoSave);
-    } else {
-      node.addEventListener("change", scheduleAutoSave);
-    }
-  }
-
-  const deleteBtn = document.createElement("button");
-  deleteBtn.className = "btn mini danger";
-  deleteBtn.type = "button";
-  deleteBtn.style.borderColor = "color-mix(in srgb, #d15353 56%, var(--line))";
-  deleteBtn.textContent = "Delete";
-  deleteBtn.addEventListener("click", async () => {
-    const ok = await confirmToast(
-      `Delete platform "${platform.name}" (${platform.id})?`,
-      { confirmLabel: "Delete", cancelLabel: "Cancel", tone: "warn" }
-    );
-    if (!ok) return;
-    deleteBtn.disabled = true;
-    status.textContent = "Deleting...";
-    try {
-      await apiFetch(`/api/admin/social/platforms/${encodeURIComponent(platform.id)}`, {
-        method: "DELETE"
-      });
-      showToast(`Deleted ${platform.name}.`, { tone: "success" });
-      await loadPlatforms();
-    } catch (err) {
-      status.textContent = "Delete failed.";
-      showToast(`Delete failed: ${err?.message || err}`, { tone: "error" });
-    } finally {
+      saveBtn.disabled = false;
       deleteBtn.disabled = false;
     }
-  });
-
-  footer.append(deleteBtn, autoSaveHint, status);
-  detailPane.append(
-    buildField(meta.suffixLabel, suffixInput),
-    buildField(meta.notesLabel, notesInput),
-    document.createElement("hr"),
-    settingsGrid
-  );
-  securityPane.append(authGrid);
-  detailsBlock.append(detailTabBar, detailPane, securityPane);
-  setInnerTab("detail");
-  syncEnabledUi();
-  body.append(panelTitle, enabledRow, detailsBlock, footer);
-  card.append(body);
-  return card;
-}
-
-function renderPlatformConfiguration() {
-  platformList.innerHTML = "";
-  if (!platforms.length) {
-    const empty = document.createElement("div");
-    empty.className = "sub";
-    empty.textContent = "No platforms yet.";
-    platformList.appendChild(empty);
-    return;
   }
 
-  const hasActive = platforms.some((p) => p.id === activePlatformId);
-  if (!hasActive) activePlatformId = platforms[0].id;
-
-  const tabBar = document.createElement("div");
-  tabBar.className = "smm-tabbar";
-  tabBar.setAttribute("role", "tablist");
-  tabBar.setAttribute("aria-label", "Platforms");
-
-  let activeColor = "var(--line)";
-  platforms.forEach((platform, idx) => {
-    const active = platform.id === activePlatformId;
-    const tabColor = tabColorAt(idx);
-    if (active) activeColor = tabColor;
-    const tab = document.createElement("button");
-    tab.type = "button";
-    tab.className = "btn mini smm-tab";
-    tab.setAttribute("role", "tab");
-    tab.setAttribute("aria-selected", active ? "true" : "false");
-    tab.style.setProperty("--smm-tab-color", tabColor);
-    const tabIcon = document.createElement("span");
-    tabIcon.className = "smm-tab-icon";
-    tabIcon.setAttribute("aria-hidden", "true");
-    const iconSrc = getPlatformTabIconSrc(platform);
-    if (iconSrc) {
-      const iconImg = document.createElement("img");
-      iconImg.src = iconSrc;
-      iconImg.alt = "";
-      iconImg.loading = "lazy";
-      tabIcon.appendChild(iconImg);
+  saveBtn.addEventListener("click", savePlatform);
+  deleteBtn.addEventListener("click", async () => {
+    if (!(await confirmToast(`Delete ${record.name || record.id}?`, { confirmText: "Delete", tone: "danger" }))) return;
+    deleteBtn.disabled = true;
+    try {
+      await apiFetch(`/api/admin/social/platforms/${encodeURIComponent(record.id)}`, { method: "DELETE" });
+      platforms = platforms.filter((item) => item.id !== record.id);
+      if (activePlatformId === record.id) activePlatformId = platforms[0]?.id || "";
+      showToast(`Deleted ${record.name || record.id}.`);
+      render();
+    } catch (err) {
+      deleteBtn.disabled = false;
+      showToast(String(err?.message || err || "Failed to delete platform."), { tone: "error" });
     }
-    const tabLabel = document.createElement("span");
-    tabLabel.textContent = platform.name;
-    tab.append(tabIcon, tabLabel);
-    tab.addEventListener("click", () => {
-      activePlatformId = platform.id;
-      renderPlatformConfiguration();
-    });
-    tabBar.appendChild(tab);
   });
 
-  const activePlatform = platforms.find((p) => p.id === activePlatformId) || platforms[0];
-  if (!activePlatformId) activePlatformId = activePlatform.id;
+  panel.append(
+    title,
+    intro,
+    el("div", { class: "grid cols-2" },
+      field("Name", nameInput),
+      field("Category", categoryInput),
+      field("Icon location", iconLocationInput),
+      field("Posting mode", postingModeInput),
+      field(meta.handleLabel, handleInput),
+      field(meta.profileLabel, profileUrlInput),
+      field(meta.accountIdLabel, accountIdInput),
+      field(meta.hashtagsLabel, hashtagsInput),
+      field(meta.suffixLabel, captionSuffixInput),
+      field(meta.notesLabel, notesInput),
+      field(meta.clientIdLabel, clientIdInput),
+      field(meta.clientSecretLabel, clientSecretInput),
+      field(meta.accessTokenLabel, accessTokenInput),
+      field(meta.refreshTokenLabel, refreshTokenInput),
+      field("Enabled", el("label", { class: "smm-toggle" }, enabledInput, el("span", {}, enabledInput.checked ? "Enabled" : "Disabled")))
+    ),
+    el("div", { class: "row", style: "gap:8px;" }, saveBtn, deleteBtn),
+    status
+  );
 
-  const shell = document.createElement("div");
-  shell.className = "smm-tabs-shell";
-  shell.append(tabBar, platformPanel(activePlatform, activeColor));
-  platformList.append(shell);
+  return panel;
 }
 
-async function loadPlatforms() {
+function renderTabs() {
+  if (!platformList) return;
   platformList.innerHTML = "";
-  platformSummary.textContent = "Loading...";
+  if (!platforms.length) {
+    platformList.appendChild(el("div", { class: "sub" }, "No platforms configured."));
+    setSummary("No platforms available.");
+    return;
+  }
+  if (!activePlatformId || !platforms.some((platform) => platform.id === activePlatformId)) {
+    activePlatformId = platforms[0].id;
+  }
+
+  const tabbar = el("div", { class: "smm-tabbar", role: "tablist", "aria-label": "Social platforms" });
+  const shell = el("div", { class: "smm-tabs-shell" });
+  const active = platforms.find((platform) => platform.id === activePlatformId) || platforms[0];
+  setSummary(`${platforms.length} platform${platforms.length === 1 ? "" : "s"} configured.`);
+
+  platforms.forEach((platform) => {
+    const color = paletteColorForId(platform.id);
+    const selected = platform.id === active.id;
+    const iconSrc = getPlatformTabIconSrc(platform);
+    const icon = el("span", { class: "smm-tab-icon", "aria-hidden": "true", style: `--smm-tab-color:${color};` });
+    if (iconSrc) icon.appendChild(el("img", { src: iconSrc, alt: "", loading: "lazy" }));
+    const tab = el("button", {
+      class: "smm-tab",
+      type: "button",
+      role: "tab",
+      "aria-selected": selected ? "true" : "false",
+      style: `--smm-tab-color:${color};`
+    }, icon, platform.name || platform.id);
+    tab.addEventListener("click", () => {
+      activePlatformId = platform.id;
+      render();
+    });
+    tabbar.appendChild(tab);
+  });
+
+  shell.appendChild(tabbar);
+  shell.appendChild(renderPlatformPanel(active));
+  platformList.appendChild(shell);
+}
+
+function render() {
+  ensureSocialManagerStyles();
+  renderTabs();
+}
+
+async function loadData() {
   try {
-    const [nextPlatforms, nextAllowedOptions] = await Promise.all([
+    const [platformRows, optionRows] = await Promise.all([
       apiFetch("/api/admin/social/platforms", { method: "GET" }),
       apiFetch("/api/admin/social/platform-options", { method: "GET" })
     ]);
-    platforms = Array.isArray(nextPlatforms) ? nextPlatforms : [];
-    allowedPlatformOptions = Array.isArray(nextAllowedOptions) ? nextAllowedOptions : [];
-    platformSummary.textContent = `${platforms.length} platform${platforms.length === 1 ? "" : "s"} configured`;
-    updateCreateFormOptions();
-    renderPlatformConfiguration();
+    platforms = (Array.isArray(platformRows) ? platformRows : []).map(toPlatformRecord);
+    allowedPlatformOptions = Array.isArray(optionRows) ? optionRows : [];
+    if (!activePlatformId) activePlatformId = platforms[0]?.id || "";
+    render();
   } catch (err) {
-    platformSummary.textContent = "Failed to load platforms.";
-    showToast(`Failed to load platforms: ${err?.message || err}`, { tone: "error" });
+    setSummary(String(err?.message || err || "Failed to load social platforms."));
+    showToast(String(err?.message || err || "Failed to load social platforms."), { tone: "error" });
   }
 }
 
+openPlatformCreateDialogBtn?.addEventListener("click", () => {
+  setCreateStatus("");
+  syncCreateDialogFields();
+  setDialogOpen(true);
+});
+platformNewId?.addEventListener("change", () => {
+  syncCreateDialogFields();
+});
+closePlatformCreateDialogBtn?.addEventListener("click", () => {
+  setDialogOpen(false);
+});
+cancelPlatformCreateDialogBtn?.addEventListener("click", () => {
+  setDialogOpen(false);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !platformCreateDialog?.hidden) setDialogOpen(false);
+});
+platformCreateDialog?.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") setDialogOpen(false);
+});
 platformCreateForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const id = cleanSlug(platformNewId?.value);
-  const selectedPlatform = allowedPlatformOptions.find((platform) => platform.id === id) || null;
-  const name = cleanText(selectedPlatform?.name || platformNewName?.value);
-  const iconLocation = cleanText(platformNewIconLocation?.value);
-  if (!id || !name) {
-    if (platformCreateStatus) platformCreateStatus.textContent = "Select a configured platform.";
-    showToast("Select a configured platform.", { tone: "warn" });
+  if (!id) {
+    setCreateStatus("Platform id is required.", "error");
     return;
   }
-
   try {
-    if (platformCreateStatus) platformCreateStatus.textContent = "Creating...";
-    await apiFetch("/api/admin/social/platforms", {
+    const option = allowedPlatformOptions.find((item) => cleanSlug(item?.id) === id) || null;
+    const created = await apiFetch("/api/admin/social/platforms", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id,
-        name,
-        category: selectedPlatform?.category || "social",
-        enabled: true,
-        iconLocation: normalizePlatformIconLocation(iconLocation),
-        config: {
-          iconLocation: normalizePlatformIconLocation(iconLocation),
-          postingMode: selectedPlatform?.id === "bluesky" ? "manual" : "api"
-        }
+        name: cleanText(platformNewName?.value) || cleanText(option?.name) || id,
+        category: cleanText(option?.category) || "social",
+        iconLocation: normalizePlatformIconLocation(platformNewIconLocation?.value || option?.iconLocation || "")
       })
     });
-    if (platformNewId) platformNewId.value = "";
-    if (platformNewName) platformNewName.value = "";
-    if (platformNewIconLocation) platformNewIconLocation.value = "";
-    if (platformCreateStatus) platformCreateStatus.textContent = "Created.";
-    showToast(`Created platform ${name}.`, { tone: "success" });
-    closePlatformCreateDialog();
-    await loadPlatforms();
+    const next = toPlatformRecord(created);
+    platforms.push(next);
+    activePlatformId = next.id;
+    setDialogOpen(false);
+    showToast(`Created ${next.name || next.id}.`);
+    render();
   } catch (err) {
-    if (platformCreateStatus) platformCreateStatus.textContent = "Create failed.";
-    showToast(`Create failed: ${err?.message || err}`, { tone: "error" });
+    setCreateStatus(String(err?.message || err || "Failed to create platform."), "error");
   }
 });
 
-loadPlatforms();
-
-
-
-
-
-
-
-
-
-
+loadData();

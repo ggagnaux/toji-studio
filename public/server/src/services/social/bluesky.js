@@ -1,4 +1,4 @@
-function normalizeServiceUrl(raw) {
+export function normalizeServiceUrl(raw) {
   const value = String(raw || "https://bsky.social").trim();
   return value.replace(/\/+$/, "") || "https://bsky.social";
 }
@@ -20,7 +20,7 @@ async function xrpcFetch(serviceUrl, path, opts = {}) {
   return json;
 }
 
-function buildBlueskyPostUrl(handle, uri) {
+export function buildBlueskyPostUrl(handle, uri) {
   const safeHandle = String(handle || "").trim();
   const match = String(uri || "").match(/^at:\/\/[^/]+\/app\.bsky\.feed\.post\/([^/?#]+)$/i);
   const rkey = match?.[1] || "";

@@ -7,6 +7,7 @@
       patchArtworkToBackend,
       API_BASE
     } from "../admin.js";
+    import { AI_FEATURES_ENABLED_KEY, initEditTabController, isAiFeaturesEnabled, syncAiButtons } from "./edit-controller.js";
 
     ensureBaseStyles();
     setYearFooter();
@@ -743,14 +744,6 @@
     }
 
     let generatingDescription = false;
-    const AI_FEATURES_ENABLED_KEY = "toji_ai_features_enabled_v1";
-
-    function isAiFeaturesEnabled(){
-      const raw = localStorage.getItem(AI_FEATURES_ENABLED_KEY);
-      if (raw == null) return true;
-      const value = String(raw).trim().toLowerCase();
-      return value !== "0" && value !== "false" && value !== "off" && value !== "no";
-    }
 
     const descriptionGenerateBtn = el(
       "button",
@@ -759,21 +752,13 @@
     );
 
     function syncAiGenerateButtons(){
-      const enabled = isAiFeaturesEnabled();
-      descriptionGenerateBtn.disabled = !enabled || generatingDescription;
-      tagsGenerateBtn.disabled = !enabled || generatingTags;
-      const disabledHint = "Enable AI features in Other Settings to use this action.";
-      descriptionGenerateBtn.title = enabled ? "" : disabledHint;
-      tagsGenerateBtn.title = enabled ? "" : disabledHint;
-      if (enabled) {
-        descriptionGenerateBtn.removeAttribute("data-tooltip");
-        tagsGenerateBtn.removeAttribute("data-tooltip");
-      } else {
-        descriptionGenerateBtn.setAttribute("data-tooltip", disabledHint);
-        tagsGenerateBtn.setAttribute("data-tooltip", disabledHint);
-      }
-      descriptionGenerateBtn.setAttribute("aria-disabled", descriptionGenerateBtn.disabled ? "true" : "false");
-      tagsGenerateBtn.setAttribute("aria-disabled", tagsGenerateBtn.disabled ? "true" : "false");
+      syncAiButtons({
+        storageRef: localStorage,
+        descriptionButton: descriptionGenerateBtn,
+        tagsButton: tagsGenerateBtn,
+        generatingDescription,
+        generatingTags
+      });
     }
 
     descriptionGenerateBtn.addEventListener("click", async () => {
@@ -1860,33 +1845,12 @@
       socialPane
     );
 
-    function setEditTab(tab){
-      const onDetails = tab === "details";
-      const onTags = tab === "tags";
-      const onSocial = tab === "social";
-
-      detailsTabBtn.classList.toggle("is-active", onDetails);
-      tagsTabBtn.classList.toggle("is-active", onTags);
-      socialTabBtn.classList.toggle("is-active", onSocial);
-
-      tabContent.classList.remove("tab-active-details", "tab-active-tags", "tab-active-social");
-      if (onTags) tabContent.classList.add("tab-active-tags");
-      else if (onSocial) tabContent.classList.add("tab-active-social");
-      else tabContent.classList.add("tab-active-details");
-
-      if (onDetails) detailsPane.removeAttribute("hidden");
-      else detailsPane.setAttribute("hidden", "");
-
-      if (onTags) tagsPane.removeAttribute("hidden");
-      else tagsPane.setAttribute("hidden", "");
-
-      if (onSocial) socialPane.removeAttribute("hidden");
-      else socialPane.setAttribute("hidden", "");
-    }
-
-    detailsTabBtn.addEventListener("click", () => setEditTab("details"));
-    tagsTabBtn.addEventListener("click", () => setEditTab("tags"));
-    socialTabBtn.addEventListener("click", () => setEditTab("social"));
+    initEditTabController({
+      buttons: { details: detailsTabBtn, tags: tagsTabBtn, social: socialTabBtn },
+      panes: { details: detailsPane, tags: tagsPane, social: socialPane },
+      tabContent,
+      initialTab: "details"
+    });
 
     const right = el("div", { class:"card edit-side-card", style:"grid-column: span 5" },
       el("div", { class:"meta" },
@@ -2010,6 +1974,9 @@
     // No auto-write on load.
     // Saves occur only after explicit user edits/actions.
   
+
+
+
 
 
 

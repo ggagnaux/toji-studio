@@ -1,15 +1,15 @@
-function normalizeApiBaseUrl(raw) {
+export function normalizeApiBaseUrl(raw) {
   const value = String(raw || "https://api.linkedin.com").trim();
   return value.replace(/\/+$/, "") || "https://api.linkedin.com";
 }
 
-function normalizeApiVersion(raw) {
+export function normalizeApiVersion(raw) {
   const value = String(raw || "").trim();
   if (/^\d{6}$/.test(value)) return value;
   return "202601";
 }
 
-function normalizeOwnerUrn(raw) {
+export function normalizeOwnerUrn(raw) {
   const value = String(raw || "").trim();
   if (!value) return "";
   if (/^urn:li:(organization|person):/i.test(value)) return value;
@@ -17,7 +17,7 @@ function normalizeOwnerUrn(raw) {
   return value;
 }
 
-function buildLinkedInPostUrl(postUrn) {
+export function buildLinkedInPostUrl(postUrn) {
   const urn = String(postUrn || "").trim();
   if (!urn) return "";
   return `https://www.linkedin.com/feed/update/${encodeURIComponent(urn)}/`;

@@ -13,7 +13,7 @@ import { adminSessionRouter } from "./routes/admin-session.js";
 import { uploadRouter } from "./routes/upload.js";
 import { seriesRouter } from "./routes/series.js";
 
-function resolveSiteRoot() {
+export function resolveSiteRoot() {
   const envDir = String(process.env.TOJI_SITE_DIR || "").trim();
   const cwd = process.cwd();
   const candidates = [
@@ -32,7 +32,7 @@ function resolveSiteRoot() {
   return null;
 }
 
-function resolveAdminPageFile(siteRoot, pageName) {
+export function resolveAdminPageFile(siteRoot, pageName) {
   if (!siteRoot || !pageName) return null;
   const adminDir = path.join(siteRoot, "admin");
   if (!fs.existsSync(adminDir)) return null;
@@ -48,52 +48,69 @@ function resolveAdminPageFile(siteRoot, pageName) {
   return exactMatch ? path.join(adminDir, exactMatch.name) : null;
 }
 
-const app = express();
+export function createApp() {
+  const app = express();
 
-app.use(helmet({
-  crossOriginResourcePolicy: false,
-  contentSecurityPolicy: {
-    directives: {
-      "script-src": ["'self'", "https://cdn.jsdelivr.net"]
+  app.use(helmet({
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        "script-src": ["'self'", "https://cdn.jsdelivr.net"]
+      }
     }
-  }
-}));
-app.use(cors({ origin: process.env.CORS_ORIGIN || true, credentials: true }));
-app.use(express.json({ limit: "2mb" }));
-
-// Serve ONLY variants (never serve /storage/originals)
-app.use("/media", express.static(VARIANTS_DIR, {
-  fallthrough: false,
-  maxAge: "7d"
-}));
-
-// Public read APIs
-app.use("/api", publicRouter);
-app.use("/api", adminSessionRouter);
-
-// Admin APIs (session/cookie protected, with temporary token fallback)
-app.use("/api", (req, res, next) => {
-  if (req.path.startsWith("/admin")) return requireAdmin(req, res, next);
-  next();
-});
-app.use("/api", adminRouter);
-app.use("/api", uploadRouter);
-app.use("/api", seriesRouter);
-
-app.get("/api/health", (req, res) => res.json({ ok: true }));
-
-const siteRoot = resolveSiteRoot();
-if (siteRoot) {
-  app.get("/admin/:page", (req, res, next) => {
-    const filePath = resolveAdminPageFile(siteRoot, req.params.page);
-    if (!filePath) return next();
-    res.sendFile(filePath);
-  });
-
-  app.use(express.static(siteRoot, {
-    maxAge: "1h"
   }));
+  app.use(cors({ origin: process.env.CORS_ORIGIN || true, credentials: true }));
+  app.use(express.json({ limit: "2mb" }));
+
+  // Serve ONLY variants (never serve /storage/originals)
+  app.use("/media", express.static(VARIANTS_DIR, {
+    fallthrough: false,
+    maxAge: "7d"
+  }));
+
+  // Public read APIs
+  app.use("/api", publicRouter);
+  app.use("/api", adminSessionRouter);
+
+  // Admin APIs (session/cookie protected, with temporary token fallback)
+  app.use("/api", (req, res, next) => {
+    if (req.path.startsWith("/admin")) return requireAdmin(req, res, next);
+    next();
+  });
+  app.use("/api", adminRouter);
+  app.use("/api", uploadRouter);
+  app.use("/api", seriesRouter);
+
+  app.get("/api/health", (req, res) => res.json({ ok: true }));
+
+  const siteRoot = resolveSiteRoot();
+  if (siteRoot) {
+    app.get("/admin/:page", (req, res, next) => {
+      const filePath = resolveAdminPageFile(siteRoot, req.params.page);
+      if (!filePath) return next();
+      res.sendFile(filePath);
+    });
+
+    app.use(express.static(siteRoot, {
+      maxAge: "1h"
+    }));
+  }
+
+  return app;
 }
 
-const port = Number(process.env.PORT || 5179);
-app.listen(port, () => console.log(`API listening on http://localhost:${port}`));
+export function startServer(port = Number(process.env.PORT || 5179)) {
+  const app = createApp();
+  const server = app.listen(port, () => console.log(`API listening on http://localhost:${port}`));
+  return { app, server };
+}
+
+function isDirectRun() {
+  const entry = process.argv[1] ? path.resolve(process.argv[1]) : "";
+  const current = import.meta.url.startsWith("file:") ? path.resolve(new URL(import.meta.url).pathname) : "";
+  return !!entry && !!current && entry === current;
+}
+
+if (isDirectRun()) {
+  startServer();
+}

@@ -2,6 +2,7 @@ import { initThemeSystem, initStickyHero } from "../assets/js/site.js";
 import { qs, el, slugifySeries } from "../assets/js/content-utils.js";
 import { renderPublicFooter } from "../assets/js/footer.js";
 import { renderPublicHeader } from "../assets/js/header.js";
+import { buildAdminLoginRedirect } from "./js/session-utils.js";
 
 const ADMIN_SESSION_KEY = "toji_admin_session_v1";
 const ADMIN_JUST_LOGGED_IN_KEY = "toji_admin_just_logged_in_v1";
@@ -77,8 +78,9 @@ function enforceAdminSession() {
   if (path.endsWith("/admin/login.html")) return;
   if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "1") return;
 
-  const next = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  window.location.replace(`login.html?next=${encodeURIComponent(next)}`);
+  window.location.replace(
+    buildAdminLoginRedirect(window.location.pathname, window.location.search, window.location.hash)
+  );
 }
 
 export function setAdminSessionAuthenticated(value = true) {
@@ -1115,6 +1117,9 @@ export async function syncSeriesFromBackend(state){
 export async function deleteArtworkFromBackend(id){
   return apiFetch(`/api/admin/artworks/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+
+
 
 
 

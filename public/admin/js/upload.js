@@ -9,6 +9,11 @@ import {
   showToast,
   API_BASE
 } from "../admin.js";
+import {
+  initUploadFilterControllers,
+  parseUploadTags,
+  requireUploadAdminSession
+} from "./upload-controller.js";
 
 ensureBaseStyles();
 setYearFooter();
@@ -38,10 +43,7 @@ setYearFooter();
   }
 
   function requireAdminSession() {
-    if (getAdminToken()) return;
-    const next = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    window.location.href = `login.html?next=${encodeURIComponent(next)}`;
-    throw new Error("Please sign in to continue.");
+    return requireUploadAdminSession({ getAdminToken, windowRef: window });
   }
 
   function showUiBlocker(title, subtitle) {
@@ -114,46 +116,6 @@ setYearFooter();
     });
   }
 
-  function syncTagFilterPills() {
-    tagFilterPills.forEach((btn) => {
-      const value = String(btn.getAttribute("data-tag-filter") || "").toLowerCase();
-      const active = selectedTagFilters.has(value);
-      btn.classList.toggle("is-active", active);
-      btn.setAttribute("aria-pressed", active ? "true" : "false");
-    });
-  }
-
-  function syncStatusPills() {
-    const current = String(statusSelect?.value || "draft").toLowerCase();
-    statusPills.forEach((btn) => {
-      const value = String(btn.getAttribute("data-status-pill") || "").toLowerCase();
-      const active = value === current;
-      btn.classList.toggle("active", active);
-      btn.setAttribute("aria-pressed", active ? "true" : "false");
-    });
-    if (statusSelect && !statusSelect.value) statusSelect.value = "draft";
-  }
-  statusPills.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const value = String(btn.getAttribute("data-status-pill") || "").toLowerCase();
-      if (!value || !statusSelect) return;
-      statusSelect.value = value;
-      syncStatusPills();
-    });
-  });
-  tagFilterPills.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const value = String(btn.getAttribute("data-tag-filter") || "").toLowerCase();
-      if (!value) return;
-      if (selectedTagFilters.has(value)) selectedTagFilters.delete(value);
-      else selectedTagFilters.add(value);
-      syncTagFilterPills();
-      renderTagPills();
-    });
-  });
-  syncStatusPills();
-  syncTagFilterPills();
-
   function setStatus(msg){ statusEl.textContent = msg || ""; }
   function normalizeTags(value) {
     if (Array.isArray(value)) return value.map(v => String(v || "").trim()).filter(Boolean);
@@ -164,7 +126,7 @@ setYearFooter();
   }
 
   function parseTags(value){
-    return Array.from(new Set(normalizeTags(value).map(v => v.toLowerCase())));
+    return parseUploadTags(normalizeTags(value));
   }
 
   function renderTagPills(){
@@ -227,6 +189,16 @@ setYearFooter();
     }
   }
 
+  initUploadFilterControllers({
+    statusSelect,
+    statusPills,
+    tagFilterPills,
+    selectedTagFilters,
+    onTagFilterChange() {
+      renderTagPills();
+    }
+  });
+
   document.getElementById("addTagBtn").addEventListener("click", addTagsFromInput);
   document.getElementById("newTagInput").addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
@@ -261,51 +233,48 @@ setYearFooter();
       );
     }
 
-    if (!rendered){
-      list.appendChild(
-        el("div", { class:"sub" }, "Uploads were created, but no matching items were found in local state (check backend id field).")
-      );
+    if (!rendered) {
+      list.appendChild(el("div", { class:"sub" }, "No uploads yet."));
     }
   }
 
   function uploadWithProgress(path, formData, onProgress){
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${getApiBase()}${path}`, true);
-      xhr.withCredentials = true;
+      xhr.open("POST", `${getApiBase()}${path}`);
       const token = getAdminToken();
       if (token && token !== "__session__") xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-
+      xhr.responseType = "json";
       xhr.upload.onprogress = (evt) => {
-        if (!evt.lengthComputable) return;
+        if (!evt.lengthComputable || typeof onProgress !== "function") return;
         const pct = Math.max(0, Math.min(100, Math.round((evt.loaded / evt.total) * 100)));
-        onProgress?.(pct);
+        onProgress(pct, evt.loaded, evt.total);
       };
-
       xhr.onload = () => {
-        let data = null;
-        try { data = xhr.responseText ? JSON.parse(xhr.responseText) : null; } catch {}
-        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
-        else reject(new Error(data?.error || `Upload failed (${xhr.status})`));
+        const ok = xhr.status >= 200 && xhr.status < 300;
+        if (!ok) {
+          const payload = xhr.response && typeof xhr.response === "object" ? xhr.response : null;
+          reject(new Error(payload?.error || `Upload failed (${xhr.status})`));
+          return;
+        }
+        resolve(xhr.response && typeof xhr.response === "object" ? xhr.response : {});
       };
       xhr.onerror = () => reject(new Error("Network error during upload"));
       xhr.send(formData);
     });
   }
 
-  async function refreshStateFromBackend(){
+  async function refreshUploadedArtworksFromBackend(ids) {
+    if (!ids?.length) return;
     try {
-      const rows = await apiFetch("/api/admin/artworks", { method: "GET" });
-      const normalized = (rows || []).map((a) => ({
-        ...a,
-        featured: !!a.featured,
-        tags: Array.isArray(a.tags) ? a.tags : (typeof a.tags === "string" ? JSON.parse(a.tags || "[]") : []),
-        thumb: a.thumb?.startsWith("/") ? `${getApiBase()}${a.thumb}` : a.thumb,
-        image: a.image?.startsWith("/") ? `${getApiBase()}${a.image}` : a.image
-      }));
-      state.artworks = normalized;
+      const refreshed = await Promise.all(
+        ids.map(async (id) => {
+          const res = await apiFetch(`/api/admin/artworks/${encodeURIComponent(id)}`, { method: "GET" });
+          return res;
+        })
+      );
+      refreshed.forEach((item) => mergeUploadedArtwork(item));
       saveState(state);
-      renderTagPills();
     } catch (err) {
       console.warn("Failed to refresh uploaded artworks from backend", err);
     }
@@ -314,76 +283,63 @@ setYearFooter();
   document.getElementById("uploadBtn").addEventListener("click", async () => {
     try {
       requireAdminSession();
-      const files = [...(fileInput.files || [])];
-      if (!files.length){
-        setStatus("Choose one or more image files.");
-        showToast("Select one or more files first.", { tone: "warn" });
+      const files = Array.from(fileInput.files || []);
+      if (!files.length) {
+        setStatus("Choose one or more files first.");
         flashFilePicker();
         return;
       }
 
-      const series = document.getElementById("series")?.value || "";
-      const year = String(document.getElementById("year")?.value || "").trim();
+      const fd = new FormData();
+      files.forEach(file => fd.append("files", file));
+      const series = document.getElementById("series")?.value?.trim();
+      const year = document.getElementById("year")?.value?.trim();
       const uploadStatus = statusSelect?.value || "draft";
       const tags = Array.from(selectedBatchTags);
-
-      const fd = new FormData();
-      for (const f of files) fd.append("files", f, f.name);
       if (series) fd.append("series", series);
       if (year) fd.append("year", year);
       if (uploadStatus) fd.append("status", uploadStatus);
-      if (tags.length) fd.append("tags", JSON.stringify(tags));
+      if (tags.length) fd.append("tags", tags.join(","));
 
-      showUiBlocker("Uploading and processing...", "Please wait. Interaction is temporarily disabled.");
-      progressWrap.style.display = "block";
-      progressBar.style.width = "0%";
-      progressLabel.textContent = "Uploading: 0%";
-      setStatus("Uploading originals and generating variants...");
+      showUiBlocker("Uploading artwork", `${files.length} file${files.length === 1 ? "" : "s"} in progress...`);
+      if (progressWrap) progressWrap.style.display = "block";
+      if (progressBar) progressBar.value = 0;
+      if (progressLabel) progressLabel.textContent = "Preparing upload...";
+      setStatus("Uploading...");
 
       const out = await uploadWithProgress("/api/admin/upload", fd, (pct) => {
-        progressBar.style.width = `${pct}%`;
-        progressLabel.textContent = `Uploading: ${pct}%`;
+        if (progressBar) progressBar.value = pct;
+        if (progressLabel) progressLabel.textContent = `${pct}% uploaded`;
       });
 
-      const created = Array.isArray(out?.created) ? out.created : (Array.isArray(out?.items) ? out.items : []);
-      const skipped = Array.isArray(out?.skipped) ? out.skipped : [];
-      for (const item of created){
-        if (item?.id) newIds.unshift(item.id);
+      const created = Array.isArray(out?.created) ? out.created : [];
+      const duplicates = Array.isArray(out?.duplicates) ? out.duplicates : [];
+      created.forEach((item) => {
         mergeUploadedArtwork(item);
-      }
+        if (item?.id) newIds.unshift(item.id);
+      });
       saveState(state);
-      await refreshStateFromBackend();
-      renderTagPills();
-      renderSeriesOptions();
       renderNew();
-      const statusParts = [];
-      statusParts.push(`Uploaded ${created.length} image${created.length === 1 ? "" : "s"}.`);
-      if (skipped.length) statusParts.push(`Skipped ${skipped.length} duplicate${skipped.length === 1 ? "" : "s"}.`);
-      setStatus(statusParts.join(" "));
-      progressBar.style.width = "100%";
-      progressLabel.textContent = "Upload complete";
-      showToast(statusParts.join(" "), { tone: skipped.length ? "warn" : "success" });
-      if (fileInput) fileInput.value = "";
-    } catch (e) {
-      console.error(e);
-      setStatus(e.message || "Upload failed");
-      showToast(e.message || "Upload failed", { tone: "warn" });
+      renderTagPills();
+      await refreshUploadedArtworksFromBackend(created.map((item) => item?.id).filter(Boolean));
+
+      const parts = [];
+      if (created.length) parts.push(`Uploaded ${created.length} artwork${created.length === 1 ? "" : "s"}.`);
+      if (duplicates.length) parts.push(`Skipped ${duplicates.length} duplicate${duplicates.length === 1 ? "" : "s"}.`);
+      setStatus(parts.join(" ") || "Upload complete.");
+      showToast(parts.join(" ") || "Upload complete.");
+    } catch (err) {
+      setStatus(String(err?.message || err || "Upload failed."));
+      showToast(String(err?.message || err || "Upload failed."), { tone: "error" });
     } finally {
-      window.setTimeout(() => {
-        progressWrap.style.display = "none";
-        progressBar.style.width = "0%";
-        progressLabel.textContent = "Uploading: 0%";
-        hideUiBlocker();
-      }, 350);
+      hideUiBlocker();
+      if (progressWrap) progressWrap.style.display = "none";
+      if (progressBar) progressBar.value = 0;
+      if (progressLabel) progressLabel.textContent = "";
     }
   });
 
-  renderTagPills();
   renderSeriesOptions();
+  renderTagPills();
   renderNew();
 })();
-
-
-
-
-

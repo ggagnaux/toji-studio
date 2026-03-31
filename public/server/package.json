@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
+    "test": "node --test test/auth.test.js test/bluesky.test.js test/linkedin.test.js test/session.test.js test/admin-session-routes.test.js test/admin-data.test.js test/admin-data-routes.test.js test/admin-data-commit-success.test.js test/upload-helpers.test.js test/upload-routes.test.js test/content-utils.test.js test/admin-session-ui-utils.test.js test/admin-login-controller.test.js test/admin-login-page-controller.test.js test/admin-dashboard-utils.test.js test/admin-dashboard-selection-controller.test.js test/admin-upload-controller.test.js test/admin-social-platform-utils.test.js test/admin-edit-controller.test.js test/admin-content-routes.test.js test/admin-artwork-social-routes.test.js test/admin-social-publish-routes.test.js test/admin-ai-routes.test.js",
     "deploy:build": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-deploy-dist.ps1"
   },
   "dependencies": {
@@ -19,3 +20,6 @@
     "sharp": "^0.33.5"
   }
 }
+
+
+

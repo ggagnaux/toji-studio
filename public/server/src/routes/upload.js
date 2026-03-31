@@ -27,11 +27,11 @@ function uid(prefix="a") {
   return `${prefix}_${crypto.randomBytes(8).toString("hex")}`;
 }
 
-function safeBase(name) {
+export function safeBase(name) {
   return String(name || "image").replace(/[^a-z0-9._-]+/gi, "_").slice(0, 80);
 }
 
-function normTag(t) {
+export function normTag(t) {
   return String(t || "")
     .trim()
     .toLowerCase()
@@ -39,7 +39,7 @@ function normTag(t) {
     .replace(/^[#]+/, "");
 }
 
-function parseTags(raw) {
+export function parseTags(raw) {
   if (Array.isArray(raw)) return Array.from(new Set(raw.map(normTag).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   const text = String(raw || "").trim();
   if (!text) return [];
@@ -52,20 +52,20 @@ function parseTags(raw) {
   return Array.from(new Set(text.split(/[,;\n]+/g).map(normTag).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 }
 
-function cleanSeries(s) {
+export function cleanSeries(s) {
   return String(s || "").trim().replace(/\s+/g, " ");
 }
 
-function cleanYear(y) {
+export function cleanYear(y) {
   return String(y || "").trim();
 }
 
-function cleanStatus(s) {
+export function cleanStatus(s) {
   const v = String(s || "").trim().toLowerCase();
   return v === "published" || v === "hidden" || v === "draft" ? v : "draft";
 }
 
-function originalsPathFor(artworkId, originalname) {
+export function originalsPathFor(artworkId, originalname) {
   const base = safeBase(originalname);
   const origName = `${artworkId}__${base}`;
   return path.join(originalsDir, origName);
@@ -277,3 +277,4 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
 
   res.json({ created, skipped });
 });
+

@@ -4,17 +4,17 @@ export const ADMIN_SESSION_COOKIE = "toji_admin_session";
 const DEFAULT_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
 const sessions = new Map();
 
-function nowMs() {
+export function nowMs() {
   return Date.now();
 }
 
-function resolveSessionTtlMs() {
+export function resolveSessionTtlMs() {
   const raw = Number(process.env.ADMIN_SESSION_TTL_HOURS || "");
   if (Number.isFinite(raw) && raw > 0) return Math.round(raw * 60 * 60 * 1000);
   return DEFAULT_SESSION_TTL_MS;
 }
 
-function serializeCookie(name, value, options = {}) {
+export function serializeCookie(name, value, options = {}) {
   const parts = [`${name}=${encodeURIComponent(String(value || ""))}`];
   if (options.maxAge != null) parts.push(`Max-Age=${Math.max(0, Math.floor(options.maxAge))}`);
   if (options.path) parts.push(`Path=${options.path}`);
@@ -45,7 +45,7 @@ export function parseCookies(req) {
   return cookies;
 }
 
-function isSecureRequest(req) {
+export function isSecureRequest(req) {
   if (String(process.env.NODE_ENV || "").toLowerCase() === "production") return true;
   return !!(req?.secure || String(req?.headers?.["x-forwarded-proto"] || "").toLowerCase() === "https");
 }
@@ -120,4 +120,8 @@ export function clearAdminSessionCookie(res, req) {
     expires: new Date(0),
     maxAge: 0
   }));
+}
+
+export function resetAdminSessionsForTests() {
+  sessions.clear();
 }

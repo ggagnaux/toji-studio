@@ -71,7 +71,7 @@ function listDataTableMetadata() {
   }));
 }
 
-function normalizeRequestedDataTableNames(raw, { importOnly = false } = {}) {
+export function normalizeRequestedDataTableNames(raw, { importOnly = false } = {}) {
   const input = Array.isArray(raw) ? raw : [];
   const names = [];
   const seen = new Set();
@@ -87,7 +87,7 @@ function normalizeRequestedDataTableNames(raw, { importOnly = false } = {}) {
   return names;
 }
 
-function collectInvalidRequestedDataTableNames(raw, { importOnly = false } = {}) {
+export function collectInvalidRequestedDataTableNames(raw, { importOnly = false } = {}) {
   const input = Array.isArray(raw) ? raw : [];
   const invalid = [];
   const seen = new Set();
@@ -141,7 +141,7 @@ function sendJsonDownload(res, payload, filename) {
   res.send(JSON.stringify(payload, null, 2));
 }
 
-function parseDataImportBundle(raw) {
+export function parseDataImportBundle(raw) {
   const payload = raw && typeof raw === "object" && !Array.isArray(raw)
     ? (raw.bundle && typeof raw.bundle === "object" && !Array.isArray(raw.bundle) ? raw.bundle : raw)
     : null;
@@ -158,7 +158,7 @@ function parseDataImportBundle(raw) {
   };
 }
 
-function validateImportRow(tableName, row, index) {
+export function validateImportRow(tableName, row, index) {
   const errors = [];
   if (!row || typeof row !== "object" || Array.isArray(row)) {
     errors.push("Row " + (index + 1) + " must be an object.");
@@ -185,7 +185,7 @@ function validateImportRow(tableName, row, index) {
   return errors;
 }
 
-function previewDataImportBundle(bundle) {
+export function previewDataImportBundle(bundle) {
   const tables = [];
   for (const [tableName, rawRows] of Object.entries(bundle.tables || {})) {
     const definition = getDataTableDefinition(tableName);
@@ -231,7 +231,7 @@ function previewDataImportBundle(bundle) {
   };
 }
 
-function normalizeImportedSettingRow(row, updatedAt) {
+export function normalizeImportedSettingRow(row, updatedAt) {
   return {
     key: cleanText(row.key),
     value: typeof row.value === "string" ? row.value : JSON.stringify(row.value ?? ""),
@@ -239,7 +239,7 @@ function normalizeImportedSettingRow(row, updatedAt) {
   };
 }
 
-function normalizeImportedSocialPlatformRow(row, timestamp) {
+export function normalizeImportedSocialPlatformRow(row, timestamp) {
   const config = row?.config && typeof row.config === "object" && !Array.isArray(row.config) ? row.config : parseJsonObject(row?.configJson, {});
   const auth = row?.auth && typeof row.auth === "object" && !Array.isArray(row.auth) ? row.auth : parseJsonObject(row?.authJson, {});
   const iconLocation = cleanText(row.iconLocation || config.iconLocation);
@@ -256,7 +256,7 @@ function normalizeImportedSocialPlatformRow(row, timestamp) {
   };
 }
 
-function normalizeImportedExternalLinkRow(row, timestamp) {
+export function normalizeImportedExternalLinkRow(row, timestamp) {
   return {
     id: cleanSlug(row.id),
     label: cleanText(row.label),
@@ -529,11 +529,11 @@ function uid(prefix = "sp") {
   return `${prefix}_${crypto.randomBytes(8).toString("hex")}`;
 }
 
-function cleanText(v) {
+export function cleanText(v) {
   return String(v || "").trim();
 }
 
-function cleanSlug(v) {
+export function cleanSlug(v) {
   return cleanText(v)
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "-")
@@ -551,7 +551,7 @@ function cleanExternalLinkCategory(v) {
   return ["social", "portfolio", "shop", "video", "newsletter", "other"].includes(out) ? out : "other";
 }
 
-function cleanExternalLinkUrl(v) {
+export function cleanExternalLinkUrl(v) {
   return cleanText(v);
 }
 
@@ -1628,6 +1628,7 @@ adminRouter.post("/admin/cleanup", (req, res) => {
     deletedBrokenVariantRows
   });
 });
+
 
 
 

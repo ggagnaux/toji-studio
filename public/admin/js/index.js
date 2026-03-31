@@ -7,6 +7,8 @@ import {
     patchArtworkToBackend,
     deleteArtworkFromBackend
   } from "../admin.js";
+import { applyThumbSelectAllToggleState, buildArtworkEditHref, sortArtworksForRows } from "./dashboard-utils.js";
+import { initThumbSelectAllController } from "./dashboard-selection-controller.js";
 
   ensureBaseStyles();
   setYearFooter();
@@ -94,39 +96,14 @@ import {
     return tabOk && qOk;
   }
 
-  function rowSortValue(a, key){
-    if (key === "title") return String(a.title || "").toLowerCase();
-    if (key === "status") {
-      const order = { draft: 0, published: 1, hidden: 2 };
-      return order[String(a.status || "").toLowerCase()] ?? 99;
-    }
-    if (key === "tags") return (a.tags || []).map(t => String(t || "").toLowerCase()).sort().join(" ");
-    if (key === "series") return String(a.series || "").toLowerCase();
-    if (key === "year") {
-      const n = Number(String(a.year || "").trim());
-      return Number.isFinite(n) ? n : -Infinity;
-    }
-    return "";
-  }
-
   function sortForRows(items){
     if (rowSortBy === "none") return sortArtworksManualFirst(items);
 
     const fallback = sortArtworksManualFirst(items);
-    const fallbackIndex = new Map(fallback.map((a, i) => [a.id, i]));
-    const dir = rowSortDir === "desc" ? -1 : 1;
-    return items.slice().sort((a, b) => {
-      const av = rowSortValue(a, rowSortBy);
-      const bv = rowSortValue(b, rowSortBy);
-
-      if (typeof av === "number" && typeof bv === "number") {
-        if (av !== bv) return (av - bv) * dir;
-      } else {
-        const cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
-        if (cmp !== 0) return cmp * dir;
-      }
-
-      return (fallbackIndex.get(a.id) ?? 0) - (fallbackIndex.get(b.id) ?? 0);
+    return sortArtworksForRows(items, {
+      sortBy: rowSortBy,
+      sortDir: rowSortDir,
+      fallbackItems: fallback
     });
   }
 
@@ -137,14 +114,7 @@ import {
   }
 
   function refreshThumbSelectAllToggle(){
-    if (!thumbSelectAllToggle) return;
-    const visible = visibleItems();
-    const visibleCount = visible.length;
-    const selectedVisibleCount = visible.filter(a => selected.has(a.id)).length;
-    const allVisibleSelected = visibleCount > 0 && selectedVisibleCount === visibleCount;
-    const label = allVisibleSelected ? "Clear all thumbs" : "Select all thumbs";
-    thumbSelectAllToggle.textContent = label;
-    thumbSelectAllToggle.disabled = visibleCount === 0;
+    applyThumbSelectAllToggleState(thumbSelectAllToggle, visibleItems(), selected);
   }
 
   function updateRowSortHeaders(){
@@ -205,14 +175,14 @@ import {
     render();
   });
 
-  thumbSelectAllToggle?.addEventListener("click", () => {
-    const visible = visibleItems();
-    if (!visible.length) return;
-    const allVisibleSelected = visible.every(a => selected.has(a.id));
-    if (allVisibleSelected) visible.forEach(a => selected.delete(a.id));
-    else visible.forEach(a => selected.add(a.id));
-    updateBulkUI();
-    render();
+  initThumbSelectAllController({
+    button: thumbSelectAllToggle,
+    getVisibleItems: visibleItems,
+    selected,
+    onAfterToggle() {
+      updateBulkUI();
+      render();
+    }
   });
 
   // -------- Bulk tag helpers --------
@@ -793,7 +763,7 @@ import {
           el("div", { style:"display:flex; gap:10px; align-items:center" },
             el("a", {
               class: "thumbSm",
-              href: `edit.html?id=${encodeURIComponent(a.id)}`,
+              href: buildArtworkEditHref(a.id),
               title: a.title || "Edit artwork",
               "aria-label": `Edit ${a.title || a.id}`
             },
@@ -811,7 +781,7 @@ import {
         el("td", {}, el("span", { class:"sub" }, a.year || "—")),
         el("td", {},
           el("div", { class:"row-actions" },
-            el("a", { class:"btn mini", href:`edit.html?id=${encodeURIComponent(a.id)}` }, "Edit"),
+            el("a", { class:"btn mini", href: buildArtworkEditHref(a.id) }, "Edit"),
 
             el("button", {
               class:"btn mini",
@@ -849,7 +819,7 @@ import {
           ),
           el("a", {
             class: "admin-thumb-media",
-            href: `edit.html?id=${encodeURIComponent(a.id)}`,
+            href: buildArtworkEditHref(a.id),
             title: a.title || "Untitled"
           },
             el("img", { src: a.thumb || a.image, alt: a.title || "Artwork thumbnail", loading: "lazy" })
@@ -950,5 +920,4 @@ import {
   });
 
   render();
-
 

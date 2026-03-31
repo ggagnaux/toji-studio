@@ -4,6 +4,7 @@ import helmet from "helmet";
 import cors from "cors";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { requireAdmin } from "./auth.js";
 import { VARIANTS_DIR } from "./db.js";
@@ -48,6 +49,44 @@ export function resolveAdminPageFile(siteRoot, pageName) {
   return exactMatch ? path.join(adminDir, exactMatch.name) : null;
 }
 
+function addLoopbackAlias(origins, origin) {
+  let parsed = null;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    return;
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  if (hostname !== "localhost" && hostname !== "127.0.0.1") return;
+
+  const alias = new URL(origin);
+  alias.hostname = hostname === "localhost" ? "127.0.0.1" : "localhost";
+  origins.add(alias.origin);
+}
+
+export function resolveCorsOriginOptions(rawOrigin = process.env.CORS_ORIGIN || "") {
+  const configured = String(rawOrigin || "").trim();
+  if (!configured) return true;
+
+  const origins = new Set(
+    configured
+      .split(",")
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+  );
+
+  for (const origin of [...origins]) addLoopbackAlias(origins, origin);
+
+  return (origin, callback) => {
+    if (!origin || origins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`Not allowed by CORS: ${origin}`));
+  };
+}
+
 export function createApp() {
   const app = express();
 
@@ -59,20 +98,17 @@ export function createApp() {
       }
     }
   }));
-  app.use(cors({ origin: process.env.CORS_ORIGIN || true, credentials: true }));
+  app.use(cors({ origin: resolveCorsOriginOptions(), credentials: true }));
   app.use(express.json({ limit: "2mb" }));
 
-  // Serve ONLY variants (never serve /storage/originals)
   app.use("/media", express.static(VARIANTS_DIR, {
     fallthrough: false,
     maxAge: "7d"
   }));
 
-  // Public read APIs
   app.use("/api", publicRouter);
   app.use("/api", adminSessionRouter);
 
-  // Admin APIs (session/cookie protected, with temporary token fallback)
   app.use("/api", (req, res, next) => {
     if (req.path.startsWith("/admin")) return requireAdmin(req, res, next);
     next();
@@ -105,9 +141,9 @@ export function startServer(port = Number(process.env.PORT || 5179)) {
   return { app, server };
 }
 
-function isDirectRun() {
-  const entry = process.argv[1] ? path.resolve(process.argv[1]) : "";
-  const current = import.meta.url.startsWith("file:") ? path.resolve(new URL(import.meta.url).pathname) : "";
+export function isDirectRun({ argv = process.argv, metaUrl = import.meta.url } = {}) {
+  const entry = argv?.[1] ? path.resolve(argv[1]) : "";
+  const current = metaUrl?.startsWith?.("file:") ? path.resolve(fileURLToPath(metaUrl)) : "";
   return !!entry && !!current && entry === current;
 }
 

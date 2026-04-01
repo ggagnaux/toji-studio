@@ -2,6 +2,26 @@ import { ensureSplashP5 } from "./p5-loader.js";
 import { mountSplashLogoIconAnimation } from "./logo-icon-animation.js";
 import { SPLASH_MODE_IDS, normalizeSplashMode, normalizeAllowedSplashModes } from "./splash-mode-config.js";
 
+function resolvePublicApiBase() {
+  const override = String(localStorage.getItem("toji_api_base") || "").trim().replace(/\/+$/, "");
+  if (override) return override;
+
+  const origin = String(window.location.origin || "").replace(/\/+$/, "");
+  if (!origin) return "";
+
+  try {
+    const current = new URL(origin);
+    const isLocalHost = ["localhost", "127.0.0.1"].includes(current.hostname);
+    if (isLocalHost && current.port && current.port !== "5179") {
+      return `${current.protocol}//${current.hostname}:5179`;
+    }
+  } catch {}
+
+  return origin;
+}
+
+const PUBLIC_API_BASE = resolvePublicApiBase();
+
 export async function initializeHomeSplash(options = {}) {
   const {
     forceShow = false,
@@ -35,18 +55,9 @@ export async function initializeHomeSplash(options = {}) {
       const SPLASH_ALLOWED_MODES_KEY = "toji_splash_allowed_modes_v1";
       const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
       const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
-      const DEFAULT_SPLASH_LOGO_MARKUP = `
-        <span class="brand-logo-combo splash-logo-combo" aria-hidden="true">
-          <span class="brand-logo-icon-stack">
-            <img class="brand-logo-icon-image splash-logo-combo-image" src="assets/img/TojiStudios-Logo.png" alt="" />
-          </span>
-          <span class="brand-logo-wordmark-stack">
-            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark splash-logo-combo-image" src="assets/img/TojiStudios-Light-TextOnly.png" alt="" />
-            <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light splash-logo-combo-image" src="assets/img/TojiStudios-Dark-TextOnly.png" alt="" />
-          </span>
-        </span>
-        <span class="sr-only">Toji Studios</span>
-      `;
+      const BANNER_STATIC_LOGO_SRC_KEY = "toji_banner_static_logo_src_v1";
+      const BANNER_LOGO_BORDER_ENABLED_KEY = "toji_banner_logo_border_enabled_v1";
+      const BANNER_LOGO_BORDER_COLOR_KEY = "toji_banner_logo_border_color_v1";
       const TOJI_STUDIOS_WORD = "tojistudios";
       let splashSettings = null;
 
@@ -83,7 +94,7 @@ export async function initializeHomeSplash(options = {}) {
         const isAdminPreview = forceShow || String(location.pathname || "").includes("/admin/");
         if (isAdminPreview) return localSettings;
         try {
-          const res = await fetch(`/api/public/settings/splash`, { credentials: "same-origin" });
+          const res = await fetch(`${PUBLIC_API_BASE}/api/public/settings/splash`, { credentials: "same-origin" });
           const json = await res.json().catch(() => null);
           if (!res.ok || !json || typeof json !== "object") return localSettings;
           const merged = {
@@ -106,6 +117,69 @@ export async function initializeHomeSplash(options = {}) {
 
       function isTojiStudiosSplashMode(mode) {
         return String(mode || "").toLowerCase() === "tojistudios";
+      }
+
+      function resolveSplashAssetSrc(src = "") {
+        const value = String(src || "").trim();
+        if (!value) return value;
+        if (/^https?:/i.test(value)) return value;
+        if (value.startsWith("/")) return `${PUBLIC_API_BASE}${value}`;
+        return value;
+      }
+
+      function normalizeBannerLogoBorderColor(value) {
+        const normalized = String(value || "").trim();
+        return /^#[0-9a-f]{6}$/i.test(normalized) ? normalized : "#871818";
+      }
+
+      function getSplashLogoIconSrc() {
+        try {
+          const value = String(localStorage.getItem(BANNER_STATIC_LOGO_SRC_KEY) || "").trim();
+          if (!value) return "assets/img/TojiStudios-Logo.png";
+          const normalized = /\.(png|jpe?g)$/i.test(value) && !value.includes("/") && !value.includes("\\")
+            ? "/assets/img/logos/" + value
+            : value;
+          return resolveSplashAssetSrc(normalized);
+        } catch {
+          return "assets/img/TojiStudios-Logo.png";
+        }
+      }
+
+      function applySplashLogoGlobalSettings(button) {
+        if (!button) return;
+        const borderEnabled = (() => {
+          try {
+            return localStorage.getItem(BANNER_LOGO_BORDER_ENABLED_KEY) !== "0";
+          } catch {
+            return true;
+          }
+        })();
+        const borderColor = (() => {
+          try {
+            return normalizeBannerLogoBorderColor(localStorage.getItem(BANNER_LOGO_BORDER_COLOR_KEY));
+          } catch {
+            return "#871818";
+          }
+        })();
+        button.style.setProperty("--banner-logo-border-width", borderEnabled ? "1px" : "0px");
+        button.style.setProperty("--banner-logo-border-color", borderColor);
+        const iconImage = button.querySelector(".brand-logo-icon-image");
+        if (iconImage) iconImage.src = getSplashLogoIconSrc();
+      }
+
+      function buildDefaultSplashLogoMarkup() {
+        return `
+          <span class="brand-logo-combo splash-logo-combo" aria-hidden="true">
+            <span class="brand-logo-icon-stack">
+              <img class="brand-logo-icon-image splash-logo-combo-image" src="${getSplashLogoIconSrc()}" alt="" />
+            </span>
+            <span class="brand-logo-wordmark-stack">
+              <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark splash-logo-combo-image" src="assets/img/TojiStudios-Light-TextOnly.png" alt="" />
+              <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light splash-logo-combo-image" src="assets/img/TojiStudios-Dark-TextOnly.png" alt="" />
+            </span>
+          </span>
+          <span class="sr-only">Toji Studios</span>
+        `;
       }
 
       function buildTojiStudiosSplashMarkup() {
@@ -158,10 +232,11 @@ export async function initializeHomeSplash(options = {}) {
         if (button.dataset.foregroundMode !== nextMode) {
           button.innerHTML = nextMode === "tojistudios"
             ? buildTojiStudiosSplashMarkup()
-            : DEFAULT_SPLASH_LOGO_MARKUP;
+            : buildDefaultSplashLogoMarkup();
           button.dataset.foregroundMode = nextMode;
         }
         button.classList.toggle("splash-logo--tojistudios", nextMode === "tojistudios");
+        if (nextMode !== "tojistudios") applySplashLogoGlobalSettings(button);
         return button;
       }
 
@@ -5597,4 +5672,6 @@ export async function initializeHomeSplash(options = {}) {
       });
       // ---- Data source: Admin localStorage first, fallback JSON ----
 }
+
+
 

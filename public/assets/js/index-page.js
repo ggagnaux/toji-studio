@@ -4,14 +4,12 @@
     import { el, slugifySeries, sortGallery, createArtworkLightboxController } from "./content-utils.js";
 import { initializeHomeSplash } from "./splash-runtime.js";
 
-    renderPublicHeader({
-      active: "home",
-      small: "home",
-      ctaText: "Explore",
-      ctaHref: "gallery.html",
-      //brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
-      brandLogoSrc: "assets/img/logo.png"
-    });
+	    renderPublicHeader({
+	      active: "home",
+	      small: "home",
+	      ctaText: "Explore",
+	      ctaHref: "gallery.html"
+	    });
     renderPublicFooter({
       rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
     });

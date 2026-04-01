@@ -17,66 +17,6 @@
       gap:10px;
       align-items:stretch;
     }
-    .login-field{
-      position:relative;
-      min-width:0;
-    }
-    .login-input{
-      width:100%;
-      min-height:48px;
-      padding:20px 14px 8px;
-      border:1px solid var(--line);
-      border-radius:12px;
-      background:transparent;
-      color:var(--text);
-      font:inherit;
-    }
-    .login-input:focus{
-      outline:none;
-      border-color:var(--accent-border);
-      box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
-    }
-    .login-floating-label{
-      position:absolute;
-      left:14px;
-      top:50%;
-      transform:translateY(-50%);
-      color:var(--muted);
-      font-size:15px;
-      line-height:1;
-      pointer-events:none;
-      transition:top .16s ease, transform .16s ease, font-size .16s ease, color .16s ease;
-      background:transparent;
-      padding:0 2px;
-    }
-    .login-field:focus-within .login-floating-label,
-    .login-input:not(:placeholder-shown) + .login-floating-label{
-      top:10px;
-      transform:none;
-      font-size:11px;
-      color:var(--text);
-    }
-    .login-action,
-    .login-action:hover,
-    .login-secondary,
-    .login-secondary:hover{
-      min-height:48px;
-      padding:0 16px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      font-size:15px;
-      line-height:1;
-      white-space:nowrap;
-    }
-    .login-secondary,
-    .login-secondary:hover{
-      width:fit-content;
-      min-width:0;
-      justify-self:start;
-      align-self:start;
-      padding:0 10px;
-    }
     .login-status{
       display:none;
       margin-top:6px;

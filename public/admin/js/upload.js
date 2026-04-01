@@ -14,6 +14,7 @@ import {
   parseUploadTags,
   requireUploadAdminSession
 } from "./upload-controller.js";
+import { bindFloatingField, syncFloatingFieldState } from "../../assets/js/floating-fields.js";
 
 ensureBaseStyles();
 setYearFooter();
@@ -34,6 +35,9 @@ setYearFooter();
   const uiBlocker = document.getElementById("uiBlocker");
   const uiBlockerTitle = document.getElementById("uiBlockerTitle");
   const uiBlockerSub = document.getElementById("uiBlockerSub");
+  const seriesField = document.getElementById("seriesField");
+  const yearField = document.getElementById("yearField");
+  const newTagField = document.getElementById("newTagField");
   const selectedBatchTags = new Set();
   const selectedTagFilters = new Set();
   const newIds = [];
@@ -104,6 +108,11 @@ setYearFooter();
       if (value) names.add(value);
     });
     return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }
+
+  function syncFloatingField(field, control) {
+    if (!field || !control) return;
+    field.classList.toggle("has-value", !!String(control.value || "").trim());
   }
 
   function tagMatchesActiveFilters(tag) {
@@ -187,6 +196,7 @@ setYearFooter();
     if ([...seriesSelect.options].some(o => o.value === current)) {
       seriesSelect.value = current;
     }
+    syncFloatingFieldState(seriesField, seriesSelect);
   }
 
   initUploadFilterControllers({
@@ -337,6 +347,18 @@ setYearFooter();
       if (progressBar) progressBar.value = 0;
       if (progressLabel) progressLabel.textContent = "";
     }
+  });
+
+  const seriesSelect = document.getElementById("series");
+  const yearInput = document.getElementById("year");
+  const newTagInput = document.getElementById("newTagInput");
+  [
+    [seriesField, seriesSelect],
+    [yearField, yearInput],
+    [newTagField, newTagInput]
+  ].forEach(([field, control]) => {
+    if (!field || !control) return;
+    bindFloatingField(field, control);
   });
 
   renderSeriesOptions();

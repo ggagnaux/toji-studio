@@ -2,6 +2,9 @@ import { initThemeSystem } from "./site.js";
 
 const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
 const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
+const BANNER_STATIC_LOGO_SRC_KEY = "toji_banner_static_logo_src_v1";
+const BANNER_LOGO_BORDER_ENABLED_KEY = "toji_banner_logo_border_enabled_v1";
+const BANNER_LOGO_BORDER_COLOR_KEY = "toji_banner_logo_border_color_v1";
 let bannerP5LoadPromise = null;
 
 export function renderPublicHeader({
@@ -35,14 +38,17 @@ export function renderPublicHeader({
     return "home";
   };
 
+  const defaultIconSrc = toAsset("img/TojiStudios-Logo.png");
+  const defaultWordmarkDarkSrc = toAsset("img/TojiStudios-Light-TextOnly.png");
+  const defaultWordmarkLightSrc = toAsset("img/TojiStudios-Dark-TextOnly.png");
   const brandInner = `
     <span class="brand-logo-combo" aria-hidden="true">
       <span class="brand-logo-icon-stack">
-        <img class="brand-logo-icon-image" src="${toAsset("img/TojiStudios-Logo.png")}" alt="" />
+        <img class="brand-logo-icon-image" src="${defaultIconSrc}" alt="" />
       </span>
       <span class="brand-logo-wordmark-stack">
-        <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark" src="${toAsset("img/TojiStudios-Light-TextOnly.png")}" alt="" />
-        <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light" src="${toAsset("img/TojiStudios-Dark-TextOnly.png")}" alt="" />
+        <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark" src="${defaultWordmarkDarkSrc}" alt="" />
+        <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light" src="${defaultWordmarkLightSrc}" alt="" />
       </span>
     </span>
     <span class="sr-only">Toji Studios</span>
@@ -78,6 +84,15 @@ export function renderPublicHeader({
       </div>
     </div>
   `;
+
+  const brandLink = headerHost.querySelector(".brand");
+  if (brandLink) {
+    brandLink.dataset.defaultLogoIconSrc = defaultIconSrc;
+    brandLink.dataset.defaultWordmarkDarkSrc = defaultWordmarkDarkSrc;
+    brandLink.dataset.defaultWordmarkLightSrc = defaultWordmarkLightSrc;
+    brandLink.dataset.defaultStaticLogoSrc = String(brandLogoSrc || "");
+  }
+  applyBannerLogoBorder(headerHost);
 
   const activeNav = resolveActiveNav();
   headerHost.querySelectorAll("[data-nav]").forEach(a => {
@@ -189,18 +204,115 @@ export function renderPublicHeader({
 
 export function applyBannerLogoBehavior(headerHost) {
   if (!headerHost) return;
+  applyBannerLogoBorder(headerHost);
   const mode = getBannerLogoAnimationMode();
   if (mode === "circles") {
+    ensureDefaultBannerLogoMarkup(headerHost);
     mountBannerBezierLogo(headerHost);
     return;
   }
   if (mode === "plot") {
+    ensureDefaultBannerLogoMarkup(headerHost);
     mountBannerPlotLogo(headerHost);
     return;
   }
   if (mode === "radar") {
+    ensureDefaultBannerLogoMarkup(headerHost);
     mountBannerRadarLogo(headerHost);
+    return;
   }
+  applyStaticBannerLogo(headerHost);
+}
+
+function resolveBannerAssetSrc(src) {
+  const value = String(src || "").trim();
+  if (!value || !value.startsWith("/")) return value;
+  try {
+    const current = new URL(String(window.location.origin || ""));
+    const isLocalHost = ["localhost", "127.0.0.1"].includes(current.hostname);
+    if (isLocalHost && current.port && current.port !== "5179") {
+      return `${current.protocol}//${current.hostname}:5179${value}`;
+    }
+  } catch {}
+  return value;
+}
+
+function getBannerStaticLogoSrc() {
+  try {
+    const value = String(localStorage.getItem(BANNER_STATIC_LOGO_SRC_KEY) || "").trim();
+    if (!value) return "";
+    const normalized = /\.(png|jpe?g)$/i.test(value) && !value.includes("/") && !value.includes("\\")
+      ? "/assets/img/logos/" + value
+      : value;
+    return resolveBannerAssetSrc(normalized);
+  } catch {
+    return "";
+  }
+}
+
+function normalizeBannerLogoBorderColor(value) {
+  const normalized = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(normalized) ? normalized : "#871818";
+}
+
+function bannerLogoBorderEnabled() {
+  try {
+    return localStorage.getItem(BANNER_LOGO_BORDER_ENABLED_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+function getBannerLogoBorderColor() {
+  try {
+    return normalizeBannerLogoBorderColor(localStorage.getItem(BANNER_LOGO_BORDER_COLOR_KEY));
+  } catch {
+    return "#871818";
+  }
+}
+
+function applyBannerLogoBorder(headerHost) {
+  const brand = headerHost?.querySelector(".brand");
+  if (!brand) return;
+  brand.style.setProperty("--banner-logo-border-width", bannerLogoBorderEnabled() ? "1px" : "0px");
+  brand.style.setProperty("--banner-logo-border-color", getBannerLogoBorderColor());
+}
+
+function ensureDefaultBannerLogoMarkup(headerHost) {
+  const brand = headerHost?.querySelector(".brand");
+  if (!brand) return null;
+  let combo = brand.querySelector(".brand-logo-combo");
+  brand.querySelector(".brand-logo-image--custom")?.remove();
+  if (!combo) {
+    combo = document.createElement("span");
+    combo.className = "brand-logo-combo";
+    combo.setAttribute("aria-hidden", "true");
+    const srOnly = brand.querySelector(".sr-only");
+    brand.insertBefore(combo, srOnly || brand.firstChild || null);
+  }
+  combo.innerHTML = `
+    <span class="brand-logo-icon-stack">
+      <img class="brand-logo-icon-image" src="${brand.dataset.defaultLogoIconSrc || "assets/img/TojiStudios-Logo.png"}" alt="" />
+    </span>
+    <span class="brand-logo-wordmark-stack">
+      <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-dark" src="${brand.dataset.defaultWordmarkDarkSrc || "assets/img/TojiStudios-Light-TextOnly.png"}" alt="" />
+      <img class="brand-logo-wordmark-image brand-logo-wordmark-image--for-light" src="${brand.dataset.defaultWordmarkLightSrc || "assets/img/TojiStudios-Dark-TextOnly.png"}" alt="" />
+    </span>
+  `;
+  return combo;
+}
+
+function applyStaticBannerLogo(headerHost) {
+  const brand = headerHost?.querySelector(".brand");
+  if (!brand) return;
+  const configuredSrc = getBannerStaticLogoSrc();
+  const fallbackSrc = resolveBannerAssetSrc(String(brand.dataset.defaultStaticLogoSrc || "").trim());
+  const desiredSrc = configuredSrc || fallbackSrc;
+  const combo = ensureDefaultBannerLogoMarkup(headerHost);
+  if (!combo || !desiredSrc) return;
+  const iconImage = combo.querySelector(".brand-logo-icon-image");
+  if (!iconImage) return;
+  iconImage.src = desiredSrc;
 }
 
 function getBannerLogoAnimationMode() {
@@ -683,3 +795,9 @@ function escapeHtml(s) {
 function escapeAttr(s) {
   return String(s ?? "").replace(/"/g, "&quot;");
 }
+
+
+
+
+
+

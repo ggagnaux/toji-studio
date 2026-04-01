@@ -3,6 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 
 import { Router } from "express";
+import multer from "multer";
 import {
   db,
   nowIso,
@@ -26,6 +27,30 @@ import { publishArtworkToBluesky } from "../services/social/bluesky.js";
 import { publishArtworkToLinkedIn } from "../services/social/linkedin.js";
 
 export const adminRouter = Router();
+const bannerLogoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const SITE_ROOT = path.resolve(process.cwd(), "..");
+const BANNER_LOGOS_DIR = path.join(SITE_ROOT, "assets", "img", "logos");
+fs.mkdirSync(BANNER_LOGOS_DIR, { recursive: true });
+
+function sanitizeBannerLogoBaseName(name = "") {
+  return String(name || "logo")
+    .trim()
+    .replace(/\.[^.]+$/, "")
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80) || "logo";
+}
+
+function listBannerLogoEntries() {
+  return fs.readdirSync(BANNER_LOGOS_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && /\.(png|jpe?g)$/i.test(entry.name))
+    .map((entry) => ({
+      name: entry.name,
+      src: "/assets/img/logos/" + entry.name
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
 const DATA_EXPORT_FORMAT = "toji-data-export";
 const DATA_EXPORT_VERSION = 1;
 const DATA_IMPORT_SAFE_TABLES = new Set(["settings", "social_platforms", "external_links"]);
@@ -67,6 +92,38 @@ adminRouter.put("/admin/settings/splash", (req, res) => {
   const saved = setSplashSettings(req.body || {});
   res.json(saved);
 });
+
+adminRouter.get("/admin/banner-logos", (req, res) => {
+  res.json({ items: listBannerLogoEntries() });
+});
+
+adminRouter.post("/admin/banner-logos", bannerLogoUpload.single("file"), (req, res) => {
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: "No file uploaded." });
+  const originalName = String(file.originalname || "");
+  const mimeType = String(file.mimetype || "").toLowerCase();
+  const ext = path.extname(originalName).toLowerCase();
+  const allowedExt = new Set([".png", ".jpg", ".jpeg"]);
+  const normalizedExt = ext === ".jpeg" ? ".jpg" : ext;
+  const allowedMime = new Set(["image/png", "image/jpeg"]);
+  if (!allowedExt.has(ext) || !allowedMime.has(mimeType)) {
+    return res.status(400).json({ error: "Only PNG and JPEG files are allowed." });
+  }
+  const baseName = sanitizeBannerLogoBaseName(originalName);
+  let fileName = baseName + normalizedExt;
+  let targetPath = path.join(BANNER_LOGOS_DIR, fileName);
+  let suffix = 1;
+  while (fs.existsSync(targetPath)) {
+    fileName = baseName + "-" + suffix + normalizedExt;
+    targetPath = path.join(BANNER_LOGOS_DIR, fileName);
+    suffix += 1;
+  }
+  fs.writeFileSync(targetPath, file.buffer);
+  res.status(201).json({
+    item: { name: fileName, src: "/assets/img/logos/" + fileName },
+    items: listBannerLogoEntries()
+  });
+});
 function getDataTableDefinition(tableName) {
   return DATA_TABLE_DEFINITION_MAP.get(cleanText(tableName));
 }
@@ -76,6 +133,7 @@ function listDataTableMetadata() {
     name: definition.name,
     label: definition.label,
     rowCount: Number(db.prepare(definition.countSql).get()?.count || 0),
+    schema: getDataTableSchema(definition.name),
     exportSupported: true,
     importSupported: !!definition.importSupported,
     importNotes: definition.importNotes || ""
@@ -122,18 +180,37 @@ function selectRowsForDataTable(tableName) {
   return db.prepare(definition.exportSql).all();
 }
 
+export function getDataTableSchema(tableName) {
+  const definition = getDataTableDefinition(tableName);
+  if (!definition) return [];
+  return db.prepare(`PRAGMA table_info(${definition.name})`).all().map((column) => ({
+    name: cleanText(column?.name),
+    type: cleanText(column?.type),
+    notNull: !!column?.notnull,
+    defaultValue: column?.dflt_value ?? null,
+    primaryKey: Number(column?.pk || 0) > 0
+  }));
+}
+
+function getDataTableSchemaColumnNames(tableName) {
+  return getDataTableSchema(tableName).map((column) => column.name).filter(Boolean);
+}
+
 function buildDataExportPayload(tableNames) {
   const names = Array.isArray(tableNames) && tableNames.length
     ? tableNames
     : DATA_TABLE_DEFINITIONS.map((definition) => definition.name);
   const tables = {};
+  const schema = {};
   for (const name of names) tables[name] = selectRowsForDataTable(name);
+  for (const name of names) schema[name] = getDataTableSchema(name);
   return {
     format: DATA_EXPORT_FORMAT,
     version: DATA_EXPORT_VERSION,
     exportedAt: nowIso(),
     selectedTables: names,
     tableCount: names.length,
+    schema,
     tables
   };
 }
@@ -165,6 +242,7 @@ export function parseDataImportBundle(raw) {
     format: cleanText(payload.format) || DATA_EXPORT_FORMAT,
     version: Number(payload.version || 0) || 0,
     exportedAt: cleanText(payload.exportedAt),
+    schema: payload.schema && typeof payload.schema === "object" && !Array.isArray(payload.schema) ? payload.schema : {},
     tables
   };
 }
@@ -196,6 +274,18 @@ export function validateImportRow(tableName, row, index) {
   return errors;
 }
 
+function getImportedSchemaColumnNames(bundle, tableName) {
+  const schemaEntry = bundle?.schema?.[tableName];
+  if (Array.isArray(schemaEntry)) {
+    return schemaEntry.map((column) => cleanText(column?.name || column)).filter(Boolean);
+  }
+  if (schemaEntry && typeof schemaEntry === "object") {
+    const columns = Array.isArray(schemaEntry.columns) ? schemaEntry.columns : [];
+    return columns.map((column) => cleanText(column?.name || column)).filter(Boolean);
+  }
+  return [];
+}
+
 export function previewDataImportBundle(bundle) {
   const tables = [];
   for (const [tableName, rawRows] of Object.entries(bundle.tables || {})) {
@@ -207,6 +297,14 @@ export function previewDataImportBundle(bundle) {
     if (!rows) issues.push("Table payload must be an array.");
     if (definition && !definition.importSupported) warnings.push(definition.importNotes || "Export only in v1.");
     let validRowCount = 0;
+    const importedSchemaColumns = getImportedSchemaColumnNames(bundle, tableName);
+    const currentSchemaColumns = definition ? getDataTableSchemaColumnNames(tableName) : [];
+    if (definition && importedSchemaColumns.length) {
+      const missingColumns = currentSchemaColumns.filter((name) => !importedSchemaColumns.includes(name));
+      const extraColumns = importedSchemaColumns.filter((name) => !currentSchemaColumns.includes(name));
+      if (missingColumns.length) warnings.push(`Bundle schema is missing current ${tableName} columns: ${missingColumns.join(', ')}.`);
+      if (extraColumns.length) warnings.push(`Bundle schema includes columns not present in the current ${tableName} schema: ${extraColumns.join(', ')}.`);
+    }
     if (definition && definition.importSupported && rows) {
       rows.forEach((row, index) => {
         const rowErrors = validateImportRow(tableName, row, index);
@@ -218,6 +316,7 @@ export function previewDataImportBundle(bundle) {
       name: tableName,
       label: definition?.label || tableName,
       rowCount: rows ? rows.length : 0,
+      schemaColumns: currentSchemaColumns,
       exportSupported: !!definition,
       importSupported: !!definition?.importSupported,
       importNotes: definition?.importNotes || "Unknown table.",
@@ -1639,6 +1738,9 @@ adminRouter.post("/admin/cleanup", (req, res) => {
     deletedBrokenVariantRows
   });
 });
+
+
+
 
 
 

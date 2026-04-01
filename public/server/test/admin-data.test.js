@@ -12,7 +12,8 @@ import {
   normalizeRequestedDataTableNames,
   parseDataImportBundle,
   previewDataImportBundle,
-  validateImportRow
+  validateImportRow,
+  getDataTableSchema
 } from "../src/routes/admin.js";
 import { restoreEnv } from "./helpers.js";
 
@@ -53,6 +54,7 @@ test("parseDataImportBundle accepts direct bundle objects and nested bundle wrap
   });
   const wrapped = parseDataImportBundle({
     bundle: {
+      schema: { external_links: [{ name: "id" }, { name: "label" }] },
       tables: { external_links: [] }
     }
   });
@@ -101,6 +103,24 @@ test("previewDataImportBundle summarizes importable, unsupported, and invalid ta
   assert.match(preview.tables.find((table) => table.name === "artworks").warnings[0], /Export only in v1/);
   assert.match(preview.tables.find((table) => table.name === "missing_table").issues[0], /Unknown table/);
   assert.match(preview.tables.find((table) => table.name === "external_links").issues[0], /external_links.url is required/);
+});
+
+test("previewDataImportBundle warns when bundled schema drifts from the current schema", () => {
+  const preview = previewDataImportBundle({
+    format: "toji-data-export",
+    version: 1,
+    exportedAt: "2026-03-30T00:00:00.000Z",
+    schema: {
+      settings: [{ name: "key" }]
+    },
+    tables: {
+      settings: [{ key: "siteTitle", value: "Toji" }]
+    }
+  });
+
+  const settingsPreview = preview.tables.find((table) => table.name === "settings");
+  assert.ok(settingsPreview.warnings.some((warning) => /missing current settings columns: value, updatedAt/i.test(warning)));
+  assert.deepEqual(settingsPreview.schemaColumns, getDataTableSchema("settings").map((column) => column.name));
 });
 
 test("normalize imported rows produces persisted payload shapes", () => {

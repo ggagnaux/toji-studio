@@ -11,9 +11,174 @@
       slugifySeries,
       API_BASE
     } from "../admin.js";
+    import { bindFloatingField, syncFloatingFieldState } from "../../assets/js/floating-fields.js";
 
     ensureBaseStyles();
     setYearFooter();
+
+    function ensureSeriesManagerStyles(){
+      if (document.getElementById("series-manager-styles")) return;
+      document.body.classList.add("series-manager-page");
+      const style = document.createElement("style");
+      style.id = "series-manager-styles";
+      style.textContent = `
+        .series-manager-page .field input,
+        .series-manager-page .field textarea,
+        .series-manager-page .field select{
+          background: color-mix(in srgb, var(--panel) 92%, var(--bg) 8%);
+          border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 8px 18px rgba(0,0,0,.12);
+          font-size:var(--floating-control-font-size);
+        }
+        .series-manager-page .field input:hover,
+        .series-manager-page .field textarea:hover,
+        .series-manager-page .field select:hover{
+          border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+          background: color-mix(in srgb, var(--panel) 88%, var(--bg) 12%);
+        }
+        .series-manager-page .field:hover:has(select)::before,
+        .series-manager-page .field:hover:has(select)::after,
+        .series-manager-page .field:focus-within:has(select)::before,
+        .series-manager-page .field:focus-within:has(select)::after{
+          background:color-mix(in srgb, var(--accent) 72%, white);
+        }
+        .series-manager-page .field input:focus,
+        .series-manager-page .field textarea:focus,
+        .series-manager-page .field select:focus{
+          outline:none;
+          border-color: color-mix(in srgb, var(--accent) 72%, white);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 10px 22px rgba(0,0,0,.18);
+          background: color-mix(in srgb, var(--panel) 84%, var(--bg) 16%);
+        }
+        .series-manager-page .series-floating-field textarea{
+          padding-top:calc(var(--floating-control-padding-top) + 10px);
+        }
+        .series-manager-page .series-cover-picker{
+          display:grid;
+          gap:10px;
+          grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));
+          margin-top:10px;
+        }
+        .series-manager-page .series-cover-option{
+          appearance:none;
+          border:1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+          border-radius:14px;
+          background:color-mix(in srgb, var(--panel) 92%, var(--bg) 8%);
+          color:var(--text);
+          padding:8px;
+          display:grid;
+          gap:8px;
+          text-align:left;
+          cursor:pointer;
+          box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 8px 18px rgba(0,0,0,.12);
+          transition:border-color .18s ease, background .18s ease, transform .18s ease, box-shadow .18s ease;
+        }
+        .series-manager-page .series-cover-option:hover,
+        .series-manager-page .series-cover-option:focus-visible{
+          outline:none;
+          border-color: color-mix(in srgb, var(--accent) 72%, white);
+          background: color-mix(in srgb, var(--panel) 86%, var(--bg) 14%);
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 10px 22px rgba(0,0,0,.18);
+          transform: translateY(-1px);
+        }
+        .series-manager-page .series-cover-option.is-selected{
+          border-color: color-mix(in srgb, var(--accent) 82%, white);
+          background: color-mix(in srgb, var(--accent) 20%, var(--panel));
+          box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent), 0 10px 22px rgba(0,0,0,.2);
+        }
+        .series-manager-page .series-cover-thumb{
+          width:100%;
+          aspect-ratio:1;
+          border-radius:10px;
+          border:1px solid var(--line);
+          background:color-mix(in srgb, var(--bg) 84%, var(--panel));
+          overflow:hidden;
+          display:grid;
+          place-items:center;
+        }
+        .series-manager-page .series-cover-thumb img{
+          width:100%;
+          height:100%;
+          object-fit:cover;
+          display:block;
+        }
+        .series-manager-page .series-cover-label{
+          font-size:13px;
+          line-height:1.2;
+          color:var(--text);
+          overflow:hidden;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+        }
+        .series-manager-page .series-cover-empty{
+          min-height:96px;
+          border:1px dashed var(--line);
+          border-radius:10px;
+          display:grid;
+          place-items:center;
+          color:var(--muted);
+          font-size:13px;
+          background:color-mix(in srgb, var(--bg) 82%, transparent);
+        }
+        .series-manager-page .series-cover-trigger{
+          width:132px;
+          margin-top:10px;
+          padding:8px;
+          border-radius:14px;
+          display:grid;
+          place-items:center;
+        }
+        .series-manager-page .series-cover-trigger:hover,
+        .series-manager-page .series-cover-trigger:focus-visible{
+          transform:translateY(-1px);
+        }
+        .series-manager-page .series-cover-trigger .series-cover-thumb,
+        .series-manager-page .series-cover-trigger .series-cover-empty{
+          width:100%;
+          min-height:auto;
+          aspect-ratio:1;
+        }
+        .series-manager-page .series-cover-modal{
+          position:fixed;
+          inset:0;
+          z-index:1200;
+          display:none;
+          align-items:center;
+          justify-content:center;
+          padding:18px;
+          background:rgba(0,0,0,.66);
+        }
+        .series-manager-page .series-cover-modal.is-open{
+          display:flex;
+        }
+        .series-manager-page .series-cover-modal-panel{
+          width:min(980px, calc(100vw - 36px));
+          max-height:min(88vh, 820px);
+          overflow:auto;
+          border:1px solid var(--line);
+          border-radius:18px;
+          background:var(--panel);
+          box-shadow:var(--shadow);
+          padding:14px;
+          display:grid;
+          gap:12px;
+        }
+        .series-manager-page .series-cover-modal-top{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+          flex-wrap:wrap;
+        }
+        .series-manager-page .series-cover-modal-copy{
+          display:grid;
+          gap:4px;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    ensureSeriesManagerStyles();
 
     const state = await loadStateAutoSync();
     ensureSeriesMeta(state, { includeDerived: !getAdminToken() });
@@ -22,6 +187,7 @@
     const listEl = document.getElementById("list");
     const editor = document.getElementById("editor");
     const count = document.getElementById("count");
+    const newNameField = document.getElementById("newNameField");
     const newName = document.getElementById("newName");
     const showHiddenToggle = document.getElementById("showHidden");
     const showHiddenTrack = document.querySelector("[data-show-hidden-track]");
@@ -39,7 +205,11 @@
     let draggedSlug = null;
     let orderSyncTimer = null;
     if (showHiddenToggle) showHiddenToggle.checked = showHidden;
-    syncShowHiddenToggleVisual();
+        syncShowHiddenToggleVisual();
+        syncFloatingFieldState(newNameField, newName);
+        newName?.addEventListener("input", () => syncFloatingFieldState(newNameField, newName));
+        newName?.addEventListener("change", () => syncFloatingFieldState(newNameField, newName));
+        newName?.addEventListener("blur", () => syncFloatingFieldState(newNameField, newName));
 
     function syncShowHiddenToggleVisual(){
       const on = !!showHiddenToggle?.checked;
@@ -319,7 +489,7 @@
             margin-left:auto; display:inline-flex; align-items:center; justify-content:center;
             min-width:34px; height:28px; padding:0 10px; border-radius:999px;
             border:1px solid var(--line); background:var(--surface); color:var(--muted);
-            font-size:14px; font-weight:700; letter-spacing:.04em; cursor:grab; flex:0 0 auto;
+            font-size:var(--floating-control-font-size); font-weight:700; letter-spacing:.04em; cursor:grab; flex:0 0 auto;
           `
         }, "\u2261");
         reorderPill.addEventListener("click", (e) => e.stopPropagation());
@@ -516,21 +686,11 @@
         (v)=>{ s.coverArtworkId = v; queueSave(true); }
       );
 
-      const coverPreview = el("div", { class:"sub", style:"margin-top:10px" }, "");
-      const refreshCoverPreview = () => {
-        coverPreview.innerHTML = "";
-        const opt = covers.find(x => x.id === (s.coverArtworkId || ""));
-        if (!opt) return coverPreview.appendChild(el("span", {}, "No cover selected."));
-        if (opt.thumb) coverPreview.appendChild(el("img", { src: opt.thumb, style:"width:120px;height:120px;border-radius:16px;object-fit:cover;border:1px solid var(--line);display:block" }));
-      };
-      refreshCoverPreview();
-
       editor.appendChild(el("hr", { class:"sep" }));
       editor.appendChild(nameField);
       editor.appendChild(descField);
       editor.appendChild(pubField);
       editor.appendChild(coverSelect);
-      editor.appendChild(coverPreview);
 
       editor.appendChild(el("hr", { class:"sep" }));
 
@@ -586,7 +746,6 @@
           };
           saveState(state);
           setStatus("Saved.", 10000, "success");
-          refreshCoverPreview();
           renderList();
         } catch (e) {
           setStatus(`Backend save failed (local ok): ${e?.message || e}`, 10000, "error");
@@ -595,8 +754,6 @@
 
       function queueSave(immediateCover=false){
         localSave();
-        refreshCoverPreview();
-
         clearTimeout(t);
         t = setTimeout(()=> backendSave(), immediateCover ? 0 : 600);
       }
@@ -665,8 +822,9 @@
       }
 
       activeSlug = slug;
-      newName.value = "";
-      renderList();
+            newName.value = "";
+            syncFloatingFieldState(newNameField, newName);
+            renderList();
       renderEditor(slug);
 
       // Attempt backend create
@@ -685,8 +843,18 @@
     // -----------------------
     // Field helpers
     // -----------------------
+
+    function buildFloatingField(label, control, opts = {}){
+      const field = el("div", { class: "field series-floating-field", style: `margin-top:${opts.marginTop ?? 12}px` },
+        control,
+        el("label", { class:"series-floating-label" }, label)
+      );
+      bindFloatingField(field, control);
+      return field;
+    }
+
     function inputField(label, value, onChange, type = "text", opts = {}){
-      const input = el("input", { type, value: value ?? "" });
+      const input = el("input", { type, value: value ?? "", placeholder:" " });
       const commitOnBlur = !!opts.commitOnBlur;
       if (commitOnBlur) {
         const commit = () => onChange(input.value);
@@ -695,14 +863,11 @@
       } else {
         input.addEventListener("input", (e)=> onChange(e.target.value));
       }
-      return el("div", { class:"field", style:"margin-top:12px" },
-        el("div", { class:"sub" }, label),
-        input
-      );
+      return buildFloatingField(label, input, opts);
     }
 
     function textareaField(label, value, onChange, opts = {}){
-      const t = el("textarea", {}, value ?? "");
+      const t = el("textarea", { placeholder:" " }, value ?? "");
       const commitOnBlur = !!opts.commitOnBlur;
       if (commitOnBlur) {
         const commit = () => onChange(t.value);
@@ -711,10 +876,7 @@
       } else {
         t.addEventListener("input", (e)=> onChange(e.target.value));
       }
-      return el("div", { class:"field", style:"margin-top:12px" },
-        el("div", { class:"sub" }, label),
-        t
-      );
+      return buildFloatingField(label, t, opts);
     }
 
     function toggleField(label, checked, onChange){
@@ -776,120 +938,108 @@
       );
     }
 
-    function selectField(label, options, current, onChange){
+    function selectField(label, options, current, onChange, opts = {}){
       const s = el("select", {},
         ...options.map(o => el("option", { value:o.value, selected: o.value===current ? "" : null }, o.label))
       );
       s.addEventListener("change", (e)=> onChange(e.target.value));
-      return el("div", { class:"field", style:"margin-top:12px" },
-        el("div", { class:"sub" }, label),
-        s
-      );
+      return buildFloatingField(label, s, opts);
     }
 
     function thumbSelectField(label, options, current, onChange){
       let selectedId = current || "";
       const opts = [{ id:"", label:"None", thumb:"" }, ...(options || [])];
-
+      const picker = el("div", { class:"series-cover-picker", role:"listbox", "aria-label": label });
       const trigger = el("button", {
-        class:"btn",
         type:"button",
-        "aria-label":"Choose cover artwork",
-        style:"width:100%; justify-content:flex-start; border-radius:12px; padding:8px 10px"
+        class:"btn series-cover-trigger",
+        "aria-label":"Choose cover artwork"
       });
+      const backdrop = el("div", { class:"series-cover-modal", role:"dialog", "aria-modal":"true", "aria-label": label });
+      const closeBtn = el("button", { class:"btn", type:"button", "aria-label":"Close cover artwork picker" }, "Close");
+      const panel = el("div", { class:"series-cover-modal-panel" });
+      const lastFocus = { current: null };
 
-      const menu = el("div", {
-        style:`
-          display:none;
-          position:absolute;
-          top:calc(100% + 8px);
-          left:0;
-          right:0;
-          max-height:260px;
-          overflow:auto;
-          border:1px solid var(--line);
-          border-radius:12px;
-          background:var(--panel);
-          padding:8px;
-          z-index:20;
-          box-shadow: var(--shadow);
-        `
-      });
-
-      const setTrigger = () => {
-        trigger.innerHTML = "";
-        const active = opts.find(o => o.id === selectedId) || opts[0];
-        if (!active.id) {
-          trigger.appendChild(el("span", { class:"sub" }, "None"));
-          return;
-        }
-
-        const thumb = active.thumb
-          ? el("img", { src: active.thumb, alt: active.label || "Cover", style:"width:40px;height:40px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" })
-          : el("div", { class:"sub", style:"width:40px;height:40px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--line)" }, "N/A");
-
-        trigger.appendChild(el("div", { style:"display:flex;align-items:center;gap:10px" }, thumb, el("span", { class:"sub" }, "Selected")));
+      const closeModal = () => {
+        backdrop.classList.remove("is-open");
+        if (lastFocus.current && typeof lastFocus.current.focus === "function") lastFocus.current.focus();
       };
 
-      const closeMenu = () => { menu.style.display = "none"; };
-      const openMenu = () => { menu.style.display = "block"; };
+      const selectedOption = () => opts.find((o) => o.id === selectedId) || opts[0];
+
+      const buildThumb = (o) => {
+        if (!o.id) return el("div", { class:"series-cover-empty" }, "No cover");
+        return el("div", { class:"series-cover-thumb" },
+          o.thumb
+            ? el("img", { src:o.thumb, alt:o.label || "Cover option" })
+            : el("div", { class:"sub" }, "N/A")
+        );
+      };
+
+      const renderTrigger = () => {
+        trigger.innerHTML = "";
+        trigger.appendChild(buildThumb(selectedOption()));
+      };
+
+      const renderPicker = () => {
+        picker.innerHTML = "";
+        for (const o of opts){
+          const selected = o.id === selectedId;
+          const btn = el("button", {
+            type:"button",
+            class:"series-cover-option" + (selected ? " is-selected" : ""),
+            role:"option",
+            "aria-selected": selected ? "true" : "false",
+            "aria-label": o.label || "Cover option"
+          },
+            buildThumb(o),
+            el("div", { class:"series-cover-label" }, o.label || "Untitled")
+          );
+          btn.addEventListener("click", () => {
+            selectedId = o.id;
+            onChange(selectedId);
+            renderTrigger();
+            renderPicker();
+            closeModal();
+          });
+          picker.appendChild(btn);
+        }
+      };
 
       trigger.addEventListener("click", () => {
-        if (menu.style.display === "block") closeMenu();
-        else openMenu();
+        lastFocus.current = document.activeElement;
+        backdrop.classList.add("is-open");
+        closeBtn.focus();
+      });
+      closeBtn.addEventListener("click", closeModal);
+      backdrop.addEventListener("click", (event) => {
+        if (event.target === backdrop) closeModal();
+      });
+      backdrop.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeModal();
       });
 
-      for (const o of opts){
-        const btn = el("button", {
-          type:"button",
-          class:"btn",
-          "aria-label": o.label || "Cover option",
-          style:`
-            width:100%;
-            justify-content:flex-start;
-            border-radius:10px;
-            padding:8px;
-            margin-bottom:6px;
-            ${o.id === selectedId ? "border-color: var(--accent-border); background: var(--accent-soft);" : ""}
-          `
-        });
+      panel.appendChild(
+        el("div", { class:"series-cover-modal-top" },
+          el("div", { class:"series-cover-modal-copy" },
+            el("div", { class:"title", style:"margin:0" }, label),
+            el("div", { class:"sub" }, "Choose a cover artwork from the available thumbnails.")
+          ),
+          closeBtn
+        )
+      );
+      panel.appendChild(picker);
+      backdrop.appendChild(panel);
 
-        if (!o.id){
-          btn.appendChild(el("span", { class:"sub" }, "None"));
-        } else {
-          btn.appendChild(
-            o.thumb
-              ? el("img", { src:o.thumb, alt:o.label || "Cover option", style:"width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" })
-              : el("div", { class:"sub", style:"width:48px;height:48px;display:grid;place-items:center;border-radius:8px;border:1px solid var(--line)" }, "N/A")
-          );
-        }
-
-        btn.addEventListener("click", () => {
-          selectedId = o.id;
-          onChange(selectedId);
-          setTrigger();
-          closeMenu();
-        });
-
-        menu.appendChild(btn);
-      }
-
-      const root = el("div", { class:"field", style:"margin-top:12px; position:relative" },
+      renderTrigger();
+      renderPicker();
+      return el("div", { class:"field", style:"margin-top:12px" },
         el("div", { class:"sub" }, label),
         trigger,
-        menu
+        backdrop
       );
-
-      root.addEventListener("focusout", () => {
-        setTimeout(() => {
-          if (!root.contains(document.activeElement)) closeMenu();
-        }, 0);
-      });
-
-      setTrigger();
-      return root;
     }
- 
     renderList();
   
+
 

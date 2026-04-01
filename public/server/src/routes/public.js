@@ -1,7 +1,20 @@
+import fs from "node:fs";
+import path from "node:path";
 import { Router } from "express";
 import { db, jsonArray, getContactSettings, getSplashSettings } from "../db.js";
 
 export const publicRouter = Router();
+const SITE_ROOT = path.resolve(process.cwd(), "..");
+const BANNER_LOGOS_DIR = path.join(SITE_ROOT, "assets", "img", "logos");
+
+function listBannerLogoEntries() {
+  if (!fs.existsSync(BANNER_LOGOS_DIR)) return [];
+  return fs.readdirSync(BANNER_LOGOS_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && /\.(png|jpe?g)$/i.test(entry.name))
+    .map((entry) => ({ name: entry.name, src: "/assets/img/logos/" + entry.name }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
 
 publicRouter.get("/public/site-meta", (req, res) => {
   const version = String(process.env.PUBLIC_SITE_VERSION || "").trim();
@@ -14,6 +27,10 @@ publicRouter.get("/public/settings/contact", (req, res) => {
 
 publicRouter.get("/public/settings/splash", (req, res) => {
   res.json(getSplashSettings());
+});
+
+publicRouter.get("/public/banner-logos", (req, res) => {
+  res.json({ items: listBannerLogoEntries() });
 });
 
 publicRouter.get("/public/external-links", (req, res) => {
@@ -85,3 +102,5 @@ publicRouter.get("/public/series", (req, res) => {
     isPublic: !!r.isPublic
   })));
 });
+
+

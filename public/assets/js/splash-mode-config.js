@@ -1,6 +1,6 @@
 export const SPLASH_MODE_CATALOG = Object.freeze([
   { id: "tojistudios", label: "Tojistudios dot chase" },
-  { id: "nodes", label: "Nodes and edges (existing)" },
+  { id: "nodes", label: "Nodes and edges" },
   { id: "flock", label: "Flocking triangles (mouse follow)" },
   { id: "circles", label: "Outlined circles grid (fill/unfill)" },
   { id: "matrix", label: "Matrix digital rain" },

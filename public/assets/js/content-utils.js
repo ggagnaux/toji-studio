@@ -270,12 +270,18 @@ export function createArtworkLightboxController() {
 	    nextImg.classList.add(direction > 0 ? "is-enter-from-next" : "is-enter-from-prev");
 	    mediaFrame.appendChild(nextImg);
 
+	    // Give the browser a paint with the entry state applied first, or the
+	    // transition can be skipped and the image will appear without sliding.
 	    requestAnimationFrame(() => {
 	      if (token !== animationToken) return;
-	      outgoingImg.classList.remove("is-active");
-	      outgoingImg.classList.add(direction > 0 ? "is-exit-to-next" : "is-exit-to-prev");
-	      nextImg.classList.remove("is-enter-from-next", "is-enter-from-prev");
-	      nextImg.classList.add("is-active");
+	      void nextImg.offsetWidth;
+	      requestAnimationFrame(() => {
+	        if (token !== animationToken) return;
+	        outgoingImg.classList.remove("is-active");
+	        outgoingImg.classList.add(direction > 0 ? "is-exit-to-next" : "is-exit-to-prev");
+	        nextImg.classList.remove("is-enter-from-next", "is-enter-from-prev");
+	        nextImg.classList.add("is-active");
+	      });
 	    });
 
 	    const cleanup = () => {

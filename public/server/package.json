@@ -1,6 +1,6 @@
 {
   "name": "toji-server",
-  "version": "0.0.1beta",
+  "version": "0.0.2 (beta)",
   "type": "module",
   "main": "src/server.js",
   "scripts": {

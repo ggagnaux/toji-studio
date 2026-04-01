@@ -6,6 +6,17 @@
   --max:none;
   --radius:18px;
   --shadow: 0 12px 30px rgba(0,0,0,.35);
+  --floating-control-font-size:14px;
+  --floating-label-font-size:15px;
+  --floating-label-float-font-size:14px;
+  --floating-control-min-height:58px;
+  --floating-control-padding-top:32px;
+  --floating-control-padding-bottom:10px;
+  --floating-textarea-min-height:96px;
+  --floating-label-inline-top:50%;
+  --floating-label-float-top:5px;
+  --floating-label-inline-offset-x:13px;
+  --floating-select-padding-right:42px;
 }
 
 /* Default theme: dark */
@@ -63,6 +74,119 @@ body{
   flex-direction:column;
 }
 main{flex:1 0 auto}
+
+/* Shared floating-label form controls */
+:where(.contact-floating-field, .upload-floating-field, .series-floating-field, .smm-floating-field, .other-settings-floating-field, .login-field){
+  position:relative;
+}
+:where(.contact-floating-field, .upload-floating-field, .series-floating-field, .smm-floating-field, .other-settings-floating-field) input,
+:where(.contact-floating-field, .upload-floating-field, .series-floating-field, .smm-floating-field, .other-settings-floating-field) select,
+:where(.contact-floating-field, .upload-floating-field, .series-floating-field, .smm-floating-field, .other-settings-floating-field) textarea{
+  width:100%;
+  margin:0;
+  min-height:var(--floating-control-min-height);
+  padding:var(--floating-control-padding-top) 12px var(--floating-control-padding-bottom);
+  font-size:var(--floating-control-font-size);
+  box-sizing:border-box;
+}
+:where(.contact-floating-field, .upload-floating-field, .series-floating-field, .smm-floating-field, .other-settings-floating-field) textarea{
+  min-height:var(--floating-textarea-min-height);
+  padding-top:calc(var(--floating-control-padding-top) + 6px);
+}
+:where(.login-field) .login-input{
+  width:100%;
+  margin:0;
+  min-height:var(--floating-control-min-height);
+  padding:var(--floating-control-padding-top) 14px var(--floating-control-padding-bottom);
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:transparent;
+  color:var(--text);
+  font:inherit;
+  font-size:var(--floating-control-font-size);
+  box-sizing:border-box;
+}
+:where(.login-field) .login-input:focus{
+  outline:none;
+  border-color:var(--accent-border);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+:where(.login-field) .login-input::placeholder{
+  color:transparent;
+}
+:where(.upload-floating-field, .series-floating-field, .smm-floating-field, .other-settings-floating-field) select{
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  padding-right:var(--floating-select-padding-right);
+  cursor:pointer;
+}
+:where(.upload-floating-field, .series-floating-field, .smm-floating-field, .other-settings-floating-field):has(select)::before,
+:where(.upload-floating-field, .series-floating-field, .smm-floating-field, .other-settings-floating-field):has(select)::after{
+  content:"";
+  position:absolute;
+  top:var(--floating-label-inline-top);
+  width:9px;
+  height:2px;
+  border-radius:999px;
+  background:color-mix(in srgb, var(--muted) 88%, var(--text));
+  pointer-events:none;
+  transition:background .16s ease;
+}
+:where(.upload-floating-field, .series-floating-field, .smm-floating-field, .other-settings-floating-field):has(select)::before{
+  right:23px;
+  transform:translateY(-50%) rotate(45deg);
+}
+:where(.upload-floating-field, .series-floating-field, .smm-floating-field, .other-settings-floating-field):has(select)::after{
+  right:18px;
+  transform:translateY(-50%) rotate(-45deg);
+}
+:where(.contact-floating-field__label, .upload-floating-label, .series-floating-label, .smm-floating-label, .other-settings-floating-label, .login-floating-label){
+  position:absolute;
+  left:var(--floating-label-inline-offset-x);
+  top:var(--floating-label-inline-top);
+  transform:translateY(-50%);
+  color:var(--muted);
+  pointer-events:none;
+  transition:top .16s ease, transform .16s ease, font-size .16s ease, color .16s ease;
+  font-size:var(--floating-label-font-size);
+  line-height:1;
+  background:transparent;
+}
+.contact-floating-field:focus-within .contact-floating-field__label,
+.contact-floating-field.has-value .contact-floating-field__label,
+.upload-floating-field:focus-within .upload-floating-label,
+.upload-floating-field.has-value .upload-floating-label,
+.series-floating-field:focus-within .series-floating-label,
+.series-floating-field.has-value .series-floating-label,
+.smm-floating-field:focus-within .smm-floating-label,
+.smm-floating-field.has-value .smm-floating-label,
+.other-settings-floating-field:focus-within .other-settings-floating-label,
+.other-settings-floating-field.has-value .other-settings-floating-label,
+.login-field:focus-within .login-floating-label,
+.login-input:not(:placeholder-shown) + .login-floating-label{
+  top:var(--floating-label-float-top);
+  transform:none;
+  font-size:var(--floating-label-float-font-size);
+  color:var(--accent);
+}
+.contact-floating-field input:-webkit-autofill ~ .contact-floating-field__label,
+.contact-floating-field input:autofill ~ .contact-floating-field__label,
+.upload-floating-field input:-webkit-autofill ~ .upload-floating-label,
+.upload-floating-field input:autofill ~ .upload-floating-label,
+.series-floating-field input:-webkit-autofill ~ .series-floating-label,
+.series-floating-field input:autofill ~ .series-floating-label,
+.smm-floating-field input:-webkit-autofill ~ .smm-floating-label,
+.smm-floating-field input:autofill ~ .smm-floating-label,
+.other-settings-floating-field input:-webkit-autofill ~ .other-settings-floating-label,
+.other-settings-floating-field input:autofill ~ .other-settings-floating-label,
+.login-input:-webkit-autofill + .login-floating-label,
+.login-input:autofill + .login-floating-label{
+  top:var(--floating-label-float-top);
+  transform:none;
+  font-size:var(--floating-label-float-font-size);
+  color:var(--accent);
+}
 
 body.home-animated{
   background:
@@ -174,12 +298,10 @@ img{max-width:100%;display:block}
 .brand-logo-image{
   display:block;
   width:min(220px, 44vw);
+  max-height:54px;
   height:auto;
-  transition: width .2s ease;
-}
-.brand-logo-stack{
-  display:block;
-  line-height:0;
+  object-fit:contain;
+  transition: width .2s ease, max-height .2s ease;
 }
 .brand-logo-combo{
   display:inline-flex;
@@ -196,7 +318,8 @@ img{max-width:100%;display:block}
   display:block;
   width:min(54px, 12vw);
   height:auto;
-  border: 1px solid #666666;
+  box-sizing:border-box;
+  border:var(--banner-logo-border-width, 1px) solid var(--banner-logo-border-color, #871818);
   /* border-radius: 26px;  */
 }
 .brand-logo-wordmark-image{
@@ -225,6 +348,8 @@ img{max-width:100%;display:block}
 .brand-logo-canvas--icon{
   width:min(54px, 12vw);
   aspect-ratio: var(--brand-logo-ratio, 1);
+  box-sizing:border-box;
+  border:var(--banner-logo-border-width, 1px) solid var(--banner-logo-border-color, #871818);
 }
 .brand-logo-canvas canvas{
   display:block;
@@ -357,9 +482,7 @@ html.nav-compact .nav{
 }
 html.nav-compact .brand-logo-image{
   width:min(184px, 38vw);
-}
-html.nav-compact .brand-logo-icon-image{
-  width:min(44px, 10vw);
+  max-height:44px;
 }
 html.nav-compact .brand-logo-wordmark-image{
   width:min(148px, 28vw);
@@ -375,7 +498,7 @@ html.nav-compact .brand-logo-canvas--icon{
   display:inline-flex; align-items:center; justify-content:center;
   padding:7px 11px;
   border:1px solid var(--line);
-  border-radius:999px;
+  border-radius:8px;
   background:transparent;
   color:var(--text);
   cursor:pointer;
@@ -811,8 +934,8 @@ select option{
   color: var(--text);
 }
 
-/* Keep selects aligned with inputs inside .field blocks */
-.field select{
+/* Keep plain selects aligned with inputs inside .field blocks */
+.field:not(.upload-floating-field):not(.series-floating-field):not(.smm-floating-field):not(.other-settings-floating-field) select{
   margin-top:6px;
 }
 
@@ -926,3 +1049,11 @@ textarea::placeholder{
   border-color: rgba(255,80,80,.28);
   background: rgba(255,80,80,.10);
 }
+
+
+
+
+
+
+
+

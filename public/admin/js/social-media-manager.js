@@ -8,6 +8,7 @@ import {
   parseTagsInput,
   resolvePlatformIconSrc
 } from "./social-platform-utils.js";
+import { bindFloatingField } from "../../assets/js/floating-fields.js";
 
 ensureBaseStyles();
 setYearFooter();
@@ -192,6 +193,12 @@ function ensureSocialManagerStyles() {
       display:grid;
       gap:16px;
     }
+    .smm-text-stack .smm-floating-field textarea{
+      padding-top:calc(var(--floating-control-padding-top) + 10px);
+    }
+    .smm-grid--auth .smm-floating-field textarea{
+      padding-top:calc(var(--floating-control-padding-top) + 10px);
+    }
     .smm-divider{
       height:1px;
       margin:18px 0;
@@ -215,48 +222,52 @@ function ensureSocialManagerStyles() {
       margin-top:0;
       min-width:0;
     }
-    .smm-panel .field > label:first-child,
-    .smm-panel .field > .sub:first-child{
-      display:block;
-      margin-bottom:8px;
+    .smm-panel .smm-floating-field input,
+    .smm-panel .smm-floating-field select,
+    .smm-panel .smm-floating-field textarea{
+      min-height:var(--floating-control-min-height);
+      padding:var(--floating-control-padding-top) 12px var(--floating-control-padding-bottom);
     }
-    .smm-panel input,
-    .smm-panel select,
-    .smm-panel textarea{
-      font-size:15px;
-      background: color-mix(in srgb, var(--bg) 34%, var(--panel));
-      border-color: color-mix(in srgb, var(--smm-active-color, var(--accent)) 34%, var(--line));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 8px 18px rgba(0,0,0,.12);
-    }
-    .smm-panel input:hover,
-    .smm-panel select:hover,
-    .smm-panel textarea:hover{
+    .smm-panel .smm-floating-field input:hover,
+    .smm-panel .smm-floating-field select:hover,
+    .smm-panel .smm-floating-field textarea:hover{
       border-color: color-mix(in srgb, var(--smm-active-color, var(--accent)) 52%, var(--line));
       background: color-mix(in srgb, var(--bg) 28%, var(--panel));
     }
-    .smm-panel input:focus,
-    .smm-panel select:focus,
-    .smm-panel textarea:focus{
+    .smm-panel .smm-floating-field:hover:has(select)::before,
+    .smm-panel .smm-floating-field:hover:has(select)::after,
+    .smm-panel .smm-floating-field:focus-within:has(select)::before,
+    .smm-panel .smm-floating-field:focus-within:has(select)::after{
+      background: color-mix(in srgb, var(--smm-active-color, var(--accent)) 72%, white);
+    }
+    .smm-panel .smm-floating-field:has(select.smm-select-label-lower) .smm-floating-label{
+      top:calc(var(--floating-label-inline-top) + 2px);
+    }
+    .smm-panel .smm-floating-field.has-value:has(select.smm-select-label-lower) .smm-floating-label,
+    .smm-panel .smm-floating-field:focus-within:has(select.smm-select-label-lower) .smm-floating-label{
+      top:3px;
+    }
+    .smm-panel .smm-floating-field select.smm-select-label-lower{
+      height:var(--floating-control-min-height);
+      min-height:var(--floating-control-min-height);
+      padding-top:24px;
+      padding-bottom:8px;
+      line-height:1.2;
+    }
+    .smm-panel .smm-floating-field input:focus,
+    .smm-panel .smm-floating-field select:focus,
+    .smm-panel .smm-floating-field textarea:focus{
       outline:none;
       border-color: color-mix(in srgb, var(--smm-active-color, var(--accent)) 72%, white);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--smm-active-color, var(--accent)) 18%, transparent), 0 10px 22px rgba(0,0,0,.18);
       background: color-mix(in srgb, var(--bg) 22%, var(--panel));
     }
-    .smm-panel input[readonly],
-    .smm-panel select:disabled{
+    .smm-panel .smm-floating-field input[readonly],
+    .smm-panel .smm-floating-field select:disabled{
       background: color-mix(in srgb, var(--bg) 18%, var(--panel));
       color: color-mix(in srgb, var(--muted) 82%, var(--text));
       border-color: color-mix(in srgb, var(--line) 92%, var(--smm-active-color, var(--accent)));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
-    }
-    .smm-panel textarea{
-      min-height:84px;
-    }
-    .smm-text-stack textarea{
-      min-height:44px;
-    }
-    .smm-grid--auth textarea{
-      min-height:44px;
     }
     .smm-actions{
       display:flex;
@@ -370,16 +381,45 @@ function selectOption(options, fallback = "") {
   return options.find((option) => cleanText(option).toLowerCase() === cleanFallback) || options[0] || fallback;
 }
 
+
 function field(label, input, hint = "") {
-  const nodes = [el("label", {}, label), input];
-  if (hint) nodes.push(el("div", { class: "sub" }, hint));
-  return el("div", { class: "field" }, ...nodes);
+  input.placeholder = " ";
+  input.setAttribute("aria-label", label);
+  const labelNode = el("label", { class: "smm-floating-label" }, label);
+  const node = el("div", { class: "field smm-floating-field" }, input, labelNode);
+  bindFloatingField(node, input);
+  if (hint) node.appendChild(el("div", { class: "sub" }, hint));
+  return node;
 }
 
 function fieldSpanAll(label, input, hint = "") {
   const node = field(label, input, hint);
   node.classList.add("smm-span-all");
   return node;
+}
+
+function bindInlineAuthLabel(fieldNode, input) {
+  if (!fieldNode || !input) return;
+  const label = fieldNode.querySelector('.smm-floating-label');
+  if (!label) return;
+  const sync = () => {
+    const active = document.activeElement === input;
+    const hasValue = !!String(input.value || '').trim();
+    if (active || hasValue) {
+      label.style.top = 'var(--floating-label-float-top)';
+      label.style.transform = 'none';
+      label.style.fontSize = 'var(--floating-label-float-font-size)';
+    } else {
+      label.style.top = 'var(--floating-label-inline-top)';
+      label.style.transform = 'translateY(-50%)';
+      label.style.fontSize = 'var(--floating-label-font-size)';
+    }
+  };
+  input.addEventListener('focus', sync);
+  input.addEventListener('blur', sync);
+  input.addEventListener('input', sync);
+  input.addEventListener('change', sync);
+  sync();
 }
 
 function saveIndicator() {
@@ -457,10 +497,12 @@ function renderPlatformPanel(platform) {
   nameInput.readOnly = true;
   nameInput.title = "Display name is fixed by the configured platform.";
   const categoryInput = createSelect(categoryOptions, selectOption(categoryOptions, record.category || "social"));
+  categoryInput.classList.add("smm-select-label-lower");
   categoryInput.disabled = true;
   categoryInput.title = "Category is fixed by the configured platform.";
   const iconLocationInput = createTextInput(record.iconLocation, "/assets/... or https://...");
   const postingModeInput = createSelect(["manual", "api"], cleanText(record.config?.postingMode || meta.postingModeDefault || "manual"));
+  postingModeInput.classList.add("smm-select-label-lower");
   const handleInput = createTextInput(record.config?.accountHandle, meta.handlePlaceholder);
   const profileUrlInput = createTextInput(record.config?.profileUrl, meta.profilePlaceholder);
   const accountIdInput = createTextInput(record.config?.accountId, meta.accountIdPlaceholder);
@@ -468,9 +510,27 @@ function renderPlatformPanel(platform) {
   const captionSuffixInput = createTextarea(record.config?.defaultCaptionSuffix, meta.suffixPlaceholder, 1);
   const notesInput = createTextarea(record.config?.notes, meta.notesPlaceholder, 1);
   const clientIdInput = createTextInput(record.auth?.clientId, meta.clientIdPlaceholder);
+  clientIdInput.classList.add("smm-auth-text-input");
+  clientIdInput.autocomplete = "off";
+  clientIdInput.setAttribute("autocapitalize", "off");
+  clientIdInput.setAttribute("autocorrect", "off");
+  clientIdInput.setAttribute("spellcheck", "false");
   const clientSecretInput = createTextInput(record.auth?.clientSecret, meta.clientSecretPlaceholder);
+  clientSecretInput.classList.add("smm-auth-text-input");
+  clientSecretInput.autocomplete = "new-password";
+  clientSecretInput.setAttribute("autocapitalize", "off");
+  clientSecretInput.setAttribute("autocorrect", "off");
+  clientSecretInput.setAttribute("spellcheck", "false");
   const accessTokenInput = createTextarea(record.auth?.accessToken, "", 1);
+  accessTokenInput.autocomplete = "off";
+  accessTokenInput.setAttribute("autocapitalize", "off");
+  accessTokenInput.setAttribute("autocorrect", "off");
+  accessTokenInput.setAttribute("spellcheck", "false");
   const refreshTokenInput = createTextarea(record.auth?.refreshToken, "", 1);
+  refreshTokenInput.autocomplete = "off";
+  refreshTokenInput.setAttribute("autocapitalize", "off");
+  refreshTokenInput.setAttribute("autocorrect", "off");
+  refreshTokenInput.setAttribute("spellcheck", "false");
   const enabledInput = el("input", { type: "checkbox" });
   enabledInput.checked = !!record.enabled;
   const enabledTrack = el("span", { class: "smm-switch-track", "aria-hidden": "true" }, el("span", { class: "smm-switch-thumb" }));
@@ -624,12 +684,20 @@ function renderPlatformPanel(platform) {
       field(meta.accountIdLabel, accountIdInput)
     ),
     el("div", { class: "smm-divider", "aria-hidden": "true" }),
-    el("div", { class: "smm-grid smm-grid--auth" },
-      field(meta.clientIdLabel, clientIdInput),
-      field(meta.clientSecretLabel, clientSecretInput),
-      field(meta.accessTokenLabel, accessTokenInput),
-      field(meta.refreshTokenLabel, refreshTokenInput)
-    )
+    (() => {
+      const clientIdField = field(meta.clientIdLabel, clientIdInput);
+      clientIdField.classList.add("smm-auth-inline-field");
+      bindInlineAuthLabel(clientIdField, clientIdInput);
+      const clientSecretField = field(meta.clientSecretLabel, clientSecretInput);
+      clientSecretField.classList.add("smm-auth-inline-field");
+      bindInlineAuthLabel(clientSecretField, clientSecretInput);
+      return el("div", { class: "smm-grid smm-grid--auth" },
+        clientIdField,
+        clientSecretField,
+        field(meta.accessTokenLabel, accessTokenInput),
+        field(meta.refreshTokenLabel, refreshTokenInput)
+      );
+    })()
   );
 
   panel.append(
@@ -758,4 +826,5 @@ platformCreateForm?.addEventListener("submit", async (e) => {
 });
 
 loadData();
+
 

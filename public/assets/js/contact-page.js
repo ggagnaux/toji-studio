@@ -1,4 +1,5 @@
 import { renderPublicHeader } from "./header.js";
+import { bindFloatingFields } from "./floating-fields.js";
 import { renderPublicFooter } from "./footer.js";
 import { initStickyHero } from "./site.js";
 import { qs, el } from "./content-utils.js";
@@ -7,8 +8,7 @@ renderPublicHeader({
   active: "contact",
   small: "contact",
   ctaText: "View Gallery",
-  ctaHref: "gallery.html",
-  brandLogoSrc: "assets/img/logo.png"
+  ctaHref: "gallery.html"
 });
 
 renderPublicFooter({

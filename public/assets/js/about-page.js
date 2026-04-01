@@ -6,8 +6,7 @@ renderPublicHeader({
   active: "about",
   small: "about",
   ctaText: "Inquire",
-  ctaHref: "contact.html",
-  brandLogoSrc: "assets/img/logo.png"
+  ctaHref: "contact.html"
 });
 
 renderPublicFooter({

@@ -4,6 +4,15 @@ $backendRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $publicRoot = Resolve-Path (Join-Path $backendRoot "..")
 $distRoot = Join-Path $backendRoot "dist"
 
+$serverEntry = Join-Path $backendRoot "src/server.js"
+$siteIndex = Join-Path $publicRoot "index.html"
+if (-not (Test-Path $serverEntry)) {
+  throw "Could not find server entry at $serverEntry"
+}
+if (-not (Test-Path $siteIndex)) {
+  throw "Could not find public site index at $siteIndex"
+}
+
 function Set-DistEnvToProduction {
   param(
     [Parameter(Mandatory = $true)]
@@ -87,9 +96,13 @@ if (Test-Path $lockFile) {
   Copy-Item -Path $lockFile -Destination $distRoot -Force
 }
 
-$envExample = Join-Path $backendRoot ".env.example"
-if (Test-Path $envExample) {
-  Copy-Item -Path $envExample -Destination $distRoot -Force
+$envExampleCandidates = @(
+  Join-Path $backendRoot ".env.example"
+  Join-Path $backendRoot ".env-EXAMPLE"
+)
+$envExample = $envExampleCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($envExample) {
+  Copy-Item -Path $envExample -Destination (Join-Path $distRoot ".env.example") -Force
 }
 
 $envFile = Join-Path $backendRoot ".env"

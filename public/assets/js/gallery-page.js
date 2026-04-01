@@ -2,14 +2,12 @@
     import { renderPublicFooter } from "./footer.js";
     import { el, slugifySeries, sortGallery, createArtworkLightboxController } from "./content-utils.js";
 
-    renderPublicHeader({
-      active: "gallery",
-      small: "gallery",
-      ctaText: "Inquire",
-      ctaHref: "contact.html",
-      //brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
-      brandLogoSrc: "assets/img/logo.png"
-    });
+	    renderPublicHeader({
+	      active: "gallery",
+	      small: "gallery",
+	      ctaText: "Inquire",
+	      ctaHref: "contact.html"
+	    });
     renderPublicFooter({
       rightHtml: `<a href="index.html">Home</a> &bull; <a href="gallery.html">Gallery</a> &bull; <a href="series.html">Series</a> &bull; <a href="contact.html">Contact</a> &bull; <a href="admin/index.html">Studio</a>`
     });

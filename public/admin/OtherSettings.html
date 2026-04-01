@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="js/admin-session-guard.js"></script>
   <title>Studio - Other Settings</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
   <link rel="stylesheet" href="css/OtherSettings.css" />
@@ -47,12 +48,14 @@
                 <p class="sub" style="margin-top:8px">Controls the background animation on the splash screen.</p>
 
 	                <div class="field" style="margin-top:12px">
-	                  <div style="display:flex; align-items:center; justify-content:flex-start; gap:10px; flex-wrap:wrap;">
-	                    <div class="sub">Active animation</div>
-	                    <button class="btn" id="splashPreviewBtn" type="button">Preview</button>
-	                  </div>
-	                  <select id="splashMode"></select>
-	                </div>
+  <div class="other-settings-inline-field-row">
+    <div class="other-settings-floating-field" id="splashModeField">
+      <select id="splashMode" aria-label="Active animation"></select>
+      <label class="other-settings-floating-label" for="splashMode">Active animation</label>
+    </div>
+    <button class="btn" id="splashPreviewBtn" type="button">Preview</button>
+  </div>
+</div>
 
 	                <div id="splashRandomOptions" style="display:none; margin-top:12px; border:1px solid var(--line); border-radius:12px; padding:10px;">
 	                  <label class="setting-toggle" style="cursor:pointer;">
@@ -63,8 +66,10 @@
                     <span class="sub">Change animation automatically while splash is open</span>
                   </label>
                   <div class="field" style="margin-top:10px">
-	                    <div class="sub">Change interval (seconds)</div>
-	                    <input id="splashRandomCycleSeconds" type="number" min="1" step="1" value="12" />
+	                    <div class="other-settings-floating-field" id="splashRandomCycleSecondsField">
+	                      <input id="splashRandomCycleSeconds" type="number" min="1" step="1" value="12" aria-label="Change interval (seconds)" />
+	                      <label class="other-settings-floating-label" for="splashRandomCycleSeconds">Change interval (seconds)</label>
+	                    </div>
 	                  </div>
 	                </div>
 
@@ -109,6 +114,18 @@
               <section class="other-settings-tabpane" id="otherPaneBanner" role="tabpanel" aria-labelledby="otherTabBanner" data-settings-pane="banner" hidden>
                 <p class="title" style="margin:0">Banner Logo</p>
                 <p class="sub" style="margin-top:8px">Optionally replace the header logo image with an animated canvas.</p>
+                <label class="setting-toggle" style="margin-top:12px; cursor:pointer;">
+                  <span class="switch">
+                    <input id="bannerLogoBorderEnabled" type="checkbox" />
+                    <span class="slider" aria-hidden="true"></span>
+                  </span>
+                  <span class="toggle-status-badge" id="bannerLogoBorderToggleBadge" aria-live="polite">Enabled</span>
+                  <span class="sub" id="bannerLogoBorderToggleLabel">Logo Border</span>
+                </label>
+                <div class="field banner-logo-border-color-field" style="margin-top:10px">
+                  <div class="sub">Border color</div>
+                  <input id="bannerLogoBorderColor" type="color" value="#871818" aria-label="Border color" />
+                </div>
                 <label class="setting-toggle" style="margin-top:10px; cursor:pointer;">
                   <span class="switch">
                     <input id="bannerBezierLogoEnabled" type="checkbox" />
@@ -118,12 +135,23 @@
                   <span class="sub" id="bannerBezierToggleLabel">Banner Animation</span>
                 </label>
                 <div class="field banner-animation-style-field" style="margin-top:10px">
-                  <div class="sub">Animation style</div>
-                  <select id="bannerLogoAnimationStyle">
-                    <option value="circles">White circles</option>
-                    <option value="plot">x/y function plot (no formula)</option>
-                    <option value="radar">Radar sweep</option>
-                  </select>
+                  <div class="other-settings-floating-field" id="bannerLogoAnimationStyleField">
+                    <select id="bannerLogoAnimationStyle" aria-label="Animation style">
+                      <option value="circles">White circles</option>
+                      <option value="plot">x/y function plot (no formula)</option>
+                      <option value="radar">Radar sweep</option>
+                    </select>
+                    <label class="other-settings-floating-label" for="bannerLogoAnimationStyle">Animation style</label>
+                  </div>
+                </div>
+                <div class="field banner-static-logo-field" style="margin-top:10px">
+                  <div class="sub">Static banner image</div>
+                  <div class="banner-static-logo-select-wrap"><select id="bannerStaticLogoSrc"></select></div>
+                  <div class="banner-logo-upload-row">
+                    <input id="bannerStaticLogoUpload" type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" />
+                    <button class="btn mini" id="bannerStaticLogoUploadBtn" type="button">Upload</button>
+                    <span class="sub" id="bannerStaticLogoUploadStatus" aria-live="polite"></span>
+                  </div>
                 </div>
               </section>
 
@@ -194,6 +222,11 @@
   <script type="module" src="./js/other-settings.js"></script>
 </body>
 </html>
+
+
+
+
+
 
 
 

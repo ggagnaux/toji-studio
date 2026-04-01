@@ -18,6 +18,7 @@ import {
   loadState,
   saveState
 } from "../admin.js";
+import { syncFloatingFields } from "../../assets/js/floating-fields.js";
 
 ensureBaseStyles();
 setYearFooter();
@@ -31,9 +32,13 @@ const SPLASH_RANDOM_CYCLE_SECONDS_KEY = "toji_splash_random_cycle_seconds_v1";
 const SPLASH_ALLOWED_MODES_KEY = "toji_splash_allowed_modes_v1";
 const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
 const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
+const BANNER_STATIC_LOGO_SRC_KEY = "toji_banner_static_logo_src_v1";
+const BANNER_LOGO_BORDER_ENABLED_KEY = "toji_banner_logo_border_enabled_v1";
+const BANNER_LOGO_BORDER_COLOR_KEY = "toji_banner_logo_border_color_v1";
 const TAG_CAP_KEY = "toji_ai_tag_cap_v1";
 const AI_FEATURES_ENABLED_KEY = "toji_ai_features_enabled_v1";
 const DEFAULT_CONTACT_EMAIL = "you@example.com";
+let bannerStaticLogoOptions = [];
 
 const DEFAULT_IMAGE_VARIANTS = Object.freeze({
   thumbMaxWidth: 560,
@@ -42,6 +47,7 @@ const DEFAULT_IMAGE_VARIANTS = Object.freeze({
   webQuality: 84
 });
 
+const splashModeField = document.getElementById("splashModeField");
 const splashMode = document.getElementById("splashMode");
 const splashModeCurrent = document.getElementById("splashModeCurrent");
 const splashAnimationEnabled = document.getElementById("splashAnimationEnabled");
@@ -49,6 +55,8 @@ const splashAnimationToggleBadge = document.getElementById("splashAnimationToggl
 const splashControlsBlock = document.getElementById("splashControlsBlock");
 const splashRandomOptions = document.getElementById("splashRandomOptions");
 const splashRandomCycleEnabled = document.getElementById("splashRandomCycleEnabled");
+const splashRandomCycleSecondsField = document.getElementById("splashRandomCycleSecondsField");
+const splashRandomCycleSecondsFieldWrapper = splashRandomCycleSecondsField?.closest(".field");
 const splashRandomCycleSeconds = document.getElementById("splashRandomCycleSeconds");
 const splashAllowedModes = document.getElementById("splashAllowedModes");
 const splashAllowedSummary = document.getElementById("splashAllowedSummary");
@@ -59,7 +67,18 @@ const splashClearAllowedBtn = document.getElementById("splashClearAllowedBtn");
 const bannerBezierLogoEnabled = document.getElementById("bannerBezierLogoEnabled");
 const bannerBezierToggleBadge = document.getElementById("bannerBezierToggleBadge");
 const bannerBezierToggleLabel = document.getElementById("bannerBezierToggleLabel");
+const bannerLogoAnimationStyleField = document.getElementById("bannerLogoAnimationStyleField");
 const bannerLogoAnimationStyle = document.getElementById("bannerLogoAnimationStyle");
+const bannerStaticLogoSrc = document.getElementById("bannerStaticLogoSrc");
+const bannerStaticLogoField = bannerStaticLogoSrc?.closest(".field");
+const bannerStaticLogoUpload = document.getElementById("bannerStaticLogoUpload");
+const bannerStaticLogoUploadBtn = document.getElementById("bannerStaticLogoUploadBtn");
+const bannerStaticLogoUploadStatus = document.getElementById("bannerStaticLogoUploadStatus");
+const bannerLogoBorderEnabled = document.getElementById("bannerLogoBorderEnabled");
+const bannerLogoBorderToggleBadge = document.getElementById("bannerLogoBorderToggleBadge");
+const bannerLogoBorderToggleLabel = document.getElementById("bannerLogoBorderToggleLabel");
+const bannerLogoBorderColor = document.getElementById("bannerLogoBorderColor");
+const bannerLogoBorderColorField = bannerLogoBorderColor?.closest(".field");
 const bannerLogoCurrent = document.getElementById("bannerLogoCurrent");
 const tagCap = document.getElementById("tagCap");
 const tagCapCurrent = document.getElementById("tagCapCurrent");
@@ -121,8 +140,180 @@ function normalizeBannerLogoAnimationStyle(value){
   return "circles";
 }
 
+function normalizeBannerStaticLogoSrc(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return bannerStaticLogoOptions[0]?.value || "";
+  const matchedOption = bannerStaticLogoOptions.find((option) =>
+    option.value === normalized || option.label === normalized || option.value.endsWith("/" + normalized)
+  );
+  if (matchedOption) return matchedOption.value;
+  if (/\.(png|jpe?g)$/i.test(normalized) && !normalized.includes("/") && !normalized.includes("\\")) return "/assets/img/logos/" + normalized;
+  return bannerStaticLogoOptions[0]?.value || normalized;
+}
+
+function normalizeBannerLogoBorderColor(value) {
+  const normalized = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(normalized) ? normalized : "#871818";
+}
+
+function setBannerStaticLogoUploadStatus(message = "", tone = "") {
+  if (!bannerStaticLogoUploadStatus) return;
+  bannerStaticLogoUploadStatus.textContent = message;
+  bannerStaticLogoUploadStatus.style.color = tone === "error"
+    ? "#d15353"
+    : tone === "success"
+      ? "var(--accent)"
+      : "";
+}
+
+function flashBannerStaticLogoPicker() {
+  if (!bannerStaticLogoUpload) return;
+  bannerStaticLogoUpload.classList.remove("other-settings-file-flash");
+  void bannerStaticLogoUpload.offsetWidth;
+  bannerStaticLogoUpload.classList.add("other-settings-file-flash");
+  window.setTimeout(() => {
+    bannerStaticLogoUpload.classList.remove("other-settings-file-flash");
+  }, 1500);
+  if (typeof bannerStaticLogoUpload.focus === "function") bannerStaticLogoUpload.focus();
+}
+
+function mapBannerLogoItems(items) {
+  return Array.isArray(items)
+    ? items
+      .map((item) => ({
+        value: String(item?.src || "").trim(),
+        label: String(item?.name || item?.src || "").trim()
+      }))
+      .filter((item) => item.value && item.label)
+    : [];
+}
+
+function populateBannerStaticLogoOptions(preferredValue = "") {
+  if (!bannerStaticLogoSrc) return "";
+  const normalizedPreferred = String(preferredValue || "").trim();
+  bannerStaticLogoSrc.innerHTML = bannerStaticLogoOptions.length
+    ? bannerStaticLogoOptions
+      .map((option) => `<option value="${option.value}">${option.label}</option>`)
+      .join("")
+    : `<option value="">No logo files found</option>`;
+  const nextValue = normalizeBannerStaticLogoSrc(
+    normalizedPreferred || bannerStaticLogoSrc.value || localStorage.getItem(BANNER_STATIC_LOGO_SRC_KEY)
+  );
+  bannerStaticLogoSrc.value = nextValue;
+  return nextValue;
+}
+
+function getBannerStaticLogoLabel(value) {
+  const normalized = normalizeBannerStaticLogoSrc(value);
+  return bannerStaticLogoOptions.find((option) => option.value === normalized)?.label || "Static image logo";
+}
+
+async function loadBannerStaticLogoOptions(preferredValue = "") {
+  if (!bannerStaticLogoSrc) return "";
+  const localPreferred = String(preferredValue || localStorage.getItem(BANNER_STATIC_LOGO_SRC_KEY) || "").trim();
+  try {
+    const res = await fetch(API_BASE + "/api/public/banner-logos", { credentials: "same-origin" });
+    const json = await res.json().catch(() => null);
+    bannerStaticLogoOptions = mapBannerLogoItems(json?.items);
+    const selectedValue = populateBannerStaticLogoOptions(localPreferred);
+    const statusMessage = bannerStaticLogoOptions.length
+      ? (getAdminToken()
+          ? bannerStaticLogoOptions.length + " logo file" + (bannerStaticLogoOptions.length === 1 ? "" : "s") + " loaded."
+          : "Logo files loaded. Sign in to upload new ones.")
+      : "No PNG or JPEG logo files found in assets/img/logos/.";
+    setBannerStaticLogoUploadStatus(statusMessage);
+    syncAllFloatingFields();
+    return selectedValue;
+  } catch (error) {
+    console.warn("Failed to load banner logo files.", error);
+    bannerStaticLogoOptions = [];
+    const selectedValue = populateBannerStaticLogoOptions(localPreferred);
+    setBannerStaticLogoUploadStatus(`Failed to load logo files: ${error?.message || error}`, "error");
+    syncAllFloatingFields();
+    return selectedValue;
+  }
+}
+
+async function uploadBannerStaticLogoFile() {
+  const file = bannerStaticLogoUpload?.files?.[0];
+  if (!file) {
+    flashBannerStaticLogoPicker();
+    setBannerStaticLogoUploadStatus("Choose a PNG or JPEG file to upload.", "error");
+    return;
+  }
+  if (!getAdminToken()) {
+    setBannerStaticLogoUploadStatus("Sign in to upload logo files.", "error");
+    return;
+  }
+  setBannerStaticLogoUploadStatus(`Uploading ${file.name}...`);
+  const body = new FormData();
+  body.append("file", file);
+  if (bannerStaticLogoUploadBtn) bannerStaticLogoUploadBtn.disabled = true;
+  try {
+    const json = await apiFetch("/api/admin/banner-logos", { method: "POST", body });
+    bannerStaticLogoOptions = mapBannerLogoItems(json?.items);
+    const selectedValue = String(json?.item?.src || "").trim();
+    populateBannerStaticLogoOptions(selectedValue);
+    if (bannerStaticLogoUpload) bannerStaticLogoUpload.value = "";
+    persistSettings({ refreshBanner: true });
+    setBannerStaticLogoUploadStatus(`Uploaded ${json?.item?.name || file.name}.`, "success");
+  } catch (error) {
+    setBannerStaticLogoUploadStatus(`Upload failed: ${error?.message || error}`, "error");
+  } finally {
+    if (bannerStaticLogoUploadBtn) bannerStaticLogoUploadBtn.disabled = false;
+  }
+}
+
 function normalizeContactEmail(value){
   return String(value || "").trim();
+}
+
+function syncFloatingFieldState(field, control) {
+  if (!field || !control) return;
+  field.classList.toggle("has-value", !!String(control.value ?? "").trim());
+}
+
+function bindFloatingField(field, control) {
+  if (!field || !control || field.dataset.floatingBound === "1") return;
+  const sync = () => syncFloatingFieldState(field, control);
+  control.addEventListener("input", sync);
+  control.addEventListener("change", sync);
+  control.addEventListener("blur", sync);
+  field.dataset.floatingBound = "1";
+  sync();
+}
+
+function syncAllFloatingFields(root = document) {
+  syncFloatingFields(root, ".other-settings-floating-field");
+}
+
+function enhanceOtherSettingsFloatingFields(root = document) {
+  root.querySelectorAll(".other-settings-tabpane .field").forEach((field) => {
+    const directChildren = Array.from(field.children || []);
+    let floatingField = directChildren.find((node) => node.classList?.contains("other-settings-floating-field"));
+    if (!floatingField) {
+      const labelNode = directChildren.find((node) => node.classList?.contains("sub"));
+      const control = directChildren.find((node) => /^(INPUT|SELECT|TEXTAREA)$/.test(node.tagName || ""));
+      if (!labelNode || !control) return;
+      const labelText = String(labelNode.textContent || "").trim();
+      if (!labelText) return;
+      floatingField = document.createElement("div");
+      floatingField.className = "other-settings-floating-field";
+      if (control.id && !floatingField.id) floatingField.id = control.id + "Field";
+      control.setAttribute("aria-label", control.getAttribute("aria-label") || labelText);
+      if (control.tagName !== "SELECT") control.setAttribute("placeholder", " ");
+      const floatingLabel = document.createElement("label");
+      floatingLabel.className = "other-settings-floating-label";
+      if (control.id) floatingLabel.htmlFor = control.id;
+      floatingLabel.textContent = labelText;
+      labelNode.remove();
+      field.prepend(floatingField);
+      floatingField.append(control, floatingLabel);
+    }
+    const control = floatingField.querySelector("input, select, textarea");
+    if (control) bindFloatingField(floatingField, control);
+  });
+  syncAllFloatingFields(root);
 }
 
 function normalizeTagCap(value){
@@ -170,14 +361,30 @@ function applySplashSettingsToLocalStorage(settings) {
   return normalized;
 }
 
-function populateSplashModeOptions() {
-  if (!splashMode) return;
-  const currentValue = normalizeSplashMode(splashMode.value || localStorage.getItem(SPLASH_MODE_KEY));
+function getEffectiveSplashMode(mode, allowedModes = []) {
+  const normalizedMode = normalizeSplashMode(mode);
+  const normalizedAllowedModes = normalizeAllowedSplashModes(allowedModes);
+  if (normalizedMode === "random") return "random";
+  if (normalizedAllowedModes.includes(normalizedMode)) return normalizedMode;
+  return normalizedAllowedModes[0] || "random";
+}
+
+function populateSplashModeOptions(allowedModes = null, preferredMode = null) {
+  if (!splashMode) return "random";
+  const normalizedAllowedModes = normalizeAllowedSplashModes(
+    allowedModes == null ? getSelectedAllowedSplashModes() : allowedModes
+  );
+  const currentValue = preferredMode == null
+    ? normalizeSplashMode(splashMode.value || localStorage.getItem(SPLASH_MODE_KEY))
+    : normalizeSplashMode(preferredMode);
+  const availableCatalog = SPLASH_MODE_CATALOG.filter((mode) => normalizedAllowedModes.includes(mode.id));
   splashMode.innerHTML = [
     `<option value="random">Randomize each visit</option>`,
-    ...SPLASH_MODE_CATALOG.map((mode) => `<option value="${mode.id}">${mode.label}</option>`)
+    ...availableCatalog.map((mode) => `<option value="${mode.id}">${mode.label}</option>`)
   ].join("");
-  splashMode.value = currentValue;
+  const effectiveMode = getEffectiveSplashMode(currentValue, normalizedAllowedModes);
+  splashMode.value = effectiveMode;
+  return effectiveMode;
 }
 
 function getSelectedAllowedSplashModes() {
@@ -257,6 +464,7 @@ function renderImageVariantSettings(settings) {
     imageVariantCurrent.textContent =
       `Variants: thumb ${normalized.thumbMaxWidth}px @ q${normalized.thumbQuality}, web ${normalized.webMaxWidth}px @ q${normalized.webQuality}`;
   }
+  syncAllFloatingFields();
 }
 
 function ensureAdminStateSettings() {
@@ -274,6 +482,7 @@ function renderContactSettings(note = "") {
       ? `Contact email: ${email} (${note})`
       : `Contact email: ${email}`;
   }
+  syncAllFloatingFields();
 }
 
 async function loadContactSettings() {
@@ -363,7 +572,11 @@ async function openSplashPreviewModal() {
   splashPreviewModal.hidden = false;
   document.body.classList.add("other-settings-modal-open");
   const selectedMode = normalizeSplashMode(splashMode?.value);
-  const preferredMode = selectedMode === "random" ? "nodes" : selectedMode;
+  const allowedModes = normalizeAllowedSplashModes(getSelectedAllowedSplashModes());
+  const previewPool = allowedModes.length ? allowedModes : SPLASH_PREVIEW_MODE_ORDER;
+  const preferredMode = selectedMode === "random"
+    ? previewPool[Math.floor(Math.random() * previewPool.length)] || "nodes"
+    : selectedMode;
   const foundIndex = SPLASH_PREVIEW_MODE_ORDER.indexOf(preferredMode);
   splashPreviewModeIndex = foundIndex >= 0 ? foundIndex : 0;
   await showSplashPreviewMode(splashPreviewModeIndex);
@@ -391,9 +604,6 @@ async function showSplashPreviewMode(index) {
   renderSplashPreviewMarkup();
 
   const previewMode = SPLASH_PREVIEW_MODE_ORDER[splashPreviewModeIndex];
-  localStorage.setItem(SPLASH_MODE_KEY, previewMode);
-  if (splashMode) splashMode.value = previewMode;
-  syncSplashModeUI();
   if (splashPreviewModeName) {
     splashPreviewModeName.textContent = `Animation: ${describeSplashMode(previewMode)}`;
   }
@@ -403,6 +613,7 @@ async function showSplashPreviewMode(index) {
     disableMouseInteraction: true,
     forceMode: previewMode
   });
+  document.getElementById("splashLogo")?.remove();
 }
 
 function cycleSplashPreviewMode(delta) {
@@ -422,11 +633,28 @@ function updateRandomizeControls(){
   if (splashControlsBlock) splashControlsBlock.classList.toggle("is-disabled", !splashEnabled);
   if (splashControlsBlock) splashControlsBlock.classList.add("other-settings-controls-block");
   if (splashRandomOptions) splashRandomOptions.style.display = isRandom ? "" : "none";
+  splashRandomCycleSecondsFieldWrapper?.classList.toggle("is-disabled-control", !isRandom || !splashRandomCycleEnabled?.checked);
   if (bannerLogoAnimationStyle) {
     const bannerStyleEnabled = !!bannerBezierLogoEnabled?.checked;
     bannerLogoAnimationStyle.disabled = !bannerStyleEnabled;
     const bannerStyleField = bannerLogoAnimationStyle.closest(".field");
     bannerStyleField?.classList.toggle("is-disabled-control", !bannerStyleEnabled);
+  }
+  if (bannerStaticLogoSrc) {
+    const bannerStaticEnabled = !bannerBezierLogoEnabled?.checked;
+    bannerStaticLogoSrc.disabled = !bannerStaticEnabled;
+    if (bannerStaticLogoUpload) {
+      bannerStaticLogoUpload.disabled = !bannerStaticEnabled;
+      if (!bannerStaticEnabled) bannerStaticLogoUpload.value = "";
+    }
+    if (bannerStaticLogoUploadBtn) bannerStaticLogoUploadBtn.disabled = !bannerStaticEnabled;
+    if (!bannerStaticEnabled) setBannerStaticLogoUploadStatus("");
+    bannerStaticLogoField?.classList.toggle("is-disabled-control", !bannerStaticEnabled);
+  }
+  if (bannerLogoBorderColor) {
+    const borderEnabled = !!bannerLogoBorderEnabled?.checked;
+    bannerLogoBorderColor.disabled = !borderEnabled;
+    bannerLogoBorderColorField?.classList.toggle("is-disabled-control", !borderEnabled);
   }
 
   const aiEnabled = !!aiFeaturesEnabled?.checked;
@@ -492,16 +720,23 @@ function ensureStaticBannerIconMarkup(){
 function syncSplashModeUI(){
   const splashSettings = getSplashSettingsFromLocalStorage();
   const { enabled: splashEnabled, mode, randomCycleEnabled: cycleEnabled, randomCycleSeconds: cycleSeconds, allowedModes } = splashSettings;
-  if (splashMode) splashMode.value = mode;
+  const effectiveMode = populateSplashModeOptions(allowedModes, mode);
+  syncFloatingFieldState(splashModeField, splashMode);
   const bannerBezierEnabled = localStorage.getItem(BANNER_BEZIER_LOGO_ENABLED_KEY) === "1";
   const bannerAnimationStyle = normalizeBannerLogoAnimationStyle(
     localStorage.getItem(BANNER_LOGO_ANIMATION_MODE_KEY)
   );
+  const bannerStaticLogo = normalizeBannerStaticLogoSrc(
+    localStorage.getItem(BANNER_STATIC_LOGO_SRC_KEY)
+  );
+  const bannerBorderEnabled = localStorage.getItem(BANNER_LOGO_BORDER_ENABLED_KEY) !== "0";
+  const bannerBorderColor = normalizeBannerLogoBorderColor(localStorage.getItem(BANNER_LOGO_BORDER_COLOR_KEY));
   const savedTagCap = normalizeTagCap(localStorage.getItem(TAG_CAP_KEY));
   const aiEnabled = localStorage.getItem(AI_FEATURES_ENABLED_KEY) !== "0";
   if (splashAnimationEnabled) splashAnimationEnabled.checked = splashEnabled;
   if (splashRandomCycleEnabled) splashRandomCycleEnabled.checked = cycleEnabled;
   if (splashRandomCycleSeconds) splashRandomCycleSeconds.value = String(cycleSeconds);
+  syncFloatingFieldState(splashRandomCycleSecondsField, splashRandomCycleSeconds);
   if (splashAllowedModes) {
     const allowedSet = new Set(allowedModes);
     Array.from(splashAllowedModes.querySelectorAll("[data-splash-allowed-mode]")).forEach((input) => {
@@ -510,16 +745,22 @@ function syncSplashModeUI(){
   }
   if (bannerBezierLogoEnabled) bannerBezierLogoEnabled.checked = bannerBezierEnabled;
   if (bannerLogoAnimationStyle) bannerLogoAnimationStyle.value = bannerAnimationStyle;
+  syncFloatingFieldState(bannerLogoAnimationStyleField, bannerLogoAnimationStyle);
+  if (bannerStaticLogoSrc) bannerStaticLogoSrc.value = bannerStaticLogo;
+  syncFloatingFieldState(bannerStaticLogoSrc?.closest(".other-settings-floating-field") || bannerStaticLogoField, bannerStaticLogoSrc);
+  if (bannerLogoBorderEnabled) bannerLogoBorderEnabled.checked = bannerBorderEnabled;
+  if (bannerLogoBorderColor) bannerLogoBorderColor.value = bannerBorderColor;
   if (tagCap) tagCap.value = String(savedTagCap);
   if (aiFeaturesEnabled) aiFeaturesEnabled.checked = aiEnabled;
+  syncAllFloatingFields();
 
   if (splashModeCurrent) {
-    const cycleText = mode === "random"
+    const cycleText = effectiveMode === "random"
       ? ` | Auto change: ${cycleEnabled ? `On (${cycleSeconds}s)` : "Off"}`
       : "";
     const allowedText = ` | Allowed: ${allowedModes.length}/${SPLASH_MODE_IDS.length}`;
     splashModeCurrent.textContent = splashEnabled
-      ? `Current: ${describeSplashMode(mode)}${cycleText}${allowedText}`
+      ? `Current: ${describeSplashMode(effectiveMode)}${cycleText}${allowedText}`
       : "Current: Disabled";
   }
   if (splashAllowedSummary) {
@@ -543,7 +784,7 @@ function syncSplashModeUI(){
     splashAnimationToggleBadge.classList.toggle("is-disabled", !splashEnabled);
   }
   if (bannerLogoCurrent) {
-    if (!bannerBezierEnabled) bannerLogoCurrent.textContent = "Banner: Static image logo";
+    if (!bannerBezierEnabled) bannerLogoCurrent.textContent = `Banner: Static ${getBannerStaticLogoLabel(bannerStaticLogo)}`;
     else bannerLogoCurrent.textContent = `Banner: Animated ${bannerAnimationStyle === "plot" ? "x/y plot" : bannerAnimationStyle === "radar" ? "radar" : "circles"} canvas`;
   }
   if (bannerBezierToggleLabel) bannerBezierToggleLabel.style.color = "";
@@ -551,6 +792,12 @@ function syncSplashModeUI(){
     bannerBezierToggleBadge.textContent = bannerBezierEnabled ? "Enabled" : "Disabled";
     bannerBezierToggleBadge.classList.toggle("is-enabled", bannerBezierEnabled);
     bannerBezierToggleBadge.classList.toggle("is-disabled", !bannerBezierEnabled);
+  }
+  if (bannerLogoBorderToggleLabel) bannerLogoBorderToggleLabel.style.color = "";
+  if (bannerLogoBorderToggleBadge) {
+    bannerLogoBorderToggleBadge.textContent = bannerBorderEnabled ? "Enabled" : "Disabled";
+    bannerLogoBorderToggleBadge.classList.toggle("is-enabled", bannerBorderEnabled);
+    bannerLogoBorderToggleBadge.classList.toggle("is-disabled", !bannerBorderEnabled);
   }
   if (tagCapCurrent) tagCapCurrent.textContent = `Tag cap: ${savedTagCap}`;
   if (aiFeaturesCurrent) aiFeaturesCurrent.textContent = `AI features: ${aiEnabled ? "Enabled" : "Disabled"}`;
@@ -600,12 +847,16 @@ ensureAdminStateSettings();
 
 function persistSettings({ refreshBanner = false } = {}){
   const splashEnabled = !!splashAnimationEnabled?.checked;
-  const mode = normalizeSplashMode(splashMode?.value);
+  const allowedModes = getSelectedAllowedSplashModes();
+  const mode = getEffectiveSplashMode(splashMode?.value, allowedModes);
+  if (splashMode) splashMode.value = mode;
   const cycleEnabled = !!splashRandomCycleEnabled?.checked;
   const cycleSeconds = normalizeCycleSeconds(splashRandomCycleSeconds?.value);
-  const allowedModes = getSelectedAllowedSplashModes();
   const bannerBezierEnabled = !!bannerBezierLogoEnabled?.checked;
   const bannerAnimationStyle = normalizeBannerLogoAnimationStyle(bannerLogoAnimationStyle?.value);
+  const bannerStaticLogo = normalizeBannerStaticLogoSrc(bannerStaticLogoSrc?.value);
+  const bannerBorderEnabled = !!bannerLogoBorderEnabled?.checked;
+  const bannerBorderColor = normalizeBannerLogoBorderColor(bannerLogoBorderColor?.value);
   const savedTagCap = normalizeTagCap(tagCap?.value);
   const aiEnabled = !!aiFeaturesEnabled?.checked;
   applySplashSettingsToLocalStorage({
@@ -617,6 +868,9 @@ function persistSettings({ refreshBanner = false } = {}){
   });
   localStorage.setItem(BANNER_BEZIER_LOGO_ENABLED_KEY, bannerBezierEnabled ? "1" : "0");
   localStorage.setItem(BANNER_LOGO_ANIMATION_MODE_KEY, bannerAnimationStyle);
+  localStorage.setItem(BANNER_STATIC_LOGO_SRC_KEY, bannerStaticLogo);
+  localStorage.setItem(BANNER_LOGO_BORDER_ENABLED_KEY, bannerBorderEnabled ? "1" : "0");
+  localStorage.setItem(BANNER_LOGO_BORDER_COLOR_KEY, bannerBorderColor);
   localStorage.setItem(TAG_CAP_KEY, String(savedTagCap));
   localStorage.setItem(AI_FEATURES_ENABLED_KEY, aiEnabled ? "1" : "0");
   syncSplashModeUI();
@@ -665,7 +919,13 @@ async function saveImageVariantSettings() {
 
 
 
+enhanceOtherSettingsFloatingFields();
+await loadBannerStaticLogoOptions();
 populateSplashModeOptions();
+bindFloatingField(splashModeField, splashMode);
+bindFloatingField(splashRandomCycleSecondsField, splashRandomCycleSeconds);
+bindFloatingField(bannerLogoAnimationStyleField, bannerLogoAnimationStyle);
+bindFloatingField(bannerStaticLogoSrc?.closest(".other-settings-floating-field"), bannerStaticLogoSrc);
 renderSplashAllowedModes();
 syncSplashModeUI();
 await loadSplashSettings();
@@ -721,6 +981,38 @@ bannerBezierLogoEnabled?.addEventListener("change", () => {
 
 bannerLogoAnimationStyle?.addEventListener("change", () => {
   persistSettings({ refreshBanner: true });
+});
+
+bannerStaticLogoSrc?.addEventListener("change", () => {
+  persistSettings({ refreshBanner: true });
+});
+
+bannerLogoBorderEnabled?.addEventListener("change", () => {
+  updateRandomizeControls();
+  persistSettings({ refreshBanner: true });
+});
+
+bannerLogoBorderColor?.addEventListener("input", () => {
+  persistSettings({ refreshBanner: true });
+});
+
+bannerLogoBorderEnabled?.addEventListener("change", () => {
+  updateRandomizeControls();
+  persistSettings({ refreshBanner: true });
+});
+
+bannerLogoBorderColor?.addEventListener("input", () => {
+  persistSettings({ refreshBanner: true });
+});
+
+bannerStaticLogoUploadBtn?.addEventListener("click", () => {
+  if (bannerStaticLogoUploadBtn.disabled || bannerBezierLogoEnabled?.checked) return;
+  void uploadBannerStaticLogoFile();
+});
+
+bannerStaticLogoUpload?.addEventListener("change", () => {
+  const file = bannerStaticLogoUpload.files?.[0];
+  setBannerStaticLogoUploadStatus(file ? `Ready to upload ${file.name}` : "");
 });
 
 tagCap?.addEventListener("change", () => {
@@ -808,6 +1100,14 @@ window.addEventListener("keydown", (event) => {
     cycleSplashPreviewMode(1);
   }
 });
+
+
+
+
+
+
+
+
 
 
 

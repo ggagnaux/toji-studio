@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="js/admin-session-guard.js"></script>
   <title>Studio - Upload</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
   <link rel="stylesheet" href="css/upload.css" />
@@ -22,7 +23,7 @@
       <aside class="sidebar" aria-label="Studio navigation"></aside>
       <section>
     <section class="grid">
-      <div class="card" style="grid-column: span 7">
+      <div class="card upload-primary-card" style="grid-column: span 7">
 	        <div class="meta">
 	          <div id="uploadOriginalsPanel" class="upload-section upload-section-originals">
 
@@ -86,21 +87,24 @@
               <div class="sub">Available Tags</div>
               <div id="tagPills" class="pillrow" style="min-height:40px"></div>
               <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center">
-                <input id="newTagInput" placeholder="Add tag(s): abstract, cosmic" />
+                <div class="field upload-floating-field upload-floating-field--grow" id="newTagField" style="margin-top:0">
+                  <input id="newTagInput" placeholder=" " aria-labelledby="newTagLabel" />
+                  <label class="upload-floating-label" id="newTagLabel" for="newTagInput">Add tag(s): abstract, cosmic</label>
+                </div>
                 <button class="btn" id="addTagBtn" type="button">Add tag</button>
               </div>
             </div>
 
-            <div class="field">
-              <div class="sub">Series</div>
-              <select id="series">
+            <div class="field upload-floating-field" id="seriesField">
+              <select id="series" aria-labelledby="seriesLabel">
                 <option value="">No change</option>
               </select>
+              <label class="upload-floating-label" id="seriesLabel" for="series">Series</label>
             </div>
 
-            <div class="field">
-              <div class="sub">Year</div>
-              <input id="year" placeholder="2026" />
+            <div class="field upload-floating-field" id="yearField">
+              <input id="year" placeholder=" " aria-labelledby="yearLabel" />
+              <label class="upload-floating-label" id="yearLabel" for="year">Year</label>
             </div>
 
 	              <div class="field">
@@ -123,7 +127,7 @@
         </div>
       </div>
 
-      <div class="card" style="grid-column: span 5">
+      <div class="card upload-secondary-card" style="grid-column: span 5">
         <div class="meta">
           <p class="title">New uploads</p>
           <p class="sub">Created in this session:</p>

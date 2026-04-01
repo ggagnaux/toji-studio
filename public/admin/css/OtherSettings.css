@@ -150,7 +150,8 @@
       border-radius:12px;
       background:color-mix(in srgb, var(--surface) 80%, transparent);
     }
-    .field.is-disabled-control .sub{
+    .field.is-disabled-control .sub,
+    .field.is-disabled-control .other-settings-floating-label{
       opacity:.38;
       filter:saturate(.45) brightness(.8);
     }
@@ -158,6 +159,27 @@
     .field.is-disabled-control input{
       opacity:.34;
       filter:saturate(.4) brightness(.78);
+    }
+    .other-settings-inline-field-row{
+      display:flex;
+      align-items:flex-end;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .other-settings-inline-field-row > .other-settings-floating-field{
+      flex:0 1 280px;
+    }
+    .other-settings-inline-field-row > .btn{
+      flex:0 0 auto;
+    }
+    #splashModeField{
+      width:min(280px, 100%);
+    }
+    #bannerLogoAnimationStyleField{
+      width:min(320px, 100%);
+    }
+    #splashRandomCycleSecondsField{
+      width:min(220px, 100%);
     }
     #splashPreviewBtn:disabled{
       opacity:.38;
@@ -173,6 +195,184 @@
     }
     .banner-animation-style-field{
       margin-left:14px;
+    }
+    .banner-static-logo-select-wrap{
+      position:relative;
+      width:min(100%, 420px);
+    }
+    .banner-static-logo-field select{
+      width:100%;
+      appearance:none;
+      -webkit-appearance:none;
+      -moz-appearance:none;
+      padding-right:42px;
+      cursor:pointer;
+    }
+    .banner-static-logo-select-wrap::before,
+    .banner-static-logo-select-wrap::after{
+      content:"";
+      position:absolute;
+      top:50%;
+      width:9px;
+      height:2px;
+      border-radius:999px;
+      background:color-mix(in srgb, var(--muted) 88%, var(--text));
+      pointer-events:none;
+      transform-origin:center;
+      transition:background .16s ease;
+    }
+    .banner-static-logo-select-wrap::before{
+      right:23px;
+      transform:translateY(-50%) rotate(45deg);
+    }
+    .banner-static-logo-select-wrap::after{
+      right:18px;
+      transform:translateY(-50%) rotate(-45deg);
+    }
+    .banner-static-logo-select-wrap:hover::before,
+    .banner-static-logo-select-wrap:hover::after,
+    .banner-static-logo-select-wrap:focus-within::before,
+    .banner-static-logo-select-wrap:focus-within::after{
+      background:color-mix(in srgb, var(--other-settings-active-color, var(--accent)) 72%, white);
+    }
+    .banner-logo-border-color-field{
+      margin-left:14px;
+    }
+    .banner-logo-border-color-field input[type="color"]{
+      width:90px;
+      min-width:72px;
+      min-height:0;
+      height:28px;
+      padding:2px;
+      margin-top:4px;
+      appearance:none;
+      -webkit-appearance:none;
+      border:1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+      border-radius:10px;
+      background:linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.12);
+      cursor:pointer;
+    }
+    .banner-logo-border-color-field input[type="color"]:disabled{
+      opacity:.4;
+      cursor:not-allowed;
+      box-shadow:none;
+    }
+    .banner-logo-border-color-field input[type="color"]::-webkit-color-swatch-wrapper{
+      padding:0;
+      border-radius:8px;
+    }
+    .banner-logo-border-color-field input[type="color"]::-webkit-color-swatch{
+      border:0;
+      border-radius:8px;
+    }
+    .banner-logo-border-color-field input[type="color"]::-moz-color-swatch{
+      border:0;
+      border-radius:8px;
+    }
+    .banner-logo-upload-row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .banner-logo-upload-row input[type="file"]{
+      flex:1 1 340px;
+      max-width:min(100%, 420px);
+      min-height:46px;
+      padding:6px 8px;
+      border:1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+      border-radius:14px;
+      background:linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
+      color:var(--text);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.12);
+      transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+      cursor:pointer;
+    }
+    .banner-logo-upload-row input[type="file"]:hover{
+      border-color:color-mix(in srgb, var(--accent) 50%, var(--line));
+      background:linear-gradient(180deg, color-mix(in srgb, var(--surface) 88%, transparent), color-mix(in srgb, var(--panel) 96%, transparent));
+    }
+    .banner-logo-upload-row input[type="file"]:focus-visible{
+      outline:none;
+      border-color:color-mix(in srgb, var(--accent) 68%, var(--line));
+      box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), 0 10px 24px rgba(0,0,0,.14);
+    }
+    .banner-logo-upload-row input[type="file"]::file-selector-button{
+      margin-right:12px;
+      padding:8px 14px;
+      border:1px solid color-mix(in srgb, var(--accent) 42%, var(--line));
+      border-radius:10px;
+      background:color-mix(in srgb, var(--accent) 16%, var(--panel));
+      color:var(--text);
+      font:inherit;
+      font-size:14px;
+      line-height:1.1;
+      cursor:pointer;
+      transition:border-color .18s ease, background .18s ease, transform .18s ease;
+    }
+    .banner-logo-upload-row input[type="file"]:hover::file-selector-button,
+    .banner-logo-upload-row input[type="file"]:focus-visible::file-selector-button{
+      border-color:color-mix(in srgb, var(--accent) 64%, var(--line));
+      background:color-mix(in srgb, var(--accent) 22%, var(--panel));
+    }
+    .banner-logo-upload-row input[type="file"]:active::file-selector-button{
+      transform:translateY(1px);
+    }
+    .banner-logo-upload-row input[type="file"]:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+      box-shadow:none;
+    }
+    .banner-logo-upload-row input[type="file"]:disabled::file-selector-button{
+      cursor:not-allowed;
+    }
+    .banner-logo-upload-row .btn:disabled{
+      opacity:.45;
+      border-color:color-mix(in srgb, var(--line) 88%, transparent);
+      background:color-mix(in srgb, var(--panel) 78%, transparent);
+      color:color-mix(in srgb, var(--muted) 78%, var(--text));
+      box-shadow:none;
+      cursor:not-allowed;
+      pointer-events:none;
+    }
+    .banner-logo-upload-row .btn:disabled:hover{
+      border-color:color-mix(in srgb, var(--line) 88%, transparent);
+    }
+    .other-settings-file-flash{
+      animation:otherSettingsFileFlash 1.45s ease-in-out 1;
+    }
+    @keyframes otherSettingsFileFlash{
+      0%{
+        border-color:color-mix(in srgb, var(--accent) 28%, var(--line));
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.12);
+        background:linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
+      }
+      25%{
+        border-color:color-mix(in srgb, #ff7070 86%, var(--line));
+        box-shadow:0 0 0 6px color-mix(in srgb, #ff7070 42%, transparent), 0 10px 24px rgba(0,0,0,.14);
+        background:linear-gradient(180deg, color-mix(in srgb, #ffb2b2 28%, var(--surface)), color-mix(in srgb, #ffb2b2 18%, var(--panel)));
+      }
+      50%{
+        border-color:color-mix(in srgb, var(--accent) 28%, var(--line));
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.12);
+        background:linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
+      }
+      75%{
+        border-color:color-mix(in srgb, #ff7070 86%, var(--line));
+        box-shadow:0 0 0 6px color-mix(in srgb, #ff7070 42%, transparent), 0 10px 24px rgba(0,0,0,.14);
+        background:linear-gradient(180deg, color-mix(in srgb, #ffb2b2 28%, var(--surface)), color-mix(in srgb, #ffb2b2 18%, var(--panel)));
+      }
+      100%{
+        border-color:color-mix(in srgb, var(--accent) 28%, var(--line));
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.12);
+        background:linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, transparent), color-mix(in srgb, var(--panel) 92%, transparent));
+      }
+    }
+    .banner-logo-upload-row .sub{
+      margin:0;
+      min-height:1.4em;
     }
     .other-settings-chip-actions{
       display:flex;
@@ -365,3 +565,6 @@
         min-height:min(66vh, 460px);
       }
     }
+
+
+

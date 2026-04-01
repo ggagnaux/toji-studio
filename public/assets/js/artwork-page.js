@@ -4,14 +4,12 @@
     import { qs, el, sortBySortOrderAndDate } from "./content-utils.js";
 
     // Header/footers
-    renderPublicHeader({
-      active: "gallery",
-      small: "artwork",
-      ctaText: "Explore",
-      ctaHref: "gallery.html",
-      //brandLogoSrc: "assets/img/TojiStudios_LogoAndName_ForWebsite.png"
-      brandLogoSrc: "assets/img/logo.png"
-    });
+	    renderPublicHeader({
+	      active: "gallery",
+	      small: "artwork",
+	      ctaText: "Explore",
+	      ctaHref: "gallery.html"
+	    });
     renderPublicFooter({
       rightHtml: `<a href="index.html">Home</a> &bull; <a href="gallery.html">Gallery</a> &bull; <a href="series.html">Series</a> &bull; <a href="about.html">About</a> &bull; <a href="contact.html">Contact</a> &bull; <a href="admin/index.html">Studio</a>`
     });

@@ -1652,6 +1652,7 @@ This will also clear its series assignment from any existing artwork.
       );
       panel.appendChild(picker);
       backdrop.appendChild(panel);
+      document.body.appendChild(backdrop);
 
       renderTrigger();
       return el("div", { class:"field", style:"margin-top:12px" },

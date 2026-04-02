@@ -7,3 +7,4 @@ public/server/.env.*
 public/server/.env copy
 public/server/dist/
 
+/public/assets/img/logo_OLD.png

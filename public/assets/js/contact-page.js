@@ -170,16 +170,31 @@ floatingFields.forEach((field) => {
   control.addEventListener("blur", () => syncFloatingFieldState(control));
 });
 
+let contactToastHost = null;
+let activeContactToastState = null;
+const CONTACT_TOAST_MESSAGE_LIMIT = 6;
+const CONTACT_TOAST_TONE_PRIORITY = Object.freeze({
+  info: 0,
+  success: 1,
+  warn: 2,
+  error: 3
+});
+
 function ensureToastHost() {
+  if (contactToastHost && document.body.contains(contactToastHost)) return contactToastHost;
   let host = document.querySelector(".contact-toast-stack");
-  if (host) return host;
+  if (host) {
+    contactToastHost = host;
+    return host;
+  }
 
   const style = document.createElement("style");
   style.textContent = `
     .contact-toast-stack{
       position:fixed;
-      right:16px;
-      bottom:16px;
+      left:50%;
+      top:16px;
+      transform:translateX(-50%);
       display:grid;
       gap:10px;
       width:min(92vw,420px);
@@ -194,20 +209,71 @@ function ensureToastHost() {
       color:var(--text, #f8f7f4);
       box-shadow:0 14px 36px rgba(0,0,0,.2);
       padding:12px;
+      display:grid;
+      gap:10px;
       line-height:1.4;
+    }
+    .contact-toast--success{ border-color: color-mix(in srgb, #2ea97d 45%, rgba(255,255,255,.22)); }
+    .contact-toast--warn{ border-color: color-mix(in srgb, #e0aa3c 55%, rgba(255,255,255,.22)); }
+    .contact-toast--error{ border-color: color-mix(in srgb, #d15353 60%, rgba(255,255,255,.22)); animation: contactToastErrorPulse .9s ease-in-out 3; }
+    .contact-toast__messages{
+      display:grid;
+      gap:8px;
+    }
+    .contact-toast__entry{
+      margin:0;
       white-space:pre-line;
     }
-    .contact-toast__msg{
-      margin:0;
+    .contact-toast__entry + .contact-toast__entry{
+      padding-top:8px;
+      border-top:1px solid color-mix(in srgb, var(--line, rgba(255,255,255,.22)) 82%, transparent);
+    }
+    .contact-toast__entry--success{ color: color-mix(in srgb, var(--text, #f8f7f4) 88%, #2ea97d 12%); }
+    .contact-toast__entry--warn{ color: color-mix(in srgb, var(--text, #f8f7f4) 82%, #e0aa3c 18%); }
+    .contact-toast__entry--error{ color: color-mix(in srgb, var(--text, #f8f7f4) 78%, #d15353 22%); }
+    .contact-toast__actions{
+      display:flex;
+      gap:8px;
+      justify-content:flex-end;
+      flex-wrap:wrap;
     }
     .contact-toast__countdown{
-      margin-top:8px;
+      margin-right:auto;
       font-size:11px;
       line-height:1.2;
       letter-spacing:.01em;
       color:color-mix(in srgb, var(--muted, #bcc4d6) 80%, transparent);
-      text-align:right;
+      align-self:center;
       font-variant-numeric:tabular-nums;
+    }
+    .contact-toast__btn{
+      border-radius:10px;
+      border:1px solid color-mix(in srgb, var(--line, rgba(255,255,255,.22)) 80%, transparent);
+      background:transparent;
+      color:var(--text, #f8f7f4);
+      font:inherit;
+      padding:6px 10px;
+      cursor:pointer;
+    }
+    .contact-toast__btn:hover{
+      background:color-mix(in srgb, var(--panel, rgba(14,18,28,.94)) 78%, rgba(255,255,255,.08));
+    }
+    .contact-toast.is-closing{
+      opacity:0;
+      transform:translateY(8px);
+      transition:opacity .14s ease, transform .14s ease;
+    }
+    @keyframes contactToastErrorPulse{
+      0%, 100%{
+        border-color: color-mix(in srgb, #d15353 60%, rgba(255,255,255,.22));
+        background:color-mix(in srgb, var(--panel, rgba(14,18,28,.94)) 96%, transparent);
+        box-shadow:0 14px 36px rgba(0,0,0,.2);
+      }
+      50%{
+        border-color:#ff8a3d;
+        background:color-mix(in srgb, var(--panel, rgba(14,18,28,.94)) 72%, #5a1111 28%);
+        box-shadow:0 0 0 2px rgba(255,138,61,.55), 0 14px 36px rgba(0,0,0,.2);
+      }
     }
   `;
   document.head.appendChild(style);
@@ -216,41 +282,162 @@ function ensureToastHost() {
   host.className = "contact-toast-stack";
   host.setAttribute("aria-live", "polite");
   document.body.appendChild(host);
+  contactToastHost = host;
   return host;
 }
 
-function setStatus(msg) {
-  if (!msg) return;
-  const host = ensureToastHost();
-  const toast = document.createElement("article");
-  toast.className = "contact-toast";
+function normalizeContactToastTone(tone) {
+  const value = String(tone || "info").toLowerCase();
+  return Object.prototype.hasOwnProperty.call(CONTACT_TOAST_TONE_PRIORITY, value) ? value : "info";
+}
 
-  const body = document.createElement("p");
-  body.className = "contact-toast__msg";
-  body.textContent = msg;
+function resolveContactToastDuration(duration) {
+  if (duration === 0) return 0;
+  const parsed = Number(duration);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 3000;
+}
 
-  const countdown = document.createElement("div");
-  countdown.className = "contact-toast__countdown";
-  toast.append(body, countdown);
-  host.appendChild(toast);
+function contactToneDisablesAutoClose(tone) {
+  return tone === "warn" || tone === "error";
+}
 
-  const duration = 3000;
-  const startedAt = Date.now();
+function getHigherPriorityContactTone(left, right) {
+  const a = normalizeContactToastTone(left);
+  const b = normalizeContactToastTone(right);
+  return CONTACT_TOAST_TONE_PRIORITY[b] > CONTACT_TOAST_TONE_PRIORITY[a] ? b : a;
+}
+
+function stopContactToastTimers(state) {
+  if (state.timer) {
+    clearTimeout(state.timer);
+    state.timer = null;
+  }
+  if (state.countdownTimer) {
+    clearInterval(state.countdownTimer);
+    state.countdownTimer = null;
+  }
+}
+
+function setContactToastTone(state, tone) {
+  const resolved = normalizeContactToastTone(tone);
+  state.tone = resolved;
+  state.toast.classList.remove("contact-toast--info", "contact-toast--success", "contact-toast--warn", "contact-toast--error");
+  if (resolved !== "info") state.toast.classList.add(`contact-toast--${resolved}`);
+}
+
+function trimContactToastMessages(state) {
+  while (state.messages.childElementCount > CONTACT_TOAST_MESSAGE_LIMIT) {
+    state.messages.firstElementChild?.remove();
+  }
+}
+
+function renderContactToastActions(state) {
+  state.bar.innerHTML = "";
+  const showCountdown = !state.autoCloseDisabled && state.duration > 0;
+  if (showCountdown) {
+    const countdown = document.createElement("span");
+    countdown.className = "contact-toast__countdown";
+    state.countdownEl = countdown;
+    state.bar.appendChild(countdown);
+  } else {
+    state.countdownEl = null;
+  }
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "contact-toast__btn";
+  closeBtn.textContent = "Close";
+  closeBtn.addEventListener("click", () => state.close("manual"));
+  state.bar.appendChild(closeBtn);
+}
+
+function startContactToastTimer(state) {
+  stopContactToastTimers(state);
+  if (state.autoCloseDisabled || state.duration <= 0 || !state.countdownEl) return;
+
+  state.timerStartedAt = Date.now();
   const updateCountdown = () => {
-    const remaining = Math.max(0, duration - (Date.now() - startedAt));
-    countdown.textContent = `Auto close in ${Math.ceil(remaining / 1000)}s`;
+    if (!state.countdownEl) return;
+    const remaining = Math.max(0, state.duration - (Date.now() - state.timerStartedAt));
+    state.countdownEl.textContent = `Auto close in ${Math.ceil(remaining / 1000)}s`;
   };
 
   updateCountdown();
-  const intervalId = setInterval(updateCountdown, 200);
+  state.countdownTimer = window.setInterval(updateCountdown, 200);
+  state.timer = window.setTimeout(() => state.close("timeout"), state.duration);
+}
 
-  setTimeout(() => {
-    clearInterval(intervalId);
-    toast.remove();
-  }, duration);
+function ensureActiveContactToastState() {
+  if (activeContactToastState && document.body.contains(activeContactToastState.toast) && !activeContactToastState.done) {
+    return activeContactToastState;
+  }
+
+  const host = ensureToastHost();
+  const toast = document.createElement("article");
+  toast.className = "contact-toast";
+  toast.setAttribute("role", "status");
+
+  const messages = document.createElement("div");
+  messages.className = "contact-toast__messages";
+  toast.appendChild(messages);
+
+  const bar = document.createElement("div");
+  bar.className = "contact-toast__actions";
+  toast.appendChild(bar);
+
+  host.appendChild(toast);
+
+  const state = {
+    toast,
+    messages,
+    bar,
+    countdownEl: null,
+    timer: null,
+    countdownTimer: null,
+    timerStartedAt: 0,
+    done: false,
+    tone: "info",
+    duration: 3000,
+    autoCloseDisabled: false,
+    close(reason = null) {
+      if (state.done) return;
+      state.done = true;
+      stopContactToastTimers(state);
+      state.toast.classList.add("is-closing");
+      window.setTimeout(() => {
+        state.toast.remove();
+        if (activeContactToastState === state) activeContactToastState = null;
+      }, 140);
+    }
+  };
+
+  activeContactToastState = state;
+  return state;
+}
+
+function setStatus(msg, opts = {}) {
+  if (!msg) return;
+  const state = ensureActiveContactToastState();
+  const resolvedTone = normalizeContactToastTone(opts.tone || "info");
+  const resolvedDuration = resolveContactToastDuration(opts.duration);
+
+  const entry = document.createElement("p");
+  entry.className = `contact-toast__entry contact-toast__entry--${resolvedTone}`;
+  entry.textContent = String(msg);
+  state.messages.appendChild(entry);
+  trimContactToastMessages(state);
+
+  state.tone = getHigherPriorityContactTone(state.tone, resolvedTone);
+  setContactToastTone(state, state.tone);
+  state.duration = resolvedDuration;
+  state.autoCloseDisabled = state.autoCloseDisabled || resolvedDuration === 0 || contactToneDisablesAutoClose(resolvedTone);
+
+  renderContactToastActions(state);
+  startContactToastTimer(state);
 }
 
 function prefillFromQuery() {
+
   const topic = qs("topic");
   const title = qs("title");
   const id = qs("id");
@@ -283,7 +470,7 @@ function prefillFromQuery() {
   }
 
   if (topic || title || id || url) {
-    setStatus("Prefilled from artwork link.");
+    setStatus("Prefilled from artwork link.", { tone: "info" });
   }
 }
 
@@ -328,7 +515,7 @@ if (form && draftBox && draftPre) {
     draftPre.textContent = `To: ${TO_EMAIL}\nSubject: ${subject}\n\n${body}`;
     draftBox.style.display = "block";
     window.location.href = mailtoLink(subject, body);
-    setStatus("Email draft created.");
+    setStatus("Email draft created.", { tone: "success" });
   });
 }
 
@@ -337,9 +524,9 @@ if (copyEmailButton) {
   copyEmailButton.addEventListener("click", async () => {
     try {
       await copyToClipboard(TO_EMAIL);
-      setStatus("Email copied.");
+      setStatus("Email copied to clipboard.", { tone: "success" });
     } catch {
-      setStatus("Couldn't copy email (browser blocked).");
+      setStatus("Couldn't copy email (browser blocked).", { tone: "warn" });
     }
   });
 }
@@ -350,13 +537,13 @@ if (copyDraftButton) {
     try {
       const text = draftPre?.textContent || "";
       if (!text) {
-        setStatus("Create a draft first.");
+        setStatus("Create a draft first.", { tone: "warn" });
         return;
       }
       await copyToClipboard(text);
-      setStatus("Draft copied.");
+      setStatus("Draft copied.", { tone: "success" });
     } catch {
-      setStatus("Couldn't copy draft (browser blocked).");
+      setStatus("Couldn't copy draft (browser blocked).", { tone: "warn" });
     }
   });
 }

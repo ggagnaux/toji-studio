@@ -74,6 +74,29 @@
         .filter(m => m && m.slug)
         .map(m => [String(m.slug).trim().toLowerCase(), m])
     );
+
+    function artworkMatchesSeries(artwork, series){
+      const value = String(artwork?.series || "").trim();
+      if (!value || !series) return false;
+      const lower = value.toLowerCase();
+      const normalized = slugifySeries(value).toLowerCase();
+      const seriesName = String(series?.name || "").trim().toLowerCase();
+      const seriesSlug = String(series?.slug || slugifySeries(series?.name || "")).trim().toLowerCase();
+      return lower === seriesName || lower === seriesSlug || normalized === seriesSlug;
+    }
+
+    function sortSeriesItems(items, meta){
+      const order = Array.isArray(meta?.imageOrder) ? meta.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : [];
+      if (!order.length) return sortGallery(items);
+      const rank = new Map(order.map((id, index) => [id, index]));
+      return items.slice().sort((a, b) => {
+        const ai = rank.has(String(a?.id || "")) ? rank.get(String(a?.id || "")) : Number.POSITIVE_INFINITY;
+        const bi = rank.has(String(b?.id || "")) ? rank.get(String(b?.id || "")) : Number.POSITIVE_INFINITY;
+        if (ai !== bi) return ai - bi;
+        return sortGallery([a, b])[0] === a ? -1 : 1;
+      });
+    }
+
     const selectedTags = new Set();
     let q = "";
     let activeTabId = "featuredWrap";
@@ -496,12 +519,14 @@
         .map(([name, items]) => {
           const slug = slugifySeries(name);
           const meta = seriesMetaByName.get(name.toLowerCase()) || seriesMetaBySlug.get(slug) || null;
-          const cover = (meta && meta.coverThumb) || items[0]?.thumb || items[0]?.image || "assets/img/placeholders/p1.jpg";
+          const seriesMeta = meta ? { ...meta, slug: meta.slug || slug, name: meta.name || name } : { slug, name, imageOrder: [] };
+          const orderedItems = sortSeriesItems(items.filter((item) => artworkMatchesSeries(item, seriesMeta)), seriesMeta);
+          const cover = (meta && meta.coverThumb) || orderedItems[0]?.thumb || orderedItems[0]?.image || items[0]?.thumb || items[0]?.image || "assets/img/placeholders/p1.jpg";
           const description = (meta && meta.description) || "";
           const sortOrderRaw = Number(meta?.sortOrder);
           const sortOrder = Number.isFinite(sortOrderRaw) ? sortOrderRaw : Number.MAX_SAFE_INTEGER;
           const isPublic = meta?.isPublic == null ? true : !!meta.isPublic;
-          return { name, slug, cover, description, items, sortOrder, isPublic };
+          return { name, slug, cover, description, items: orderedItems.length ? orderedItems : sortGallery(items), sortOrder, isPublic, imageOrder: seriesMeta.imageOrder || [] };
         })
         .filter((s) => s.isPublic)
         .sort((a, b) => {
@@ -519,7 +544,7 @@
       seriesCount.textContent = `${entries.length} series`;
 
       for (const s of entries) {
-        const seriesItems = sortGallery(s.items);
+        const seriesItems = s.items.slice();
         const previewItems = seriesItems.slice(0, 8);
         seriesGrid.appendChild(
           el("article", { class: "series-item" },

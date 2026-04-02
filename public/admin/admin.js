@@ -405,19 +405,19 @@ export function ensureBaseStyles() {
     .admin-confirm__msg{
       margin: 0;
       white-space: pre-line;
-      line-height: 1.45;
-      font-size: 14px;
+      line-height: 1.55;
+      font-size: 15px;
     }
     .admin-confirm__note{
-      margin-top: 8px;
-      padding: 8px 10px;
+      margin-top: 10px;
+      padding: 10px 12px;
       border-radius: 10px;
       border: 1px solid color-mix(in srgb, #e0aa3c 58%, var(--line));
       background: color-mix(in srgb, #e0aa3c 18%, var(--panel));
       color: var(--text);
-      font-size: 13px;
-      line-height: 1.4;
-      font-weight: 600;
+      font-size: 14px;
+      line-height: 1.45;
+      font-weight: 700;
     }
     .admin-confirm__actions{
       display: flex;
@@ -818,6 +818,7 @@ export function ensureSeriesMeta(state, options = {}){
           ? !!row.isPublic
           : (prior.isPublic != null ? !!prior.isPublic : true),
       coverArtworkId: String((row && row.coverArtworkId) || prior.coverArtworkId || ""),
+      imageOrder: Array.isArray(row?.imageOrder) ? row.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : (Array.isArray(prior.imageOrder) ? prior.imageOrder : []),
       coverThumb: (row && row.coverThumb) || prior.coverThumb || ""
     };
   };
@@ -1086,7 +1087,8 @@ export async function syncSeriesFromBackend(state){
       sortOrder: Number(r.sortOrder || 0),
       isPublic: !!r.isPublic,
       coverArtworkId: r.coverArtworkId || "",
-      coverThumb: normalize(r.coverThumb)
+      coverThumb: normalize(r.coverThumb),
+      imageOrder: Array.isArray(r.imageOrder) ? r.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : []
     };
 
     // Keep a convenient display list too (names)

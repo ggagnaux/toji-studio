@@ -6,6 +6,34 @@
   <script src="js/admin-session-guard.js"></script>
   <title>Studio — Series</title>
   <link rel="stylesheet" href="../assets/css/site.css" />
+  <style>
+    #seriesManagerGrid{
+      grid-template-columns:minmax(360px, 3.2fr) minmax(0, 8.8fr);
+      align-items:start;
+    }
+    #seriesListCard,
+    #seriesEditorCard{
+      grid-column:auto !important;
+    }
+    @media (max-width: 1180px){
+      #seriesManagerGrid{
+        grid-template-columns:minmax(360px, 1fr);
+      }
+      #seriesListCard,
+      #seriesEditorCard{
+        grid-column:span 1 !important;
+      }
+    }
+    @media (max-width: 760px){
+      #seriesManagerGrid{
+        grid-template-columns:minmax(0, 1fr);
+      }
+      #seriesListCard,
+      #seriesEditorCard{
+        grid-column:span 1 !important;
+      }
+    }
+  </style>
 </head>
 <body>
   <header id="siteHeader"></header>
@@ -19,9 +47,9 @@
     <div class="admin-layout">
       <aside class="sidebar" aria-label="Studio navigation"></aside>
       <section>
-    <section class="grid">
+    <section class="grid" id="seriesManagerGrid">
       <!-- Left: list -->
-      <div class="card" style="grid-column: span 5">
+      <div class="card" id="seriesListCard" style="grid-column: span 3">
         <div class="meta">
           <div style="display:flex; gap:10px; align-items:baseline; justify-content:space-between; flex-wrap:wrap">
             <p class="title" style="margin:0">Series</p>
@@ -65,7 +93,7 @@
       </div>
 
       <!-- Right: editor -->
-      <div class="card" style="grid-column: span 7; overflow: visible;">
+      <div class="card" id="seriesEditorCard" style="grid-column: span 9; overflow: visible;">
         <div class="meta" id="editor">
           <p class="title" style="margin:0">Select a series</p>
           <p class="sub" style="margin-top:8px">Pick a series on the left to edit its metadata.</p>

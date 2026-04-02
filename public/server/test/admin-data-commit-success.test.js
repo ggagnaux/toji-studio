@@ -4,13 +4,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { restoreEnv, startTestServer } from "./helpers.js";
+import { restoreEnv, startTestServer, createAuthenticatedHeaders } from "./helpers.js";
 
-function authHeaders() {
-  return {
-    Authorization: "Bearer legacy-token",
-    "Content-Type": "application/json"
-  };
+async function authHeaders(server, json = true) {
+  return createAuthenticatedHeaders(server.baseUrl, { json });
 }
 
 async function importFreshServerModule() {
@@ -25,7 +22,7 @@ test.afterEach(() => {
 test("POST /api/admin/data/import/commit succeeds for safe tables in isolated storage", async () => {
   const storageDir = await fs.mkdtemp(path.join(os.tmpdir(), "toji-test-storage-"));
   process.env.TOJI_STORAGE_DIR = storageDir;
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
 
   const { createApp } = await importFreshServerModule();
   const server = await startTestServer(createApp);
@@ -33,7 +30,7 @@ test("POST /api/admin/data/import/commit succeeds for safe tables in isolated st
   try {
     const commitResponse = await fetch(`${server.baseUrl}/api/admin/data/import/commit`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         mode: "upsert",
         tables: ["settings", "external_links"],
@@ -69,7 +66,7 @@ test("POST /api/admin/data/import/commit succeeds for safe tables in isolated st
 
     const exportResponse = await fetch(`${server.baseUrl}/api/admin/data/export`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ tables: ["settings", "external_links"] })
     });
     const exportPayload = await exportResponse.json();

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 import {
+  createAuthenticatedHeaders,
   createJsonResponse,
   restoreEnv,
   startTestServer,
@@ -13,12 +14,8 @@ import {
 
 const ONE_PIXEL_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0ioAAAAASUVORK5CYII=";
 
-function authHeaders(json = true) {
-  const headers = {
-    Authorization: "Bearer legacy-token"
-  };
-  if (json) headers["Content-Type"] = "application/json";
-  return headers;
+async function authHeaders(server, json = true) {
+  return createAuthenticatedHeaders(server.baseUrl, { json });
 }
 
 function createImageBlob() {
@@ -33,7 +30,7 @@ async function importFreshServerModule() {
 async function withIsolatedServer(fn) {
   const storageDir = await fs.mkdtemp(path.join(os.tmpdir(), "toji-social-publish-routes-"));
   process.env.TOJI_STORAGE_DIR = storageDir;
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
   const { createApp } = await importFreshServerModule();
   const server = await startTestServer(createApp);
   try {
@@ -48,7 +45,7 @@ async function createArtwork(server, filename = "Artwork.png") {
   form.append("files", createImageBlob(), filename);
   const res = await fetch(`${server.baseUrl}/api/admin/upload`, {
     method: "POST",
-    headers: authHeaders(false),
+    headers: await authHeaders(server, false),
     body: form
   });
   const body = await res.json();
@@ -60,7 +57,7 @@ async function createArtwork(server, filename = "Artwork.png") {
 async function configurePlatform(server, platformId, { config, auth, enabled = true }) {
   const res = await fetch(`${server.baseUrl}/api/admin/social/platforms/${platformId}`, {
     method: "PATCH",
-    headers: authHeaders(),
+    headers: await authHeaders(server, ),
     body: JSON.stringify({ enabled, config, auth })
   });
   const body = await res.json();
@@ -71,7 +68,7 @@ async function configurePlatform(server, platformId, { config, auth, enabled = t
 async function upsertSocialPost(server, artworkId, platformId, payload) {
   const res = await fetch(`${server.baseUrl}/api/admin/artworks/${artworkId}/social-posts/${platformId}`, {
     method: "PUT",
-    headers: authHeaders(),
+    headers: await authHeaders(server, ),
     body: JSON.stringify(payload)
   });
   const body = await res.json();
@@ -82,7 +79,7 @@ async function upsertSocialPost(server, artworkId, platformId, payload) {
 async function publishPost(server, artworkId, platformId) {
   const res = await fetch(`${server.baseUrl}/api/admin/artworks/${artworkId}/social-posts/${platformId}/publish`, {
     method: "POST",
-    headers: authHeaders(false)
+    headers: await authHeaders(server, false)
   });
   const body = await res.json();
   return { res, body };
@@ -203,7 +200,7 @@ test("direct Bluesky publish records provider failures", async () => {
     });
 
     const listRes = await fetch(`${server.baseUrl}/api/admin/artworks/${artwork.id}/social-posts`, {
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const listed = await listRes.json();
     assert.equal(listRes.status, 200);
@@ -309,7 +306,7 @@ test("direct LinkedIn publish returns upstream errors and stores failure state",
     });
 
     const listRes = await fetch(`${server.baseUrl}/api/admin/artworks/${artwork.id}/social-posts`, {
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const listed = await listRes.json();
     assert.equal(listRes.status, 200);

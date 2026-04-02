@@ -1,8 +1,52 @@
 import crypto from "node:crypto";
 
+import { db } from "./db.js";
+
 export const ADMIN_SESSION_COOKIE = "toji_admin_session";
 const DEFAULT_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
-const sessions = new Map();
+
+const insertAdminSessionStmt = db.prepare(`
+  INSERT INTO admin_sessions (id, createdAt, expiresAt, metadataJson)
+  VALUES (@id, @createdAt, @expiresAt, @metadataJson)
+`);
+const selectAdminSessionStmt = db.prepare(`
+  SELECT id, createdAt, expiresAt, metadataJson
+  FROM admin_sessions
+  WHERE id = ?
+`);
+const deleteAdminSessionStmt = db.prepare(`
+  DELETE FROM admin_sessions
+  WHERE id = ?
+`);
+const deleteExpiredAdminSessionsStmt = db.prepare(`
+  DELETE FROM admin_sessions
+  WHERE expiresAt <= ?
+`);
+const deleteAllAdminSessionsStmt = db.prepare(`DELETE FROM admin_sessions`);
+const expireAdminSessionStmt = db.prepare(`
+  UPDATE admin_sessions
+  SET expiresAt = ?
+  WHERE id = ?
+`);
+
+function parseSessionMetadata(raw) {
+  try {
+    const parsed = JSON.parse(String(raw || "{}"));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function hydrateSession(row) {
+  if (!row) return null;
+  return {
+    id: String(row.id || "").trim(),
+    createdAt: String(row.createdAt || ""),
+    expiresAt: String(row.expiresAt || ""),
+    metadata: parseSessionMetadata(row.metadataJson)
+  };
+}
 
 export function nowMs() {
   return Date.now();
@@ -71,17 +115,22 @@ export function createAdminSession(metadata = {}) {
     expiresAt,
     metadata: metadata && typeof metadata === "object" ? { ...metadata } : {}
   };
-  sessions.set(id, session);
+  insertAdminSessionStmt.run({
+    id: session.id,
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    metadataJson: JSON.stringify(session.metadata || {})
+  });
   return session;
 }
 
 export function getAdminSession(sessionId) {
   const id = String(sessionId || "").trim();
   if (!id) return null;
-  const session = sessions.get(id);
+  const session = hydrateSession(selectAdminSessionStmt.get(id));
   if (!session) return null;
   if (Date.parse(session.expiresAt) <= nowMs()) {
-    sessions.delete(id);
+    deleteAdminSessionStmt.run(id);
     return null;
   }
   return session;
@@ -90,14 +139,12 @@ export function getAdminSession(sessionId) {
 export function destroyAdminSession(sessionId) {
   const id = String(sessionId || "").trim();
   if (!id) return false;
-  return sessions.delete(id);
+  const result = deleteAdminSessionStmt.run(id);
+  return result.changes > 0;
 }
 
 export function cleanupExpiredAdminSessions() {
-  const now = nowMs();
-  for (const [id, session] of sessions.entries()) {
-    if (Date.parse(session.expiresAt) <= now) sessions.delete(id);
-  }
+  deleteExpiredAdminSessionsStmt.run(new Date(nowMs()).toISOString());
 }
 
 export function getAdminSessionFromRequest(req) {
@@ -122,6 +169,12 @@ export function clearAdminSessionCookie(res, req) {
   }));
 }
 
+export function expireAdminSessionForTests(sessionId, expiresAt = new Date(0).toISOString()) {
+  const id = String(sessionId || "").trim();
+  if (!id) return;
+  expireAdminSessionStmt.run(String(expiresAt || new Date(0).toISOString()), id);
+}
+
 export function resetAdminSessionsForTests() {
-  sessions.clear();
+  deleteAllAdminSessionsStmt.run();
 }

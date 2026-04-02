@@ -4,16 +4,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { restoreEnv, startTestServer } from "./helpers.js";
+import { restoreEnv, startTestServer, createAuthenticatedHeaders } from "./helpers.js";
 
 const ONE_PIXEL_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0ioAAAAASUVORK5CYII=";
 
-function authHeaders(json = true) {
-  const headers = {
-    Authorization: "Bearer legacy-token"
-  };
-  if (json) headers["Content-Type"] = "application/json";
-  return headers;
+async function authHeaders(server, json = true) {
+  return createAuthenticatedHeaders(server.baseUrl, { json });
 }
 
 function createImageBlob() {
@@ -28,7 +24,7 @@ async function importFreshServerModule() {
 async function withIsolatedServer(fn) {
   const storageDir = await fs.mkdtemp(path.join(os.tmpdir(), "toji-artwork-routes-"));
   process.env.TOJI_STORAGE_DIR = storageDir;
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
   const { createApp } = await importFreshServerModule();
   const server = await startTestServer(createApp);
   try {
@@ -43,7 +39,7 @@ async function createArtwork(server, filename = "Artwork.png") {
   form.append("files", createImageBlob(), filename);
   const res = await fetch(`${server.baseUrl}/api/admin/upload`, {
     method: "POST",
-    headers: authHeaders(false),
+    headers: await authHeaders(server, false),
     body: form
   });
   const body = await res.json();
@@ -62,7 +58,7 @@ test("artwork routes support patching metadata and deleting artwork files", asyn
 
     const patchRes = await fetch(`${server.baseUrl}/api/admin/artworks/${created.id}`, {
       method: "PATCH",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         title: "Updated Title",
         description: "Updated description",
@@ -91,7 +87,7 @@ test("artwork routes support patching metadata and deleting artwork files", asyn
 
     const deleteRes = await fetch(`${server.baseUrl}/api/admin/artworks/${created.id}`, {
       method: "DELETE",
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const deleted = await deleteRes.json();
     assert.equal(deleteRes.status, 200);
@@ -105,7 +101,7 @@ test("artwork routes support patching metadata and deleting artwork files", asyn
 
     const missingDelete = await fetch(`${server.baseUrl}/api/admin/artworks/${created.id}`, {
       method: "DELETE",
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const missingBody = await missingDelete.json();
     assert.equal(missingDelete.status, 404);
@@ -118,7 +114,7 @@ test("social post routes support list, upsert, delete, and publish validation fa
     const artwork = await createArtwork(server, "Social Post.png");
 
     const listRes = await fetch(`${server.baseUrl}/api/admin/artworks/${artwork.id}/social-posts`, {
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const listed = await listRes.json();
     assert.equal(listRes.status, 200);
@@ -128,7 +124,7 @@ test("social post routes support list, upsert, delete, and publish validation fa
 
     const upsertRes = await fetch(`${server.baseUrl}/api/admin/artworks/${artwork.id}/social-posts/bluesky`, {
       method: "PUT",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         status: "queued",
         caption: "Launch caption",
@@ -150,7 +146,7 @@ test("social post routes support list, upsert, delete, and publish validation fa
 
     const publishUnsupported = await fetch(`${server.baseUrl}/api/admin/artworks/${artwork.id}/social-posts/instagram/publish`, {
       method: "POST",
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const publishUnsupportedBody = await publishUnsupported.json();
     assert.equal(publishUnsupported.status, 400);
@@ -158,14 +154,14 @@ test("social post routes support list, upsert, delete, and publish validation fa
 
     const disablePlatformRes = await fetch(`${server.baseUrl}/api/admin/social/platforms/bluesky`, {
       method: "PATCH",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ enabled: false })
     });
     assert.equal(disablePlatformRes.status, 200);
 
     const publishDisabled = await fetch(`${server.baseUrl}/api/admin/artworks/${artwork.id}/social-posts/bluesky/publish`, {
       method: "POST",
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const publishDisabledBody = await publishDisabled.json();
     assert.equal(publishDisabled.status, 400);
@@ -173,7 +169,7 @@ test("social post routes support list, upsert, delete, and publish validation fa
 
     const deleteRes = await fetch(`${server.baseUrl}/api/admin/artworks/${artwork.id}/social-posts/bluesky`, {
       method: "DELETE",
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const deleted = await deleteRes.json();
     assert.equal(deleteRes.status, 200);
@@ -181,7 +177,7 @@ test("social post routes support list, upsert, delete, and publish validation fa
 
     const deleteMissing = await fetch(`${server.baseUrl}/api/admin/artworks/${artwork.id}/social-posts/bluesky`, {
       method: "DELETE",
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const deleteMissingBody = await deleteMissing.json();
     assert.equal(deleteMissing.status, 404);
@@ -192,7 +188,7 @@ test("social post routes support list, upsert, delete, and publish validation fa
 test("social post routes return not-found errors for missing artwork or platform", async () => {
   await withIsolatedServer(async (server) => {
     const missingArtworkRes = await fetch(`${server.baseUrl}/api/admin/artworks/missing/social-posts`, {
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const missingArtworkBody = await missingArtworkRes.json();
     assert.equal(missingArtworkRes.status, 404);
@@ -201,7 +197,7 @@ test("social post routes return not-found errors for missing artwork or platform
     const artwork = await createArtwork(server, "Platform Missing.png");
     const missingPlatformRes = await fetch(`${server.baseUrl}/api/admin/artworks/${artwork.id}/social-posts/missing-platform`, {
       method: "PUT",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ status: "draft" })
     });
     const missingPlatformBody = await missingPlatformRes.json();

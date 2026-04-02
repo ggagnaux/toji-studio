@@ -5,11 +5,11 @@ import {
   ADMIN_SESSION_COOKIE,
   clearAdminSessionCookie,
   createAdminSession,
+  expireAdminSessionForTests,
   getAdminSession,
   getAdminSessionCookieOptions,
   getAdminSessionFromRequest,
   parseCookies,
-  resetAdminSessionsForTests,
   serializeCookie,
   setAdminSessionCookie
 } from "../src/session.js";
@@ -17,7 +17,6 @@ import { assertCookieIncludes, createMockReq, createMockRes, restoreEnv } from "
 
 test.afterEach(() => {
   restoreEnv();
-  resetAdminSessionsForTests();
 });
 
 test("parseCookies parses multiple cookies and decodes encoded values", () => {
@@ -68,9 +67,16 @@ test("createAdminSession stores metadata and can be loaded from request cookies"
 
 test("getAdminSession returns null for expired sessions", () => {
   const session = createAdminSession();
-  session.expiresAt = new Date(Date.now() - 1000).toISOString();
+  expireAdminSessionForTests(session.id, new Date(Date.now() - 1000).toISOString());
+
+  const req = createMockReq({
+    headers: {
+      cookie: `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(session.id)}`
+    }
+  });
 
   assert.equal(getAdminSession(session.id), null);
+  assert.equal(getAdminSessionFromRequest(req), null);
 });
 
 test("set and clear admin session cookies append expected headers", () => {

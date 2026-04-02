@@ -2,8 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createApp } from "../src/server.js";
-import { resetAdminSessionsForTests } from "../src/session.js";
-import { createTempEnvFile, restoreEnv, startTestServer } from "./helpers.js";
+import { createAuthenticatedHeaders, createTempEnvFile, restoreEnv, startTestServer } from "./helpers.js";
 
 async function readJson(res) {
   return res.json();
@@ -11,7 +10,6 @@ async function readJson(res) {
 
 test.afterEach(() => {
   restoreEnv();
-  resetAdminSessionsForTests();
 });
 
 test("GET /api/admin/session/me returns unauthenticated state without credentials", async () => {
@@ -94,9 +92,8 @@ test("POST /api/admin/session/password rejects unauthorized requests", async () 
   }
 });
 
-test("GET protected admin route rejects unauthenticated access and allows legacy token access", async () => {
+test("GET protected admin route rejects unauthenticated access and allows session access", async () => {
   process.env.ADMIN_PASSWORD = "secret-pass";
-  process.env.ADMIN_TOKEN = "legacy-token";
   const server = await startTestServer(createApp);
   try {
     const unauthorized = await fetch(`${server.baseUrl}/api/admin/settings/contact`);
@@ -105,9 +102,7 @@ test("GET protected admin route rejects unauthenticated access and allows legacy
     assert.deepEqual(unauthorizedBody, { error: "Unauthorized" });
 
     const authorized = await fetch(`${server.baseUrl}/api/admin/settings/contact`, {
-      headers: {
-        Authorization: "Bearer legacy-token"
-      }
+      headers: await createAuthenticatedHeaders(server.baseUrl, { json: false })
     });
     const authorizedBody = await readJson(authorized);
     assert.equal(authorized.status, 200);

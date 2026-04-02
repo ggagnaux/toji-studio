@@ -4,14 +4,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { restoreEnv, startTestServer } from "./helpers.js";
+import { restoreEnv, startTestServer, createAuthenticatedHeaders } from "./helpers.js";
 
-function authHeaders(json = true) {
-  const headers = {
-    Authorization: "Bearer legacy-token"
-  };
-  if (json) headers["Content-Type"] = "application/json";
-  return headers;
+async function authHeaders(server, json = true) {
+  return createAuthenticatedHeaders(server.baseUrl, { json });
 }
 
 async function importFreshServerModule() {
@@ -22,7 +18,7 @@ async function importFreshServerModule() {
 async function withIsolatedServer(fn) {
   const storageDir = await fs.mkdtemp(path.join(os.tmpdir(), "toji-admin-routes-"));
   process.env.TOJI_STORAGE_DIR = storageDir;
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
   const { createApp } = await importFreshServerModule();
   const server = await startTestServer(createApp);
   try {
@@ -40,7 +36,7 @@ test("admin settings routes persist image variant and contact settings", async (
   await withIsolatedServer(async (server) => {
     const imagePut = await fetch(`${server.baseUrl}/api/admin/settings/image-variants`, {
       method: "PUT",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         thumbMaxWidth: 640,
         thumbQuality: 75,
@@ -58,14 +54,14 @@ test("admin settings routes persist image variant and contact settings", async (
     });
 
     const imageGet = await fetch(`${server.baseUrl}/api/admin/settings/image-variants`, {
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const imageGetBody = await imageGet.json();
     assert.deepEqual(imageGetBody, imageBody);
 
     const contactPut = await fetch(`${server.baseUrl}/api/admin/settings/contact`, {
       method: "PUT",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ contactEmail: "studio@example.com" })
     });
     const contactBody = await contactPut.json();
@@ -73,14 +69,14 @@ test("admin settings routes persist image variant and contact settings", async (
     assert.deepEqual(contactBody, { contactEmail: "studio@example.com" });
 
     const contactGet = await fetch(`${server.baseUrl}/api/admin/settings/contact`, {
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const contactGetBody = await contactGet.json();
     assert.deepEqual(contactGetBody, { contactEmail: "studio@example.com" });
 
     const splashPut = await fetch(`${server.baseUrl}/api/admin/settings/splash`, {
       method: "PUT",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         enabled: true,
         mode: "random",
@@ -100,7 +96,7 @@ test("admin settings routes persist image variant and contact settings", async (
     });
 
     const splashGet = await fetch(`${server.baseUrl}/api/admin/settings/splash`, {
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const splashGetBody = await splashGet.json();
     assert.deepEqual(splashGetBody, splashBody);
@@ -115,7 +111,7 @@ test("external links routes support create, update, replace, and delete flows", 
   await withIsolatedServer(async (server) => {
     const createRes = await fetch(`${server.baseUrl}/api/admin/external-links`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         label: "Portfolio",
         url: "https://example.com/portfolio",
@@ -133,7 +129,7 @@ test("external links routes support create, update, replace, and delete flows", 
 
     const patchRes = await fetch(`${server.baseUrl}/api/admin/external-links/${created.id}`, {
       method: "PATCH",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         label: "Main Portfolio",
         enabled: false,
@@ -148,7 +144,7 @@ test("external links routes support create, update, replace, and delete flows", 
 
     const replaceRes = await fetch(`${server.baseUrl}/api/admin/external-links`, {
       method: "PUT",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         links: [
           { label: "Shop", url: "https://example.com/shop", category: "shop", enabled: true },
@@ -164,14 +160,14 @@ test("external links routes support create, update, replace, and delete flows", 
 
     const deleteRes = await fetch(`${server.baseUrl}/api/admin/external-links/${replaced[0].id}`, {
       method: "DELETE",
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const deleted = await deleteRes.json();
     assert.equal(deleteRes.status, 200);
     assert.deepEqual(deleted, { ok: true, id: replaced[0].id });
 
     const listRes = await fetch(`${server.baseUrl}/api/admin/external-links`, {
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const listed = await listRes.json();
     assert.equal(listRes.status, 200);
@@ -185,7 +181,7 @@ test("external links routes reject invalid payloads", async () => {
   await withIsolatedServer(async (server) => {
     const invalidCreate = await fetch(`${server.baseUrl}/api/admin/external-links`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         label: "Broken",
         url: "ftp://example.com"
@@ -197,7 +193,7 @@ test("external links routes reject invalid payloads", async () => {
 
     const invalidReplace = await fetch(`${server.baseUrl}/api/admin/external-links`, {
       method: "PUT",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ links: { nope: true } })
     });
     const invalidReplaceBody = await invalidReplace.json();
@@ -210,7 +206,7 @@ test("series routes support create, update, list, and delete flows", async () =>
   await withIsolatedServer(async (server) => {
     const createRes = await fetch(`${server.baseUrl}/api/admin/series/Night Works`, {
       method: "PUT",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         name: "Night Works",
         description: "Moody evening pieces",
@@ -230,7 +226,7 @@ test("series routes support create, update, list, and delete flows", async () =>
 
     const updateRes = await fetch(`${server.baseUrl}/api/admin/series/night-works`, {
       method: "PUT",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         description: "Updated description",
         isPublic: true,
@@ -244,7 +240,7 @@ test("series routes support create, update, list, and delete flows", async () =>
     assert.equal(updated.coverArtworkId, null);
 
     const listRes = await fetch(`${server.baseUrl}/api/admin/series`, {
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const listed = await listRes.json();
     assert.equal(listRes.status, 200);
@@ -253,7 +249,7 @@ test("series routes support create, update, list, and delete flows", async () =>
 
     const deleteRes = await fetch(`${server.baseUrl}/api/admin/series/night-works`, {
       method: "DELETE",
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const deleted = await deleteRes.json();
     assert.equal(deleteRes.status, 200);
@@ -265,7 +261,7 @@ test("series routes reject bad slugs and missing records", async () => {
   await withIsolatedServer(async (server) => {
     const badSlugRes = await fetch(`${server.baseUrl}/api/admin/series/!!!`, {
       method: "PUT",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ name: "Bad" })
     });
     const badSlugBody = await badSlugRes.json();
@@ -274,7 +270,7 @@ test("series routes reject bad slugs and missing records", async () => {
 
     const missingDelete = await fetch(`${server.baseUrl}/api/admin/series/missing-series`, {
       method: "DELETE",
-      headers: authHeaders(false)
+      headers: await authHeaders(server, false)
     });
     const missingDeleteBody = await missingDelete.json();
     assert.equal(missingDelete.status, 404);

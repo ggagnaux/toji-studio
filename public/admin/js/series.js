@@ -654,6 +654,7 @@
         return;
       }
 
+      document.querySelectorAll(".series-cover-modal[data-series-cover-portal='1']").forEach((node) => node.remove());
       editor.innerHTML = "";
       editor.appendChild(
         el("div", { style:"display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap" },
@@ -956,6 +957,7 @@
         "aria-label":"Choose cover artwork"
       });
       const backdrop = el("div", { class:"series-cover-modal", role:"dialog", "aria-modal":"true", "aria-label": label });
+      backdrop.dataset.seriesCoverPortal = "1";
       const closeBtn = el("button", { class:"btn", type:"button", "aria-label":"Close cover artwork picker" }, "Close");
       const panel = el("div", { class:"series-cover-modal-panel" });
       const lastFocus = { current: null };
@@ -1030,13 +1032,13 @@
       );
       panel.appendChild(picker);
       backdrop.appendChild(panel);
+      document.body.appendChild(backdrop);
 
       renderTrigger();
       renderPicker();
       return el("div", { class:"field", style:"margin-top:12px" },
         el("div", { class:"sub" }, label),
-        trigger,
-        backdrop
+        trigger
       );
     }
     renderList();

@@ -8,6 +8,7 @@
       API_BASE
     } from "../admin.js";
     import { AI_FEATURES_ENABLED_KEY, initEditTabController, isAiFeaturesEnabled, syncAiButtons } from "./edit-controller.js";
+    import { initUploadFilterControllers } from "./upload-controller.js";
 
     ensureBaseStyles();
     setYearFooter();
@@ -1808,7 +1809,7 @@
         return el("div", { class:"pillrow" },
           featuredToggle,
           el("button", {
-            class:"btn mini",
+            class:"btn mini danger",
             type:"button",
             style:"margin-left:auto",
             onclick: deleteArtwork
@@ -1918,32 +1919,76 @@
     }
 
     function tagsEditor(){
-      const wrap = el("div", { style:"display:grid; gap:10px; margin-top:10px" });
+      const wrap = el("div", { class:"edit-tags-editor", style:"display:grid; gap:12px; margin-top:10px" });
+      const filterWrap = el("div", { class:"edit-tags-filter-panel" });
+      const filterRow = el("div", { class:"tag-filter-row", role:"group", "aria-label":"Filter available tags" });
+      const availableTagsWrap = el("div", { class:"edit-tags-available", style:"display:grid; gap:10px" });
+      const availableList = el("div", { class:"pillrow" });
       const list = el("div", { class:"pillrow" });
+      const selectedTagFilters = new Set();
+      const tagFilterValues = [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""), "0-9"];
 
-      const input = el("input", { placeholder:"type tag + Enter" });
-      input.addEventListener("keydown", (e)=>{
-        if (e.key !== "Enter") return;
-        e.preventDefault();
-        const t = input.value.trim().toLowerCase();
-        if (!t) return;
-
-        const current = normalizeTagList(a.tags || []);
-        const cap = getTagCap();
-        if (!current.includes(t) && current.length >= cap) {
-          setStatusText(`Tag cap reached (${cap}). Remove a tag or raise the cap in Other Settings.`, 10000, "warn");
-          return;
-        }
-        input.value = "";
-
-        a.tags = normalizeTagList([...(a.tags||[]), t]);
-        upsertTag(state, t);
-        scheduleBackendSave();
-        renderTags();
+      tagFilterValues.forEach((value) => {
+        filterRow.appendChild(
+          el("button", {
+            type:"button",
+            class:"btn mini tag-filter-pill",
+            "data-tag-filter": value.toLowerCase(),
+            "aria-pressed":"false"
+          }, value)
+        );
       });
 
-      wrap.appendChild(input);
-      wrap.appendChild(list);
+      const input = el("input", { placeholder:"type tag + Enter" });
+
+      function getAllTags(){
+        const source = Array.isArray(state.artworks) ? state.artworks : [];
+        const tags = new Set(normalizeTagList(a.tags || []));
+        source.forEach((artwork) => {
+          normalizeTagList(artwork?.tags || []).forEach((tag) => tags.add(tag));
+        });
+        return Array.from(tags).sort((left, right) => left.localeCompare(right));
+      }
+
+      function tagMatchesActiveFilters(tag) {
+        if (!selectedTagFilters.size) return false;
+        const normalized = String(tag || "").trim().toLowerCase();
+        if (!normalized) return false;
+        return Array.from(selectedTagFilters).some((filter) => {
+          if (filter === "0-9") return /^\d/.test(normalized);
+          return normalized.startsWith(filter);
+        });
+      }
+
+      function renderAvailableTags(){
+        availableList.innerHTML = "";
+
+        if (!selectedTagFilters.size) {
+          availableList.appendChild(el("span", { class:"sub" }, "Select one or more filters to show matching tags."));
+          return;
+        }
+
+        const currentTags = new Set(normalizeTagList(a.tags || []));
+        const visibleTags = getAllTags().filter((tag) => tagMatchesActiveFilters(tag));
+        if (!visibleTags.length) {
+          availableList.appendChild(el("span", { class:"sub" }, "No tags match the current filter."));
+          return;
+        }
+
+        visibleTags.forEach((tag) => {
+          const active = currentTags.has(tag);
+          const btn = el("button", {
+            type:"button",
+            class:`btn mini ${active ? "primary" : ""}`,
+            style: active ? "" : "opacity:.88"
+          }, tag);
+          btn.addEventListener("click", () => {
+            if (active) removeTag(tag);
+            else addTag(tag);
+          });
+          availableList.appendChild(btn);
+        });
+      }
 
       function renderTags(){
         list.innerHTML = "";
@@ -1958,9 +2003,7 @@
                 type:"button",
                 style:"margin-left:8px",
                 onclick:()=>{
-                  a.tags = (a.tags||[]).filter(x => x !== t);
-                  scheduleBackendSave();
-                  renderTags();
+                  removeTag(t);
                 }
               }, "x")
             )
@@ -1968,8 +2011,61 @@
         }
       }
 
-      refreshTagsEditorView = renderTags;
-      renderTags();
+      function renderAll() {
+        renderTags();
+        renderAvailableTags();
+      }
+
+      function addTag(tag) {
+        const normalizedTag = String(tag || "").trim().toLowerCase();
+        if (!normalizedTag) return false;
+        const current = normalizeTagList(a.tags || []);
+        const cap = getTagCap();
+        if (!current.includes(normalizedTag) && current.length >= cap) {
+          setStatusText(`Tag cap reached (${cap}). Remove a tag or raise the cap in Other Settings.`, 10000, "warn");
+          return false;
+        }
+        a.tags = normalizeTagList([...(a.tags||[]), normalizedTag]);
+        upsertTag(state, normalizedTag);
+        scheduleBackendSave();
+        renderAll();
+        return true;
+      }
+
+      function removeTag(tag) {
+        a.tags = (a.tags||[]).filter(x => x !== tag);
+        scheduleBackendSave();
+        renderAll();
+      }
+
+      input.addEventListener("keydown", (e)=>{
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        const nextTag = input.value.trim().toLowerCase();
+        if (!nextTag) return;
+        if (addTag(nextTag)) input.value = "";
+      });
+
+      filterWrap.appendChild(el("div", { class:"sub" }, "Show tags starting with..."));
+      filterWrap.appendChild(filterRow);
+      availableTagsWrap.appendChild(el("div", { class:"sub" }, "Available Tags"));
+      availableTagsWrap.appendChild(availableList);
+      wrap.appendChild(input);
+      wrap.appendChild(filterWrap);
+      wrap.appendChild(availableTagsWrap);
+      wrap.appendChild(list);
+
+      initUploadFilterControllers({
+        statusPills: [],
+        tagFilterPills: Array.from(filterRow.querySelectorAll("[data-tag-filter]")),
+        selectedTagFilters,
+        onTagFilterChange() {
+          renderAvailableTags();
+        }
+      });
+
+      refreshTagsEditorView = renderAll;
+      renderAll();
       return wrap;
     }
 

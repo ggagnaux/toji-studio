@@ -100,3 +100,31 @@
       cursor: pointer;
       transition: background .18s ease, border-color .18s ease, transform .18s ease;
     }
+
+    .tag-filter-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-top:8px;
+    }
+    .tag-filter-pill{
+      min-width:34px;
+      justify-content:center;
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+    }
+    .tag-filter-pill.is-active{
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--text);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+    }
+    .edit-tags-editor .pillrow{
+      gap:8px;
+    }
+    .edit-tags-filter-panel,
+    .edit-tags-available{
+      display:grid;
+      gap:8px;
+    }

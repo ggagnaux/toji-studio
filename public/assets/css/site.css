@@ -15,6 +15,7 @@
   --floating-textarea-min-height:96px;
   --floating-label-inline-top:50%;
   --floating-label-float-top:5px;
+  /* --floating-label-float-top-colorpicker:12px; */
   --floating-label-inline-offset-x:13px;
   --floating-select-padding-right:42px;
 }
@@ -508,6 +509,16 @@ html.nav-compact .brand-logo-canvas--icon{
   background:var(--accent-soft);
   border-color:var(--accent-border);
 }
+
+.btn.danger{
+  border-color: rgba(255,80,80,.35);
+  background: rgba(255,80,80,.10);
+}
+[data-theme="light"] .btn.danger{
+  border-color: rgba(255,80,80,.28);
+  background: rgba(255,80,80,.10);
+}
+
 
 .hero{
   /* padding:56px 0 26px; */
@@ -1041,14 +1052,6 @@ textarea::placeholder{
 
 
 
-.btn.danger{
-  border-color: rgba(255,80,80,.35);
-  background: rgba(255,80,80,.10);
-}
-[data-theme="light"] .btn.danger{
-  border-color: rgba(255,80,80,.28);
-  background: rgba(255,80,80,.10);
-}
 
 
 

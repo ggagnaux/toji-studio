@@ -3,6 +3,17 @@ import { db, nowIso } from "../db.js";
 
 export const seriesRouter = Router();
 
+function parseImageOrder(value, fallback = []) {
+  const source = value == null ? fallback : value;
+  let arr = [];
+  if (Array.isArray(source)) arr = source;
+  else {
+    try { arr = JSON.parse(String(source || "[]")); } catch { arr = Array.isArray(fallback) ? fallback : []; }
+  }
+  if (!Array.isArray(arr)) arr = [];
+  return Array.from(new Set(arr.map((id) => String(id || "").trim()).filter(Boolean)));
+}
+
 function normSlug(s) {
   return String(s || "")
     .trim()
@@ -23,7 +34,8 @@ seriesRouter.get("/admin/series", (req, res) => {
 
   res.json(rows.map(r => ({
     ...r,
-    isPublic: !!r.isPublic
+    isPublic: !!r.isPublic,
+    imageOrder: parseImageOrder(r.imageOrderJson)
   })));
 });
 
@@ -44,13 +56,15 @@ seriesRouter.put("/admin/series/:slug", (req, res) => {
   const coverArtworkId = (body.coverArtworkId === "" || body.coverArtworkId == null)
     ? null
     : String(body.coverArtworkId);
+  const imageOrder = parseImageOrder(body.imageOrder, existing?.imageOrderJson ? parseImageOrder(existing.imageOrderJson) : []);
+  const imageOrderJson = JSON.stringify(imageOrder);
 
   if (!existing) {
     db.prepare(`
-      INSERT INTO series (slug, name, description, sortOrder, isPublic, coverArtworkId, createdAt, updatedAt)
-      VALUES (@slug, @name, @description, @sortOrder, @isPublic, @coverArtworkId, @createdAt, @updatedAt)
+      INSERT INTO series (slug, name, description, sortOrder, isPublic, coverArtworkId, imageOrderJson, createdAt, updatedAt)
+      VALUES (@slug, @name, @description, @sortOrder, @isPublic, @coverArtworkId, @imageOrderJson, @createdAt, @updatedAt)
     `).run({
-      slug, name, description, sortOrder, isPublic, coverArtworkId,
+      slug, name, description, sortOrder, isPublic, coverArtworkId, imageOrderJson,
       createdAt: now, updatedAt: now
     });
   } else {
@@ -61,10 +75,11 @@ seriesRouter.put("/admin/series/:slug", (req, res) => {
         sortOrder=@sortOrder,
         isPublic=@isPublic,
         coverArtworkId=@coverArtworkId,
+        imageOrderJson=@imageOrderJson,
         updatedAt=@updatedAt
       WHERE slug=@slug
     `).run({
-      slug, name, description, sortOrder, isPublic, coverArtworkId, updatedAt: now
+      slug, name, description, sortOrder, isPublic, coverArtworkId, imageOrderJson, updatedAt: now
     });
   }
 
@@ -75,7 +90,7 @@ seriesRouter.put("/admin/series/:slug", (req, res) => {
     FROM series s WHERE slug=?
   `).get(slug);
 
-  res.json({ ...out, isPublic: !!out.isPublic });
+  res.json({ ...out, isPublic: !!out.isPublic, imageOrder: parseImageOrder(out.imageOrderJson) });
 });
 
 seriesRouter.delete("/admin/series/:slug", (req, res) => {

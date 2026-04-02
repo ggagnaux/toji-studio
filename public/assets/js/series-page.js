@@ -74,7 +74,8 @@
       if (rows) {
         return (rows || []).map(s => ({
           ...s,
-          coverThumb: normalizeMediaUrl(s.coverThumb)
+          coverThumb: normalizeMediaUrl(s.coverThumb),
+        imageOrder: Array.isArray(s.imageOrder) ? s.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : []
         }));
       }
 
@@ -91,7 +92,8 @@
         sortOrder: Number(m.sortOrder || 0),
         isPublic: m.isPublic !== false,
         coverArtworkId: m.coverArtworkId || "",
-        coverThumb: m.coverThumb || ""
+        coverThumb: m.coverThumb || "",
+        imageOrder: Array.isArray(m.imageOrder) ? m.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : []
       })).filter(s => s.name);
 
       if (fromMeta.length) {
@@ -117,6 +119,7 @@
         isPublic: true,
         coverArtworkId: "",
         coverThumb: "",
+        imageOrder: [],
         publishedCount: published.filter(a => a.series === name).length
       }));
     }
@@ -139,12 +142,32 @@
       loadPublishedArtworks()
     ]);
 
+    function sortSeriesPieces(items, series){
+      const order = Array.isArray(series?.imageOrder) ? series.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : [];
+      if (!order.length) return sortPieces(items);
+      const rank = new Map(order.map((id, index) => [id, index]));
+      return items.slice().sort((a, b) => {
+        const ai = rank.has(String(a?.id || "")) ? rank.get(String(a?.id || "")) : Number.POSITIVE_INFINITY;
+        const bi = rank.has(String(b?.id || "")) ? rank.get(String(b?.id || "")) : Number.POSITIVE_INFINITY;
+        if (ai !== bi) return ai - bi;
+        return sortBySortOrderAndDate([a, b])[0] === a ? -1 : 1;
+      });
+    }
+
+    function artworkMatchesSeries(artwork, series){
+      const value = String(artwork?.series || "").trim();
+      if (!value || !series) return false;
+      const lower = value.toLowerCase();
+      const normalized = slugifySeries(value).toLowerCase();
+      const seriesName = String(series?.name || "").trim().toLowerCase();
+      const seriesSlug = String(series?.slug || slugifySeries(series?.name || "")).trim().toLowerCase();
+      return lower === seriesName || lower === seriesSlug || normalized === seriesSlug;
+    }
+
     // Filter out empty series (no pieces)
     const seriesWithCounts = (seriesRows || [])
       .map(s => {
-        const count = (s.publishedCount != null)
-          ? Number(s.publishedCount || 0)
-          : published.filter(a => a.series === s.name).length;
+        const count = published.filter(a => artworkMatchesSeries(a, s)).length;
         return { ...s, publishedCount: count };
       });
 
@@ -241,7 +264,7 @@
       const s = bySlug.get(slug) || byName.get(slug); // allow name fallback
       if (!s) return renderOverview();
 
-      const pieces = sortPieces(published.filter(a => a.series === s.name));
+      const pieces = sortSeriesPieces(published.filter(a => artworkMatchesSeries(a, s)), s);
 
       detail.innerHTML = "";
       detail.appendChild(

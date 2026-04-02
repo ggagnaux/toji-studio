@@ -88,10 +88,15 @@ publicRouter.get("/public/series", (req, res) => {
       s.sortOrder,
       s.isPublic,
       s.coverArtworkId,
+      s.imageOrderJson,
       (SELECT path FROM variants v
         WHERE v.artworkId=s.coverArtworkId AND v.kind='thumb') AS coverThumb,
       (SELECT COUNT(*) FROM artworks a
-        WHERE a.status='published' AND a.series = s.name) AS publishedCount
+        WHERE a.status='published'
+          AND (
+            LOWER(TRIM(COALESCE(a.series, ''))) = LOWER(TRIM(COALESCE(s.name, '')))
+            OR LOWER(TRIM(COALESCE(a.series, ''))) = LOWER(TRIM(COALESCE(s.slug, '')))
+          )) AS publishedCount
     FROM series s
     WHERE s.isPublic=1
     ORDER BY s.sortOrder ASC, s.name ASC
@@ -99,7 +104,8 @@ publicRouter.get("/public/series", (req, res) => {
 
   res.json(rows.map(r => ({
     ...r,
-    isPublic: !!r.isPublic
+    isPublic: !!r.isPublic,
+    imageOrder: parseImageOrder(r.imageOrderJson)
   })));
 });
 

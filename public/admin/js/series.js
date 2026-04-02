@@ -152,9 +152,10 @@
           display:flex;
         }
         .series-manager-page .series-cover-modal-panel{
+          position:relative;
           width:min(980px, calc(100vw - 36px));
           max-height:min(88vh, 820px);
-          overflow:auto;
+          overflow:hidden;
           border:1px solid var(--line);
           border-radius:18px;
           background:var(--panel);
@@ -162,6 +163,12 @@
           padding:14px;
           display:grid;
           gap:12px;
+          grid-template-rows:auto auto minmax(0, 1fr);
+        }
+        .series-manager-page .series-cover-modal-body{
+          min-height:0;
+          overflow:auto;
+          padding-right:4px;
         }
         .series-manager-page .series-cover-modal-top{
           display:flex;
@@ -173,6 +180,243 @@
         .series-manager-page .series-cover-modal-copy{
           display:grid;
           gap:4px;
+          padding-right:46px;
+        }
+        .series-manager-page .series-cover-modal-close{
+          position:absolute;
+          top:12px;
+          right:12px;
+          width:34px;
+          height:34px;
+          padding:0;
+          border-radius:999px;
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          font-size:20px;
+          line-height:1;
+          font-weight:700;
+          z-index:1;
+        }
+        .series-manager-page .series-editor-tabs{
+          display:flex;
+          gap:0;
+          flex-wrap:wrap;
+          margin-top:12px;
+          margin-bottom:0;
+          border-bottom:1px solid var(--line);
+        }
+        .series-manager-page .series-editor-tab{
+          appearance:none;
+          min-width:120px;
+          justify-content:center;
+          border:1px solid transparent;
+          border-bottom:1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+          background:transparent;
+          color:var(--muted);
+          border-radius:10px 10px 0 0;
+          padding:8px 12px;
+          font:inherit;
+          font-size:16px;
+          cursor:pointer;
+          margin-bottom:-1px;
+          display:inline-flex;
+          align-items:center;
+          gap:8px;
+          transition:border-color .18s ease, background .18s ease, color .18s ease;
+        }
+        .series-manager-page .series-editor-tab:hover{
+          color:var(--text);
+          transform:none;
+        }
+        .series-manager-page .series-editor-tab[data-series-tab="details"]{
+          --series-tab-color:#4db6ac;
+        }
+        .series-manager-page .series-editor-tab[data-series-tab="images"]{
+          --series-tab-color:#d9a14b;
+        }
+        .series-manager-page .series-editor-tab.is-active{
+          color:var(--text);
+          border-color:color-mix(in srgb, var(--series-tab-color, var(--accent)) 88%, var(--line));
+          border-bottom-color:transparent;
+          background:color-mix(in srgb, var(--series-tab-color, var(--accent)) 16%, var(--panel));
+          box-shadow:none;
+        }
+        .series-manager-page .series-tab-content{
+          display:grid;
+          gap:0;
+          margin-top:0;
+          border:1px solid color-mix(in srgb, var(--series-pane-color, var(--accent)) 80%, var(--line));
+          border-top-color:color-mix(in srgb, var(--series-pane-color, var(--accent)) 80%, var(--line));
+          border-radius:0 0 10px 10px;
+          background:color-mix(in srgb, var(--series-pane-color, var(--accent)) 8%, var(--panel));
+          padding:16px;
+          transition:border-color .18s ease, background .18s ease;
+        }
+        .series-manager-page .series-tab-panel{
+          display:none;
+        }
+        .series-manager-page .series-tab-panel.is-active{
+          display:block;
+        }
+        .series-manager-page .series-images-toolbar{
+          display:flex;
+          gap:10px;
+          flex-wrap:wrap;
+          align-items:center;
+          margin-top:12px;
+        }
+        .series-manager-page .series-image-strip{
+          display:flex;
+          flex-wrap:wrap;
+          gap:10px;
+          margin-top:14px;
+        }
+        .series-manager-page .series-image-strip.is-dragging .series-image-chip{
+          opacity:.92;
+        }
+        .series-manager-page .series-image-chip{
+          cursor:grab;
+        }
+        .series-manager-page .series-image-chip:active{
+          cursor:grabbing;
+        }
+        .series-manager-page .series-image-chip.is-dragging{
+          opacity:.42;
+          transform:scale(.96);
+        }
+        .series-manager-page .series-image-chip.is-drop-target .series-cover-thumb,
+        .series-manager-page .series-image-chip.is-drop-target .series-cover-empty{
+          border-color:color-mix(in srgb, #ff8a1f 86%, white);
+          box-shadow:0 0 0 3px color-mix(in srgb, #ff8a1f 30%, transparent);
+        }
+        .series-manager-page .series-image-chip{
+          width:68px;
+          display:grid;
+          gap:6px;
+        }
+        .series-manager-page .series-image-chip .series-cover-thumb,
+        .series-manager-page .series-image-chip .series-cover-empty{
+          width:68px;
+          aspect-ratio:1;
+          min-height:auto;
+        }
+        .series-manager-page .series-image-chip .series-cover-label{
+          font-size:12px;
+        }
+        .series-manager-page .series-images-empty{
+          margin-top:14px;
+        }
+        .series-manager-page .series-cover-option.is-picked{
+          position:relative;
+          border-color: color-mix(in srgb, #ff8a1f 92%, white);
+          background: linear-gradient(
+            180deg,
+            color-mix(in srgb, #ff8a1f 28%, var(--panel)),
+            color-mix(in srgb, #ff8a1f 18%, var(--panel))
+          );
+          box-shadow:
+            0 0 0 5px color-mix(in srgb, #ff8a1f 42%, transparent),
+            0 16px 34px rgba(0,0,0,.28),
+            inset 0 0 0 2px color-mix(in srgb, white 18%, #ff8a1f);
+          transform: translateY(-3px) scale(1.02);
+        }
+        .series-manager-page .series-cover-option.is-picked::after{
+          content:"Selected";
+          position:absolute;
+          top:10px;
+          right:10px;
+          padding:4px 8px;
+          border-radius:999px;
+          background: color-mix(in srgb, #ff8a1f 82%, black 10%);
+          color:#fff;
+          font-size:11px;
+          font-weight:800;
+          letter-spacing:.02em;
+          box-shadow:0 6px 14px rgba(0,0,0,.28);
+        }
+        .series-manager-page .series-cover-option.is-picked .series-cover-thumb{
+          border-color: color-mix(in srgb, #ff8a1f 88%, white);
+          box-shadow:
+            0 0 0 3px color-mix(in srgb, #ff8a1f 34%, transparent),
+            0 10px 20px rgba(0,0,0,.18);
+        }
+        .series-manager-page .series-cover-option.is-picked .series-cover-label{
+          color: color-mix(in srgb, white 22%, var(--text));
+          font-weight: 800;
+        }
+        .series-manager-page .series-cover-option.is-included{
+          background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+          opacity:.7;
+          filter:saturate(.72) brightness(.86);
+        }
+        .series-manager-page .series-cover-option.is-included .series-cover-thumb{
+          opacity:.8;
+        }
+        .series-manager-page .series-cover-option.is-included .series-cover-label{
+          color:color-mix(in srgb, var(--muted) 82%, var(--text) 18%);
+        }
+        .series-manager-page .series-cover-option.is-included.is-picked{
+          opacity:1;
+          filter:none;
+        }
+        .series-manager-page .series-cover-option.is-included.is-picked .series-cover-thumb{
+          opacity:1;
+        }
+        .series-manager-page .series-cover-option.is-included.is-picked .series-cover-label{
+          color: color-mix(in srgb, white 22%, var(--text));
+        }
+        .series-manager-page .series-cover-option-meta{
+          display:grid;
+          gap:8px;
+        }
+        .series-manager-page .series-cover-pill{
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          padding:3px 8px;
+          border-radius:999px;
+          border:1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+          background:color-mix(in srgb, var(--accent) 12%, var(--panel));
+          color:var(--accent);
+          font-size:11px;
+          font-weight:700;
+          letter-spacing:.01em;
+          white-space:nowrap;
+        }
+        .series-manager-page .series-cover-modal-toolbar{
+          display:flex;
+          justify-content:space-between;
+          gap:12px;
+          flex-wrap:wrap;
+          align-items:center;
+        }
+        .series-manager-page .series-cover-modal-toolbar-group{
+          display:flex;
+          gap:8px;
+          flex-wrap:wrap;
+          align-items:center;
+        }
+        .series-manager-page .series-cover-modal-toolbar-group--right{
+          margin-left:auto;
+          justify-content:flex-end;
+        }
+        .series-manager-page .series-cover-modal-toolbar-group .btn:disabled{
+          opacity:.42;
+          color:color-mix(in srgb, var(--muted) 86%, transparent);
+          border-color:color-mix(in srgb, var(--line) 78%, transparent);
+          background:color-mix(in srgb, var(--panel) 88%, transparent);
+          box-shadow:none;
+          cursor:not-allowed;
+          filter:saturate(.55) brightness(.88);
+        }
+        @media (max-width: 760px){
+          .series-manager-page .series-cover-modal-toolbar{
+            align-items:stretch;
+          }
+          .series-manager-page .series-cover-modal-toolbar-group{
+            width:100%;
+          }
         }
       `;
       document.head.appendChild(style);
@@ -287,7 +531,8 @@
         description: s.description,
         sortOrder: Number(s.sortOrder || 0),
         isPublic: !!s.isPublic,
-        coverArtworkId: s.coverArtworkId || ""
+        coverArtworkId: s.coverArtworkId || "",
+        imageOrder: Array.isArray(s.imageOrder) ? s.imageOrder : []
       }));
       const settled = await Promise.allSettled(jobs);
       const failed = settled.filter(r => r.status === "rejected").length;
@@ -646,6 +891,57 @@
         }));
     }
 
+    function seriesAliasesForRow(seriesRow){
+      const aliases = new Set();
+      const pushAlias = (v) => {
+        const s = String(v || "").trim();
+        if (!s) return;
+        aliases.add(s.toLowerCase());
+        const norm = slugifySeries(s);
+        if (norm) aliases.add(norm.toLowerCase());
+      };
+      pushAlias(seriesRow?.slug);
+      pushAlias(seriesRow?.name);
+      pushAlias(seriesRow?.backendSlug);
+      pushAlias(seriesRow?.rawSlug);
+      return aliases;
+    }
+
+    function artworkBelongsToSeries(artwork, seriesRow){
+      const value = String(artwork?.series || "").trim();
+      if (!value) return false;
+      const aliases = seriesAliasesForRow(seriesRow);
+      const lower = value.toLowerCase();
+      const norm = slugifySeries(value).toLowerCase();
+      return aliases.has(lower) || aliases.has(norm);
+    }
+
+    function seriesArtworkItems(seriesRow){
+      return (state.artworks || [])
+        .slice()
+        .sort((a,b) => String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")))
+        .map((a) => ({
+          id: a.id,
+          label: `${a.title || "Untitled"} (${a.id})`,
+          thumb: a.thumb || "",
+          included: artworkBelongsToSeries(a, seriesRow)
+        }));
+    }
+
+    function orderedSeriesArtworkItems(seriesRow){
+      const allItems = seriesArtworkItems(seriesRow);
+      const included = allItems.filter((item) => item.included);
+      const order = Array.isArray(seriesRow?.imageOrder) ? seriesRow.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : [];
+      if (!order.length) return included;
+      const rank = new Map(order.map((id, index) => [id, index]));
+      return included.slice().sort((a, b) => {
+        const ai = rank.has(String(a.id)) ? rank.get(String(a.id)) : Number.POSITIVE_INFINITY;
+        const bi = rank.has(String(b.id)) ? rank.get(String(b.id)) : Number.POSITIVE_INFINITY;
+        if (ai !== bi) return ai - bi;
+        return 0;
+      });
+    }
+
     function renderEditor(slug){
       const s = state.seriesMeta[slug];
       if (!s){
@@ -663,6 +959,54 @@
         )
       );
 
+      const tabNav = el("div", { class:"series-editor-tabs", role:"tablist", "aria-label":"Series editor sections" });
+      const tabContent = el("div", { class:"series-tab-content" });
+      const detailsPanel = el("div", { class:"series-tab-panel is-active", role:"tabpanel" });
+      const imagesPanel = el("div", { class:"series-tab-panel", role:"tabpanel", hidden:"" });
+      const panels = { details: detailsPanel, images: imagesPanel };
+      const tabButtons = {};
+      const tabLabelText = {};
+      let activeTab = "details";
+
+      const setActiveTab = (tab) => {
+        activeTab = tab;
+        const paneColors = {
+          details: "#4db6ac",
+          images: "#d9a14b"
+        };
+        tabContent.style.setProperty("--series-pane-color", paneColors[tab] || "var(--accent)");
+        for (const [key, panel] of Object.entries(panels)) {
+          const active = key === tab;
+          panel.classList.toggle("is-active", active);
+          if (active) panel.removeAttribute("hidden");
+          else panel.setAttribute("hidden", "");
+        }
+        for (const [key, btn] of Object.entries(tabButtons)) {
+          const active = key === tab;
+          btn.classList.toggle("is-active", active);
+          btn.setAttribute("aria-selected", active ? "true" : "false");
+          btn.tabIndex = active ? 0 : -1;
+        }
+      };
+
+      const makeTabBtn = (key, label) => {
+        const textNode = document.createTextNode(label);
+        const btn = el("button", {
+          type:"button",
+          class:"btn series-editor-tab" + (key === activeTab ? " is-active" : ""),
+          role:"tab",
+          "aria-selected": key === activeTab ? "true" : "false",
+          "data-series-tab": key
+        }, textNode);
+        btn.addEventListener("click", () => setActiveTab(key));
+        tabButtons[key] = btn;
+        tabLabelText[key] = textNode;
+        tabNav.appendChild(btn);
+      };
+
+      makeTabBtn("details", "Details");
+      makeTabBtn("images", "Images [0]");
+      editor.appendChild(tabNav);
 
       const nameField = inputField(
         "Name",
@@ -678,8 +1022,7 @@
         { commitOnBlur: true }
       );
       const pubField = toggleField("Public", !!s.isPublic, (v)=>{ s.isPublic = v; queueSave(true); });
-
-            const covers = artworkOptions();
+      const covers = artworkOptions();
       const coverSelect = thumbSelectField(
         "Cover artwork",
         covers,
@@ -687,11 +1030,282 @@
         (v)=>{ s.coverArtworkId = v; queueSave(true); }
       );
 
-      editor.appendChild(el("hr", { class:"sep" }));
-      editor.appendChild(nameField);
-      editor.appendChild(descField);
-      editor.appendChild(pubField);
-      editor.appendChild(coverSelect);
+      detailsPanel.appendChild(nameField);
+      detailsPanel.appendChild(descField);
+      detailsPanel.appendChild(pubField);
+      detailsPanel.appendChild(coverSelect);
+
+      const imagesIntro = el("div", { class:"sub", style:"margin-top:4px" }, "Assign artwork to this series and review included thumbnails.");
+      const manageImagesBtn = el("button", { class:"btn primary", type:"button" }, "Manage Series Artwork");
+      const imageThumbStrip = el("div", { class:"series-image-strip" });
+      let draggedImageId = "";
+      const imagesEmpty = el("div", { class:"sub series-images-empty" }, "No artwork is currently included in this series.");
+
+      const reorderIncludedImages = (sourceId, targetId) => {
+        const current = orderedSeriesArtworkItems(s).map((item) => String(item.id));
+        const from = current.indexOf(String(sourceId || ""));
+        const to = current.indexOf(String(targetId || ""));
+        if (from < 0 || to < 0 || from === to) return;
+        const next = current.slice();
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        s.imageOrder = next;
+        queueSave(true);
+        renderImagesStrip();
+      };
+
+      const renderImagesStrip = () => {
+        const included = orderedSeriesArtworkItems(s);
+        if (tabLabelText.images) tabLabelText.images.textContent = `Images [${included.length}]`;
+        imageThumbStrip.innerHTML = "";
+        imagesEmpty.style.display = included.length ? "none" : "";
+        for (const item of included) {
+          const chip = el("div", { class:"series-image-chip", draggable:"true", "data-artwork-id": String(item.id) },
+            item.thumb
+              ? el("div", { class:"series-cover-thumb" }, el("img", { src:item.thumb, alt:item.label || "Series artwork" }))
+              : el("div", { class:"series-cover-empty" }, "N/A"),
+            el("div", { class:"series-cover-label", title:item.label || "" }, item.label || "Untitled")
+          );
+          chip.addEventListener("dragstart", (event) => {
+            draggedImageId = String(item.id);
+            imageThumbStrip.classList.add("is-dragging");
+            chip.classList.add("is-dragging");
+            try { event.dataTransfer?.setData("text/plain", draggedImageId); } catch {}
+            if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+          });
+          chip.addEventListener("dragend", () => {
+            draggedImageId = "";
+            imageThumbStrip.classList.remove("is-dragging");
+            imageThumbStrip.querySelectorAll(".series-image-chip").forEach((node) => node.classList.remove("is-dragging", "is-drop-target"));
+          });
+          chip.addEventListener("dragover", (event) => {
+            if (!draggedImageId || draggedImageId === String(item.id)) return;
+            event.preventDefault();
+            chip.classList.add("is-drop-target");
+            if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+          });
+          chip.addEventListener("dragleave", () => chip.classList.remove("is-drop-target"));
+          chip.addEventListener("drop", (event) => {
+            event.preventDefault();
+            chip.classList.remove("is-drop-target");
+            const sourceId = draggedImageId || event.dataTransfer?.getData("text/plain") || "";
+            reorderIncludedImages(sourceId, String(item.id));
+          });
+          imageThumbStrip.appendChild(chip);
+        }
+      };
+
+      const buildSeriesPayload = () => ({
+        name: s.name,
+        description: s.description,
+        sortOrder: Number(s.sortOrder || 0),
+        isPublic: !!s.isPublic,
+        coverArtworkId: s.coverArtworkId || "",
+        imageOrder: Array.isArray(s.imageOrder) ? s.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : []
+      });
+
+      async function applySeriesArtworkSelection(nextIncludedIds){
+        const desired = new Set((nextIncludedIds || []).map((v) => String(v)));
+        const existingOrder = Array.isArray(s.imageOrder) ? s.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : [];
+        s.imageOrder = existingOrder.filter((id) => desired.has(id));
+        for (const item of seriesArtworkItems(s)) {
+          const id = String(item.id);
+          if (desired.has(id) && !s.imageOrder.includes(id)) s.imageOrder.push(id);
+        }
+        const touched = [];
+        for (const artwork of (state.artworks || [])) {
+          const belongs = artworkBelongsToSeries(artwork, s);
+          const shouldInclude = desired.has(String(artwork.id));
+          if (shouldInclude) {
+            if (String(artwork.series || "") !== s.slug) {
+              artwork.series = s.slug;
+              touched.push({ artwork, value: s.slug });
+            }
+          } else if (belongs) {
+            artwork.series = "";
+            touched.push({ artwork, value: "" });
+          }
+        }
+
+        saveState(state);
+        renderImagesStrip();
+
+        state.seriesMeta[slug] = { ...s };
+        saveState(state);
+
+        if (!touched.length) {
+          setStatus("Series artwork already matches selection.", 10000, "info");
+          return;
+        }
+        if (!getAdminToken()) {
+          setStatus("Series artwork saved locally (no token).", 10000, "warn");
+          return;
+        }
+
+        setStatus("Saving artwork selection...", 10000, "info");
+        const results = await Promise.allSettled(touched.map(({ artwork, value }) =>
+          patchArtworkToBackend(artwork.id, { series: value })
+        ));
+        let seriesSaveFailed = false;
+        try {
+          const out = await apiUpsertSeries(slug, buildSeriesPayload());
+          state.seriesMeta[slug] = {
+            ...state.seriesMeta[slug],
+            ...out,
+            coverThumb: normalizeCoverThumbPath(out?.coverThumb),
+            isPublic: !!out.isPublic,
+            imageOrder: Array.isArray(out?.imageOrder) ? out.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : buildSeriesPayload().imageOrder
+          };
+          saveState(state);
+        } catch (e) {
+          seriesSaveFailed = true;
+        }
+        const failed = results.filter((r) => r.status === "rejected").length;
+        if (!failed && !seriesSaveFailed) setStatus("Series artwork updated.", 10000, "success");
+        else if (seriesSaveFailed) setStatus(`Updated locally, but backend failed to save series order.`, 10000, "error");
+        else setStatus(`Updated locally, but backend failed for ${failed}/${touched.length} artwork items.`, 10000, "error");
+      }
+
+      const openSeriesArtworkModal = () => {
+        const allItems = seriesArtworkItems(s);
+        let includedIds = new Set(allItems.filter((item) => item.included).map((item) => String(item.id)));
+        let selectedIds = new Set();
+        let selectionAnchorId = "";
+        const backdrop = el("div", { class:"series-cover-modal", role:"dialog", "aria-modal":"true", "aria-label":"Manage series artwork" });
+        backdrop.dataset.seriesCoverPortal = "1";
+        const panel = el("div", { class:"series-cover-modal-panel" });
+        const picker = el("div", { class:"series-cover-picker", role:"listbox", "aria-label":"Series artwork picker" });
+        const includeBtn = el("button", { class:"btn", type:"button", disabled:"" }, "Include");
+        const excludeBtn = el("button", { class:"btn", type:"button", disabled:"" }, "Exclude");
+        const selectToggleBtn = el("button", { class:"btn", type:"button" }, "Select All");
+        const closeBtn = el("button", { class:"btn series-cover-modal-close", type:"button", "aria-label":"Close manage series artwork dialog" }, "\u00D7");
+        const lastFocus = document.activeElement;
+
+        const closeModal = (restoreFocus = true) => {
+          backdrop.classList.remove("is-open");
+          backdrop.remove();
+          if (restoreFocus && lastFocus && typeof lastFocus.focus === "function") lastFocus.focus();
+        };
+
+        const syncActionButtons = () => {
+          const disabled = selectedIds.size === 0;
+          includeBtn.disabled = disabled;
+          excludeBtn.disabled = disabled;
+          const allSelected = allItems.length > 0 && selectedIds.size === allItems.length;
+          selectToggleBtn.textContent = allSelected ? "Select None" : "Select All";
+          selectToggleBtn.disabled = allItems.length === 0;
+        };
+
+        const renderPicker = () => {
+          picker.innerHTML = "";
+          syncActionButtons();
+          for (const item of allItems) {
+            const picked = selectedIds.has(String(item.id));
+            const included = includedIds.has(String(item.id));
+            const btn = el("button", {
+              type:"button",
+              class:"series-cover-option" + (picked ? " is-picked" : "") + (included ? " is-included" : ""),
+              role:"option",
+              "aria-selected": picked ? "true" : "false",
+              "aria-label": item.label || "Artwork option"
+            },
+              item.thumb
+                ? el("div", { class:"series-cover-thumb" }, el("img", { src:item.thumb, alt:item.label || "Artwork option" }))
+                : el("div", { class:"series-cover-empty" }, "N/A"),
+              el("div", { class:"series-cover-option-meta" },
+                el("div", { class:"series-cover-label", title:item.label || "" }, item.label || "Untitled"),
+                included ? el("span", { class:"series-cover-pill" }, "Included") : null
+              )
+            );
+            btn.addEventListener("click", (event) => {
+              const key = String(item.id);
+              if (event.shiftKey && selectionAnchorId) {
+                const start = allItems.findIndex((entry) => String(entry.id) === selectionAnchorId);
+                const end = allItems.findIndex((entry) => String(entry.id) === key);
+                if (start >= 0 && end >= 0) {
+                  const [from, to] = start <= end ? [start, end] : [end, start];
+                  for (let index = from; index <= to; index += 1) {
+                    selectedIds.add(String(allItems[index].id));
+                  }
+                } else if (selectedIds.has(key)) selectedIds.delete(key);
+                else selectedIds.add(key);
+              } else if (selectedIds.has(key)) {
+                selectedIds.delete(key);
+              } else {
+                selectedIds.add(key);
+              }
+              selectionAnchorId = key;
+              renderPicker();
+            });
+            picker.appendChild(btn);
+          }
+        };
+
+        includeBtn.addEventListener("click", async () => {
+          if (!selectedIds.size) return;
+          selectedIds.forEach((id) => includedIds.add(id));
+          await applySeriesArtworkSelection(Array.from(includedIds));
+          selectedIds.clear();
+          selectionAnchorId = "";
+          renderPicker();
+        });
+        excludeBtn.addEventListener("click", async () => {
+          if (!selectedIds.size) return;
+          selectedIds.forEach((id) => includedIds.delete(id));
+          await applySeriesArtworkSelection(Array.from(includedIds));
+          selectedIds.clear();
+          selectionAnchorId = "";
+          renderPicker();
+        });
+        selectToggleBtn.addEventListener("click", () => {
+          const allSelected = allItems.length > 0 && selectedIds.size === allItems.length;
+          if (allSelected) selectedIds.clear();
+          else selectedIds = new Set(allItems.map((item) => String(item.id)));
+          renderPicker();
+        });
+        closeBtn.addEventListener("click", () => closeModal(true));
+
+        backdrop.addEventListener("click", (event) => {
+          if (event.target === backdrop) closeModal(true);
+        });
+        backdrop.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") closeModal(true);
+        });
+
+        panel.appendChild(
+          el("div", { class:"series-cover-modal-top" },
+            el("div", { class:"series-cover-modal-copy" },
+              el("div", { class:"title", style:"margin:0" }, "Manage Series Artwork"),
+              el("div", { class:"sub" }, "Select artwork thumbnails, then include or exclude them from this series.")
+            ),
+            el("div", { class:"series-cover-modal-toolbar-group" }, closeBtn)
+          )
+        );
+        const pickerBody = el("div", { class:"series-cover-modal-body" }, picker);
+        panel.appendChild(
+          el("div", { class:"series-cover-modal-toolbar" },
+            el("div", { class:"series-cover-modal-toolbar-group" }, includeBtn, excludeBtn),
+            el("div", { class:"series-cover-modal-toolbar-group series-cover-modal-toolbar-group--right" }, selectToggleBtn)
+          )
+        );
+        panel.appendChild(pickerBody);
+        backdrop.appendChild(panel);
+        document.body.appendChild(backdrop);
+        backdrop.classList.add("is-open");
+        renderPicker();
+        closeBtn.focus();
+      };
+
+      imagesPanel.appendChild(imagesIntro);
+      imagesPanel.appendChild(el("div", { class:"series-images-toolbar" }, manageImagesBtn));
+      imagesPanel.appendChild(imagesEmpty);
+      imagesPanel.appendChild(imageThumbStrip);
+      manageImagesBtn.addEventListener("click", openSeriesArtworkModal);
+      renderImagesStrip();
+
+      tabContent.appendChild(detailsPanel);
+      tabContent.appendChild(imagesPanel);
+      editor.appendChild(tabContent);
 
       editor.appendChild(el("hr", { class:"sep" }));
 
@@ -720,34 +1334,27 @@
       }
 
       async function backendSave(){
-        // If token missing, keep local-only
         if (!getAdminToken()){
           setStatus("Saved locally (no token).", 10000, "warn");
           return;
         }
 
-        // Use slug as stable key; allow rename without changing slug
-        const payload = {
-          name: s.name,
-          description: s.description,
-          sortOrder: Number(s.sortOrder || 0),
-          isPublic: !!s.isPublic,
-          coverArtworkId: s.coverArtworkId || ""
-        };
+        const payload = buildSeriesPayload();
 
         setStatus("Saving...", 10000, "info");
         try {
           const out = await apiUpsertSeries(slug, payload);
-          // Merge backend response back in
           state.seriesMeta[slug] = {
             ...state.seriesMeta[slug],
             ...out,
             coverThumb: normalizeCoverThumbPath(out?.coverThumb),
-            isPublic: !!out.isPublic
+            isPublic: !!out.isPublic,
+            imageOrder: Array.isArray(out?.imageOrder) ? out.imageOrder.map((id) => String(id || "").trim()).filter(Boolean) : (Array.isArray(state.seriesMeta[slug]?.imageOrder) ? state.seriesMeta[slug].imageOrder : [])
           };
           saveState(state);
           setStatus("Saved.", 10000, "success");
           renderList();
+          renderImagesStrip();
         } catch (e) {
           setStatus(`Backend save failed (local ok): ${e?.message || e}`, 10000, "error");
         }
@@ -761,8 +1368,17 @@
 
       delBtn.addEventListener("click", async () => {
         const ok = await confirmToast(
-          `Delete series "${s.name}"? This will also clear its series assignment from artworks.`,
-          { confirmLabel: "Delete", cancelLabel: "Cancel", tone: "warn" }
+          `Delete series "${s.name}"?
+
+This will also clear its series assignment from any existing artwork.
+
+`,
+          {
+            confirmLabel: "Delete",
+            cancelLabel: "Cancel",
+            tone: "warn",
+            highlightText: "Note: The actual artwork is NOT deleted."
+          }
         );
         if (!ok) return;
 
@@ -817,7 +1433,8 @@
           description: "",
           sortOrder: seriesArray().length * 10,
           isPublic: true,
-          coverArtworkId: ""
+          coverArtworkId: "",
+          imageOrder: []
         };
         saveState(state);
       }
@@ -958,12 +1575,13 @@
       });
       const backdrop = el("div", { class:"series-cover-modal", role:"dialog", "aria-modal":"true", "aria-label": label });
       backdrop.dataset.seriesCoverPortal = "1";
-      const closeBtn = el("button", { class:"btn", type:"button", "aria-label":"Close cover artwork picker" }, "Close");
+      const closeBtn = el("button", { class:"btn series-cover-modal-close", type:"button", "aria-label":"Close cover artwork picker" }, "\u00D7");
       const panel = el("div", { class:"series-cover-modal-panel" });
       const lastFocus = { current: null };
 
       const closeModal = () => {
         backdrop.classList.remove("is-open");
+        backdrop.remove();
         if (lastFocus.current && typeof lastFocus.current.focus === "function") lastFocus.current.focus();
       };
 
@@ -1010,7 +1628,9 @@
 
       trigger.addEventListener("click", () => {
         lastFocus.current = document.activeElement;
+        document.body.appendChild(backdrop);
         backdrop.classList.add("is-open");
+        renderPicker();
         closeBtn.focus();
       });
       closeBtn.addEventListener("click", closeModal);
@@ -1035,7 +1655,6 @@
       document.body.appendChild(backdrop);
 
       renderTrigger();
-      renderPicker();
       return el("div", { class:"field", style:"margin-top:12px" },
         el("div", { class:"sub" }, label),
         trigger

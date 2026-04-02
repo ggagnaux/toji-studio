@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS series (
   sortOrder INTEGER DEFAULT 0,
   isPublic INTEGER DEFAULT 1,          -- 1=show publicly, 0=hidden
   coverArtworkId TEXT DEFAULT NULL,    -- optional
+  imageOrderJson TEXT DEFAULT '[]',    -- ordered artwork ids for this series
   createdAt TEXT,
   updatedAt TEXT
 );
@@ -148,6 +149,8 @@ function ensureColumn(table, column, sqlTypeAndDefault) {
 ensureColumn("social_platforms", "configJson", "TEXT DEFAULT '{}'");
 ensureColumn("social_platforms", "authJson", "TEXT DEFAULT '{}'");
 ensureColumn("social_platforms", "iconLocation", "TEXT DEFAULT ''");
+
+ensureColumn("series", "imageOrderJson", "TEXT DEFAULT '[]'");
 
 const socialPlatforms = db.prepare(`
   SELECT id, iconLocation, configJson

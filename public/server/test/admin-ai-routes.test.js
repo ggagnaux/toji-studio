@@ -4,16 +4,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { restoreEnv, startTestServer, withMockedFetch } from "./helpers.js";
+import { restoreEnv, startTestServer, createAuthenticatedHeaders, withMockedFetch } from "./helpers.js";
 
 const ONE_PIXEL_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0ioAAAAASUVORK5CYII=";
 
-function authHeaders(json = true) {
-  const headers = {
-    Authorization: "Bearer legacy-token"
-  };
-  if (json) headers["Content-Type"] = "application/json";
-  return headers;
+async function authHeaders(server, json = true) {
+  return createAuthenticatedHeaders(server.baseUrl, { json });
 }
 
 function createImageBlob() {
@@ -28,7 +24,7 @@ async function importFreshServerModule() {
 async function withIsolatedServer(fn) {
   const storageDir = await fs.mkdtemp(path.join(os.tmpdir(), "toji-ai-routes-"));
   process.env.TOJI_STORAGE_DIR = storageDir;
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
   const { createApp } = await importFreshServerModule();
   const server = await startTestServer(createApp);
   try {
@@ -43,7 +39,7 @@ async function createArtwork(server, filename = "Ai Artwork.png") {
   form.append("files", createImageBlob(), filename);
   const res = await fetch(`${server.baseUrl}/api/admin/upload`, {
     method: "POST",
-    headers: authHeaders(false),
+    headers: await authHeaders(server, false),
     body: form
   });
   const body = await res.json();
@@ -63,7 +59,7 @@ test("AI routes reject requests when OPENAI_API_KEY is missing", async () => {
 
     const describeRes = await fetch(`${server.baseUrl}/api/admin/ai/describe-artwork`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ artworkId: artwork.id, title: artwork.title })
     });
     const describeBody = await describeRes.json();
@@ -72,7 +68,7 @@ test("AI routes reject requests when OPENAI_API_KEY is missing", async () => {
 
     const tagsRes = await fetch(`${server.baseUrl}/api/admin/ai/generate-tags`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ artworkId: artwork.id, title: artwork.title })
     });
     const tagsBody = await tagsRes.json();
@@ -106,7 +102,7 @@ test("AI describe route returns generated description via mocked OpenAI response
     }, async () => {
       const res = await fetch(`${server.baseUrl}/api/admin/ai/describe-artwork`, {
         method: "POST",
-        headers: authHeaders(),
+        headers: await authHeaders(server, ),
         body: JSON.stringify({
           artworkId: artwork.id,
           title: artwork.title,
@@ -167,7 +163,7 @@ test("AI generate-tags route returns parsed tags and surfaces unusable responses
     }, async () => {
       const okRes = await fetch(`${server.baseUrl}/api/admin/ai/generate-tags`, {
         method: "POST",
-        headers: authHeaders(),
+        headers: await authHeaders(server, ),
         body: JSON.stringify({
           artworkId: artwork.id,
           title: artwork.title,
@@ -183,7 +179,7 @@ test("AI generate-tags route returns parsed tags and surfaces unusable responses
 
       const badRes = await fetch(`${server.baseUrl}/api/admin/ai/generate-tags`, {
         method: "POST",
-        headers: authHeaders(),
+        headers: await authHeaders(server, ),
         body: JSON.stringify({
           artworkId: artwork.id,
           title: artwork.title,
@@ -204,7 +200,7 @@ test("AI describe route surfaces upstream errors and missing-image failures", as
 
     const missingImageRes = await fetch(`${server.baseUrl}/api/admin/ai/describe-artwork`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ artworkId: "missing-artwork", title: "Missing" })
     });
     const missingImageBody = await missingImageRes.json();
@@ -228,7 +224,7 @@ test("AI describe route surfaces upstream errors and missing-image failures", as
     }, async () => {
       const res = await fetch(`${server.baseUrl}/api/admin/ai/describe-artwork`, {
         method: "POST",
-        headers: authHeaders(),
+        headers: await authHeaders(server, ),
         body: JSON.stringify({ artworkId: artwork.id, title: artwork.title })
       });
       const body = await res.json();

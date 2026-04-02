@@ -1,18 +1,7 @@
 import { getAdminSessionFromRequest } from "./session.js";
 
-export function getExpectedAdminToken() {
-  return String(process.env.ADMIN_TOKEN || "").trim();
-}
-
 export function getExpectedAdminPassword() {
-  return String(process.env.ADMIN_PASSWORD || process.env.ADMIN_TOKEN || "").trim();
-}
-
-export function hasValidLegacyAdminToken(req) {
-  const auth = req.get("authorization") || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  const expectedToken = getExpectedAdminToken();
-  return !!token && !!expectedToken && token === expectedToken;
+  return String(process.env.ADMIN_PASSWORD || "").trim();
 }
 
 export function getAdminRequestAuthState(req) {
@@ -22,14 +11,6 @@ export function getAdminRequestAuthState(req) {
       ok: true,
       method: "session",
       session
-    };
-  }
-
-  if (hasValidLegacyAdminToken(req)) {
-    return {
-      ok: true,
-      method: "token",
-      session: null
     };
   }
 

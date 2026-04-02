@@ -64,6 +64,16 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  id TEXT PRIMARY KEY,
+  createdAt TEXT NOT NULL,
+  expiresAt TEXT NOT NULL,
+  metadataJson TEXT DEFAULT '{}'
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at
+  ON admin_sessions(expiresAt);
+
 CREATE TABLE IF NOT EXISTS series (
   slug TEXT PRIMARY KEY,               -- stable key
   name TEXT NOT NULL,                  -- display name

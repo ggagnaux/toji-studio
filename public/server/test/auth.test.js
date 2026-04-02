@@ -3,48 +3,30 @@ import assert from "node:assert/strict";
 
 import {
   createAdminSession,
-  ADMIN_SESSION_COOKIE,
-  resetAdminSessionsForTests
+  ADMIN_SESSION_COOKIE
 } from "../src/session.js";
 import {
   getAdminRequestAuthState,
   getExpectedAdminPassword,
-  getExpectedAdminToken,
-  hasValidLegacyAdminToken,
   requireAdmin
 } from "../src/auth.js";
 import { createMockReq, createMockRes, restoreEnv } from "./helpers.js";
 
 test.afterEach(() => {
   restoreEnv();
-  resetAdminSessionsForTests();
 });
 
-test("expected password falls back to admin token", () => {
-  process.env.ADMIN_TOKEN = "fallback-token";
-  delete process.env.ADMIN_PASSWORD;
+test("expected password comes only from ADMIN_PASSWORD", () => {
+  process.env.ADMIN_PASSWORD = "secret-pass";
+  delete process.env.ADMIN_TOKEN;
 
-  assert.equal(getExpectedAdminToken(), "fallback-token");
-  assert.equal(getExpectedAdminPassword(), "fallback-token");
+  assert.equal(getExpectedAdminPassword(), "secret-pass");
 });
 
-test("hasValidLegacyAdminToken accepts matching bearer token", () => {
-  process.env.ADMIN_TOKEN = "secret-token";
-  const req = createMockReq({
-    headers: {
-      authorization: "Bearer secret-token"
-    }
-  });
-
-  assert.equal(hasValidLegacyAdminToken(req), true);
-});
-
-test("getAdminRequestAuthState prefers session auth over bearer token", () => {
-  process.env.ADMIN_TOKEN = "secret-token";
+test("getAdminRequestAuthState accepts a valid admin session", () => {
   const session = createAdminSession({ ip: "127.0.0.1" });
   const req = createMockReq({
     headers: {
-      authorization: "Bearer secret-token",
       cookie: `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(session.id)}`
     }
   });
@@ -55,18 +37,12 @@ test("getAdminRequestAuthState prefers session auth over bearer token", () => {
   assert.equal(auth.session?.id, session.id);
 });
 
-test("getAdminRequestAuthState falls back to token auth when no session exists", () => {
-  process.env.ADMIN_TOKEN = "secret-token";
-  const req = createMockReq({
-    headers: {
-      authorization: "Bearer secret-token"
-    }
-  });
-
+test("getAdminRequestAuthState rejects requests without a valid session", () => {
+  const req = createMockReq();
   const auth = getAdminRequestAuthState(req);
   assert.deepEqual(auth, {
-    ok: true,
-    method: "token",
+    ok: false,
+    method: "none",
     session: null
   });
 });

@@ -78,6 +78,7 @@ function enforceAdminSession() {
   const path = String(window.location.pathname || "").toLowerCase();
   if (!path.includes("/admin/")) return;
   if (path.endsWith("/admin/login.html")) return;
+  if (window.__tojiAdminSessionBootstrapPromise) return;
   if (sessionStorage.getItem(ADMIN_SESSION_KEY) === "1") return;
 
   window.location.replace(
@@ -98,7 +99,6 @@ export function isAdminSessionAuthenticated() {
 
 export function clearAdminSession() {
   setAdminSessionAuthenticated(false);
-  if (typeof window !== "undefined") localStorage.removeItem(TOKEN_KEY);
 }
 
 export function getExpectedAdminPassword() {
@@ -869,26 +869,14 @@ function resolveApiBase() {
 
 export const API_BASE = resolveApiBase();
 
-const TOKEN_KEY = "toji_admin_token_v1";
 const SESSION_SENTINEL_TOKEN = "__session__";
 
-function getStoredAdminToken() {
-  return String(localStorage.getItem(TOKEN_KEY) || "").trim();
-}
-
 export function getAdminToken() {
-  const stored = getStoredAdminToken();
-  if (stored) return stored;
   return isAdminSessionAuthenticated() ? SESSION_SENTINEL_TOKEN : "";
 }
 
-export function setAdminToken(token) {
-  const value = String(token || "").trim();
-  if (!value) {
-    localStorage.removeItem(TOKEN_KEY);
-    return;
-  }
-  localStorage.setItem(TOKEN_KEY, value);
+export function setAdminToken() {
+  return "";
 }
 
 export async function logoutAdminSession() {
@@ -913,8 +901,6 @@ export async function apiFetch(path, opts = {}) {
   if (hasBody && !contentTypeKey && typeof opts.body === "string") {
     headers["Content-Type"] = "application/json";
   }
-  const token = getStoredAdminToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(url, {
     ...opts,
     credentials: "include",

@@ -2,14 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createApp } from "../src/server.js";
-import { resetAdminSessionsForTests } from "../src/session.js";
-import { restoreEnv, startTestServer } from "./helpers.js";
+import { restoreEnv, startTestServer, createAuthenticatedHeaders } from "./helpers.js";
 
-function authHeaders() {
-  return {
-    Authorization: "Bearer legacy-token",
-    "Content-Type": "application/json"
-  };
+async function authHeaders(server, json = true) {
+  return createAuthenticatedHeaders(server.baseUrl, { json });
 }
 
 async function readJson(res) {
@@ -18,18 +14,17 @@ async function readJson(res) {
 
 test.afterEach(() => {
   restoreEnv();
-  resetAdminSessionsForTests();
 });
 
 test("GET /api/admin/data/tables requires auth and returns table metadata", async () => {
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
   const server = await startTestServer(createApp);
   try {
     const unauthorized = await fetch(`${server.baseUrl}/api/admin/data/tables`);
     assert.equal(unauthorized.status, 401);
 
     const authorized = await fetch(`${server.baseUrl}/api/admin/data/tables`, {
-      headers: { Authorization: "Bearer legacy-token" }
+      headers: await createAuthenticatedHeaders(server.baseUrl, { json: false })
     });
     const body = await readJson(authorized);
 
@@ -44,12 +39,12 @@ test("GET /api/admin/data/tables requires auth and returns table metadata", asyn
 });
 
 test("POST /api/admin/data/export rejects invalid selections and returns a JSON attachment for valid tables", async () => {
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
   const server = await startTestServer(createApp);
   try {
     const invalid = await fetch(`${server.baseUrl}/api/admin/data/export`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ tables: ["missing_table"] })
     });
     const invalidBody = await readJson(invalid);
@@ -58,7 +53,7 @@ test("POST /api/admin/data/export rejects invalid selections and returns a JSON 
 
     const valid = await fetch(`${server.baseUrl}/api/admin/data/export`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ tables: ["settings", "external_links"] })
     });
     const text = await valid.text();
@@ -78,12 +73,12 @@ test("POST /api/admin/data/export rejects invalid selections and returns a JSON 
 });
 
 test("POST /api/admin/data/import/preview rejects malformed payloads and summarizes valid bundles", async () => {
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
   const server = await startTestServer(createApp);
   try {
     const invalid = await fetch(`${server.baseUrl}/api/admin/data/import/preview`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ tables: [] })
     });
     const invalidBody = await readJson(invalid);
@@ -92,7 +87,7 @@ test("POST /api/admin/data/import/preview rejects malformed payloads and summari
 
     const valid = await fetch(`${server.baseUrl}/api/admin/data/import/preview`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         tables: {
           settings: [{ key: "siteTitle", value: "Toji" }],
@@ -113,12 +108,12 @@ test("POST /api/admin/data/import/preview rejects malformed payloads and summari
 });
 
 test("POST /api/admin/data/import/commit rejects invalid mode, unsupported tables, and preview issues", async () => {
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
   const server = await startTestServer(createApp);
   try {
     const invalidMode = await fetch(`${server.baseUrl}/api/admin/data/import/commit`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({ mode: "replace", tables: { settings: [] } })
     });
     const invalidModeBody = await readJson(invalidMode);
@@ -127,7 +122,7 @@ test("POST /api/admin/data/import/commit rejects invalid mode, unsupported table
 
     const unsupportedSelection = await fetch(`${server.baseUrl}/api/admin/data/import/commit`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         mode: "upsert",
         tables: ["artworks"],
@@ -144,7 +139,7 @@ test("POST /api/admin/data/import/commit rejects invalid mode, unsupported table
 
     const validationIssue = await fetch(`${server.baseUrl}/api/admin/data/import/commit`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: JSON.stringify({
         mode: "upsert",
         tables: ["external_links"],

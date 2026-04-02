@@ -128,3 +128,31 @@ export async function startTestServer(createApp) {
     }
   };
 }
+
+export async function createAuthenticatedHeaders(baseUrl, {
+  password = String(process.env.ADMIN_PASSWORD || "secret-pass"),
+  json = true
+} = {}) {
+  const loginRes = await fetch(`${baseUrl}/api/admin/session/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ password })
+  });
+
+  if (!loginRes.ok) {
+    const body = await loginRes.text();
+    throw new Error(`Failed to authenticate test session: ${loginRes.status} ${loginRes.statusText} ${body}`.trim());
+  }
+
+  const cookieHeader = String(loginRes.headers.get("set-cookie") || "").split(";")[0].trim();
+  if (!cookieHeader) throw new Error("Missing admin session cookie from login response.");
+
+  const headers = {
+    Cookie: cookieHeader
+  };
+  if (json) headers["Content-Type"] = "application/json";
+  return headers;
+}
+

@@ -4,14 +4,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { restoreEnv, startTestServer } from "./helpers.js";
+import { restoreEnv, startTestServer, createAuthenticatedHeaders } from "./helpers.js";
 
 const ONE_PIXEL_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0ioAAAAASUVORK5CYII=";
 
-function authHeaders() {
-  return {
-    Authorization: "Bearer legacy-token"
-  };
+async function authHeaders(server) {
+  return createAuthenticatedHeaders(server.baseUrl, { json: false });
 }
 
 function createImageBlob() {
@@ -30,7 +28,7 @@ test.afterEach(() => {
 test("POST /api/admin/upload applies batch metadata to created artworks", async () => {
   const storageDir = await fs.mkdtemp(path.join(os.tmpdir(), "toji-upload-storage-"));
   process.env.TOJI_STORAGE_DIR = storageDir;
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
 
   const { createApp } = await importFreshServerModule();
   const server = await startTestServer(createApp);
@@ -46,7 +44,7 @@ test("POST /api/admin/upload applies batch metadata to created artworks", async 
 
     const res = await fetch(`${server.baseUrl}/api/admin/upload`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: form
     });
     const body = await res.json();
@@ -74,7 +72,7 @@ test("POST /api/admin/upload applies batch metadata to created artworks", async 
 test("POST /api/admin/upload skips duplicate filenames and reports the existing artwork id", async () => {
   const storageDir = await fs.mkdtemp(path.join(os.tmpdir(), "toji-upload-storage-"));
   process.env.TOJI_STORAGE_DIR = storageDir;
-  process.env.ADMIN_TOKEN = "legacy-token";
+  process.env.ADMIN_PASSWORD = "secret-pass";
 
   const { createApp } = await importFreshServerModule();
   const server = await startTestServer(createApp);
@@ -85,7 +83,7 @@ test("POST /api/admin/upload skips duplicate filenames and reports the existing 
 
     const firstRes = await fetch(`${server.baseUrl}/api/admin/upload`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: firstForm
     });
     const firstBody = await firstRes.json();
@@ -98,7 +96,7 @@ test("POST /api/admin/upload skips duplicate filenames and reports the existing 
 
     const secondRes = await fetch(`${server.baseUrl}/api/admin/upload`, {
       method: "POST",
-      headers: authHeaders(),
+      headers: await authHeaders(server, ),
       body: secondForm
     });
     const secondBody = await secondRes.json();

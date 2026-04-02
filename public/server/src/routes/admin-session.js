@@ -73,7 +73,7 @@ adminSessionRouter.post("/admin/session/logout", (req, res) => {
 
 adminSessionRouter.post("/admin/session/password", (req, res) => {
   const authState = getAdminRequestAuthState(req);
-  if (!authState.ok) {
+  if (!authState.ok || authState.method !== "session") {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

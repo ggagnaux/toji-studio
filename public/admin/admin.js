@@ -339,13 +339,24 @@ export function ensureBaseStyles() {
     }
     .admin-toast--success{ border-color: color-mix(in srgb, #2ea97d 45%, var(--line)); }
     .admin-toast--warn{ border-color: color-mix(in srgb, #e0aa3c 55%, var(--line)); }
-    .admin-toast--error{ border-color: color-mix(in srgb, #d15353 60%, var(--line)); }
-    .admin-toast__msg{
+    .admin-toast--error{ border-color: color-mix(in srgb, #d15353 60%, var(--line)); animation: adminToastIn .18s ease-out forwards, adminToastErrorPulse .9s ease-in-out 3; }
+    .admin-toast__messages{
+      display:grid;
+      gap:8px;
+    }
+    .admin-toast__entry{
       margin: 0;
       font-size: 14px;
       line-height: 1.4;
       white-space: pre-line;
     }
+    .admin-toast__entry + .admin-toast__entry{
+      padding-top:8px;
+      border-top:1px solid color-mix(in srgb, var(--line) 82%, transparent);
+    }
+    .admin-toast__entry--success{ color: color-mix(in srgb, var(--text) 88%, #2ea97d 12%); }
+    .admin-toast__entry--warn{ color: color-mix(in srgb, var(--text) 82%, #e0aa3c 18%); }
+    .admin-toast__entry--error{ color: color-mix(in srgb, var(--text) 78%, #d15353 22%); }
     .admin-toast__actions{
       display: flex;
       gap: 8px;
@@ -475,6 +486,18 @@ export function ensureBaseStyles() {
       from{ opacity:1; transform:translateY(0); }
       to{ opacity:0; transform:translateY(8px); }
     }
+    @keyframes adminToastErrorPulse{
+      0%, 100%{
+        border-color: color-mix(in srgb, #d15353 60%, var(--line));
+        background: color-mix(in srgb, var(--panel) 96%, transparent);
+        box-shadow: 0 14px 36px rgba(0,0,0,.18);
+      }
+      50%{
+        border-color: #ff8a3d;
+        background: color-mix(in srgb, var(--panel) 72%, #5a1111 28%);
+        box-shadow: 0 0 0 2px rgba(255,138,61,.55), 0 14px 36px rgba(0,0,0,.18);
+      }
+    }
     .sep{ border:0; border-top:1px solid var(--line); margin:14px 0; }
     @media (max-width: 920px){ .admin-layout{ grid-template-columns: 1fr; } .sidebar, .dashboard-controls{ position:relative; top:auto; } .table-scroll-shell{ height:auto; min-height:0; } .kpi{ grid-template-columns: 1fr; } }
   `;
@@ -484,6 +507,14 @@ export function ensureBaseStyles() {
 }
 
 let toastHost = null;
+let activeToastState = null;
+const TOAST_MESSAGE_LIMIT = 6;
+const TOAST_TONE_PRIORITY = Object.freeze({
+  info: 0,
+  success: 1,
+  warn: 2,
+  error: 3
+});
 
 function ensureToastHost() {
   if (toastHost && document.body.contains(toastHost)) return toastHost;
@@ -498,6 +529,153 @@ function ensureToastHost() {
   return toastHost;
 }
 
+function normalizeToastTone(tone) {
+  const value = String(tone || "info").toLowerCase();
+  return Object.prototype.hasOwnProperty.call(TOAST_TONE_PRIORITY, value) ? value : "info";
+}
+
+function resolveToastDuration(duration) {
+  if (duration === 0) return 0;
+  const parsed = Number(duration);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 3000;
+}
+
+function toneDisablesAutoClose(tone) {
+  return tone === "warn" || tone === "error";
+}
+
+function getHigherPriorityTone(left, right) {
+  const a = normalizeToastTone(left);
+  const b = normalizeToastTone(right);
+  return TOAST_TONE_PRIORITY[b] > TOAST_TONE_PRIORITY[a] ? b : a;
+}
+
+function stopToastTimers(state) {
+  if (state.timer) {
+    clearTimeout(state.timer);
+    state.timer = null;
+  }
+  if (state.countdownTimer) {
+    clearInterval(state.countdownTimer);
+    state.countdownTimer = null;
+  }
+}
+
+function setToastTone(state, tone) {
+  const resolved = normalizeToastTone(tone);
+  state.tone = resolved;
+  state.toast.classList.remove("admin-toast--info", "admin-toast--success", "admin-toast--warn", "admin-toast--error");
+  if (resolved !== "info") state.toast.classList.add(`admin-toast--${resolved}`);
+}
+
+function trimToastMessages(state) {
+  while (state.messages.childElementCount > TOAST_MESSAGE_LIMIT) {
+    state.messages.firstElementChild?.remove();
+  }
+}
+
+function renderToastActions(state) {
+  state.bar.innerHTML = "";
+  const showCountdown = !state.autoCloseDisabled && state.duration > 0;
+  if (showCountdown) {
+    const countdown = document.createElement("span");
+    countdown.className = "admin-toast__countdown";
+    state.countdownEl = countdown;
+    state.bar.appendChild(countdown);
+  } else {
+    state.countdownEl = null;
+  }
+
+  const actions = [...state.actions];
+  if (state.dismissible || state.autoCloseDisabled) {
+    actions.push({ label: "Close", variant: "ghost", value: null });
+  }
+
+  for (const action of actions) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `admin-toast__btn${action.variant === "primary" ? " admin-toast__btn--primary" : ""}`;
+    btn.textContent = action.label || "OK";
+    btn.addEventListener("click", () => {
+      action.onClick?.();
+      state.close(action.value);
+    });
+    state.bar.appendChild(btn);
+  }
+
+  state.bar.style.display = state.bar.childElementCount ? "flex" : "none";
+}
+
+function startToastTimer(state) {
+  stopToastTimers(state);
+  if (state.autoCloseDisabled || state.duration <= 0 || !state.countdownEl) return;
+
+  state.timerStartedAt = Date.now();
+  const updateCountdown = () => {
+    if (!state.countdownEl) return;
+    const elapsed = Date.now() - state.timerStartedAt;
+    const remaining = Math.max(0, state.duration - elapsed);
+    state.countdownEl.textContent = `Auto close in ${Math.ceil(remaining / 1000)}s`;
+  };
+
+  updateCountdown();
+  state.countdownTimer = window.setInterval(updateCountdown, 200);
+  state.timer = window.setTimeout(() => state.close("timeout"), state.duration);
+}
+
+function ensureActiveToastState() {
+  if (activeToastState && document.body.contains(activeToastState.toast) && !activeToastState.done) {
+    return activeToastState;
+  }
+
+  const host = ensureToastHost();
+  const toast = document.createElement("article");
+  toast.className = "admin-toast";
+  toast.setAttribute("role", "status");
+
+  const messages = document.createElement("div");
+  messages.className = "admin-toast__messages";
+  toast.appendChild(messages);
+
+  const bar = document.createElement("div");
+  bar.className = "admin-toast__actions";
+  toast.appendChild(bar);
+
+  host.appendChild(toast);
+
+  const state = {
+    toast,
+    messages,
+    bar,
+    countdownEl: null,
+    timer: null,
+    countdownTimer: null,
+    timerStartedAt: 0,
+    done: false,
+    tone: "info",
+    duration: 3000,
+    autoCloseDisabled: false,
+    dismissible: true,
+    actions: [],
+    onCloseCallbacks: [],
+    close(reason = null) {
+      if (state.done) return;
+      state.done = true;
+      stopToastTimers(state);
+      state.toast.classList.add("is-closing");
+      window.setTimeout(() => {
+        state.toast.remove();
+        const callbacks = state.onCloseCallbacks.slice();
+        activeToastState = activeToastState === state ? null : activeToastState;
+        callbacks.forEach((fn) => fn?.(reason));
+      }, 140);
+    }
+  };
+
+  activeToastState = state;
+  return state;
+}
+
 export function showToast(message, opts = {}) {
   const {
     tone = "info",
@@ -506,77 +684,30 @@ export function showToast(message, opts = {}) {
     actions = [],
     onClose
   } = opts;
-  const resolvedDuration = duration === 0 ? 0 : 3000;
 
-  const host = ensureToastHost();
-  const toast = document.createElement("article");
-  toast.className = `admin-toast admin-toast--${tone}`;
-  toast.setAttribute("role", "status");
+  const state = ensureActiveToastState();
+  const resolvedTone = normalizeToastTone(tone);
+  const resolvedDuration = resolveToastDuration(duration);
 
-  const msg = document.createElement("p");
-  msg.className = "admin-toast__msg";
-  msg.textContent = String(message || "");
-  toast.appendChild(msg);
+  const entry = document.createElement("p");
+  entry.className = `admin-toast__entry admin-toast__entry--${resolvedTone}`;
+  entry.textContent = String(message || "");
+  state.messages.appendChild(entry);
+  trimToastMessages(state);
 
-  let bar = null;
-  if (actions.length || dismissible || resolvedDuration > 0) {
-    bar = document.createElement("div");
-    bar.className = "admin-toast__actions";
+  state.tone = getHigherPriorityTone(state.tone, resolvedTone);
+  setToastTone(state, state.tone);
 
-    const allActions = [...actions];
-    if (dismissible) {
-      allActions.push({ label: "Close", variant: "ghost", value: null });
-    }
+  state.duration = resolvedDuration;
+  state.actions = Array.isArray(actions) ? actions.slice() : [];
+  state.dismissible = dismissible !== false;
+  state.autoCloseDisabled = state.autoCloseDisabled || resolvedDuration === 0 || toneDisablesAutoClose(resolvedTone);
+  if (typeof onClose === "function") state.onCloseCallbacks.push(onClose);
 
-    for (const action of allActions) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = `admin-toast__btn${action.variant === "primary" ? " admin-toast__btn--primary" : ""}`;
-      btn.textContent = action.label || "OK";
-      btn.addEventListener("click", () => {
-        action.onClick?.();
-        close(action.value);
-      });
-      bar.appendChild(btn);
-    }
-    toast.appendChild(bar);
-  }
+  renderToastActions(state);
+  startToastTimer(state);
 
-  host.appendChild(toast);
-
-  let done = false;
-  let timer = null;
-  let countdownTimer = null;
-
-  if (resolvedDuration > 0 && bar) {
-    const countdown = document.createElement("span");
-    countdown.className = "admin-toast__countdown";
-    bar.prepend(countdown);
-
-    const startedAt = Date.now();
-    const updateCountdown = () => {
-      const elapsed = Date.now() - startedAt;
-      const remaining = Math.max(0, resolvedDuration - elapsed);
-      countdown.textContent = `Auto close in ${Math.ceil(remaining / 1000)}s`;
-    };
-    updateCountdown();
-    countdownTimer = window.setInterval(updateCountdown, 200);
-  }
-
-  const close = (reason = null) => {
-    if (done) return;
-    done = true;
-    if (timer) clearTimeout(timer);
-    if (countdownTimer) clearInterval(countdownTimer);
-    toast.classList.add("is-closing");
-    window.setTimeout(() => {
-      toast.remove();
-      onClose?.(reason);
-    }, 140);
-  };
-
-  if (resolvedDuration > 0) timer = window.setTimeout(() => close("timeout"), resolvedDuration);
-  return close;
+  return state.close;
 }
 
 export function confirmToast(message, opts = {}) {

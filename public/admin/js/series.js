@@ -942,6 +942,14 @@
       });
     }
 
+    function modalSeriesArtworkItems(seriesRow){
+      const allItems = seriesArtworkItems(seriesRow);
+      const included = orderedSeriesArtworkItems(seriesRow);
+      const includedIds = new Set(included.map((item) => String(item.id)));
+      const excluded = allItems.filter((item) => !includedIds.has(String(item.id)));
+      return [...included, ...excluded];
+    }
+
     function renderEditor(slug){
       const s = state.seriesMeta[slug];
       if (!s){
@@ -1167,7 +1175,7 @@
       }
 
       const openSeriesArtworkModal = () => {
-        const allItems = seriesArtworkItems(s);
+        const allItems = modalSeriesArtworkItems(s);
         let includedIds = new Set(allItems.filter((item) => item.included).map((item) => String(item.id)));
         let selectedIds = new Set();
         let selectionAnchorId = "";

@@ -101,6 +101,12 @@
     let q = "";
     let activeTabId = "featuredWrap";
 
+    function syncTagFilterVisibility() {
+      const visible = selectedLetters.size > 0;
+      if (chipHost) chipHost.hidden = !visible;
+      if (tagFilterSummary) tagFilterSummary.hidden = !visible;
+    }
+
     function refreshSearchClear(){
       if (!qClear || !qInput) return;
       qClear.style.display = qInput.value.trim() ? "inline-flex" : "none";
@@ -299,6 +305,8 @@
           if (!enabled) return;
           if (selectedLetters.has(letter)) selectedLetters.delete(letter);
           else selectedLetters.add(letter);
+          if (!selectedLetters.size) selectedTags.clear();
+          syncTagFilterVisibility();
           renderTagPrefilters();
           renderChips();
           renderAll();
@@ -322,7 +330,12 @@
     }
 
     function renderChips() {
+      syncTagFilterVisibility();
       chipHost.innerHTML = "";
+      if (selectedLetters.size === 0) {
+        renderTagFilterSummary();
+        return;
+      }
       const visibleTags = getVisibleTagsByLetter();
       const visibleTagSet = new Set(visibleTags);
       for (const tag of Array.from(selectedTags)) {
@@ -417,6 +430,7 @@
       selectedTags.clear();
       q = "";
       if (qInput) qInput.value = "";
+      syncTagFilterVisibility();
       renderTagPrefilters();
       renderChips();
       rerenderAllWorksPreserveScroll();
@@ -614,6 +628,7 @@
       refreshSearchClear();
       qInput.focus();
     });
+    syncTagFilterVisibility();
     renderTagPrefilters();
     renderChips();
     renderFeatured();

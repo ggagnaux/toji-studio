@@ -92,7 +92,7 @@
       appearance:none;
       border:1px solid transparent;
       background:color-mix(in srgb, var(--gallery-tab-color, var(--accent)) 8%, var(--panel));
-      color:color-mix(in srgb, var(--gallery-tab-color, var(--text)) 42%, var(--text));
+      color:var(--text);
       border-radius:10px 10px 0 0;
       padding:8px 12px;
       font:inherit;

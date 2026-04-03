@@ -162,6 +162,7 @@ export async function mountSplashLogoIconAnimation({
 
       if (bannerMode === "radar") {
         const now = p.millis();
+        const ink = readThemeInk();
         const cx = cw * 0.5;
         const cy = ch * 0.5;
         const radius = Math.max(8, Math.min(cw, ch) * 0.42);
@@ -252,6 +253,78 @@ export async function mountSplashLogoIconAnimation({
           p.noStroke();
           p.fill(255, 72, 72, blip.alpha * glow * (nearSweep ? 1.5 : 0.72));
           p.circle(x, y, blip.size * (nearSweep ? 1.38 : 1));
+        }
+        return;
+      }
+
+      if (bannerMode === "sphere") {
+        const cx = cw * 0.5;
+        const cy = ch * 0.5;
+        const spin = p.millis() * 0.00048;
+        const baseRadius = Math.max(8, Math.min(cw, ch) * 0.35);
+        const radius = baseRadius * (0.94 + 0.08 * ((Math.sin(spin * 1.7) + 1) * 0.5));
+        const nodeCount = 92;
+        if (!p.__miniWireSphereNodes || p.__miniWireSphereNodes.length !== nodeCount) {
+          p.__miniWireSphereNodes = Array.from({ length: nodeCount }, (_, index) => {
+            const t = index + 0.5;
+            const y = 1 - (t / nodeCount) * 2;
+            const ring = Math.sqrt(Math.max(0, 1 - y * y));
+            const theta = Math.PI * (3 - Math.sqrt(5)) * index;
+            return {
+              x: Math.cos(theta) * ring,
+              y,
+              z: Math.sin(theta) * ring,
+              size: 0.95 + (((index * 17) % 13) / 13) * 1.9
+            };
+          });
+        }
+
+        const pitch = -0.42 + (Math.sin(spin * 0.55) * 0.18);
+        const cosYaw = Math.cos(spin);
+        const sinYaw = Math.sin(spin);
+        const cosPitch = Math.cos(pitch);
+        const sinPitch = Math.sin(pitch);
+        const spherePoints = p.__miniWireSphereNodes.map((node, index) => {
+          const x1 = node.x * cosYaw - node.z * sinYaw;
+          const z1 = node.x * sinYaw + node.z * cosYaw;
+          const y2 = node.y * cosPitch - z1 * sinPitch;
+          const z2 = node.y * sinPitch + z1 * cosPitch;
+          const perspective = 0.7 + ((z2 + 1) * 0.22);
+          return {
+            sx: cx + x1 * radius * perspective,
+            sy: cy + y2 * radius * perspective,
+            depth: z2,
+            size: node.size * (0.72 + ((z2 + 1) * 0.22)),
+            sortKey: z2,
+            index
+          };
+        });
+
+        p.strokeWeight(1);
+        for (let i = 0; i < spherePoints.length; i += 1) {
+          const a = spherePoints[i];
+          for (let j = i + 1; j < spherePoints.length; j += 1) {
+            const b = spherePoints[j];
+            const dx = a.sx - b.sx;
+            const dy = a.sy - b.sy;
+            const dist = Math.hypot(dx, dy);
+            if (dist > radius * 0.38) continue;
+            const depthMix = (a.depth + b.depth + 2) / 4;
+            const alpha = Math.max(12, 130 - (dist / (radius * 0.38)) * 98) * (0.35 + depthMix * 0.95);
+            if (alpha < 10) continue;
+            p.stroke(ink[0], ink[1], ink[2], alpha);
+            p.line(a.sx, a.sy, b.sx, b.sy);
+          }
+        }
+
+        spherePoints.sort((a, b) => a.sortKey - b.sortKey);
+        p.noStroke();
+        for (const point of spherePoints) {
+          const fillAlpha = 88 + ((point.depth + 1) * 68);
+          p.fill(ink[0], ink[1], ink[2], fillAlpha * 0.12);
+          p.circle(point.sx, point.sy, point.size * 1.9);
+          p.fill(ink[0], ink[1], ink[2], fillAlpha);
+          p.circle(point.sx, point.sy, point.size);
         }
         return;
       }

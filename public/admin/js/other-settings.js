@@ -120,6 +120,7 @@ if (splashPreviewModal && splashPreviewModal.parentElement !== document.body) {
 
 const SPLASH_PREVIEW_MODE_ORDER = SPLASH_MODE_IDS;
 let splashPreviewModeIndex = 0;
+let splashPreviewModes = [...SPLASH_PREVIEW_MODE_ORDER];
 
 settingsTabButtons.forEach((btn) => {
   const tab = btn.getAttribute("data-settings-tab");
@@ -137,7 +138,8 @@ function normalizeBannerLogoAnimationStyle(value){
   const style = String(value || "").toLowerCase();
   if (style === "plot") return "plot";
   if (style === "radar") return "radar";
-  return "circles";
+  if (style === "sphere") return "sphere";
+  return "sphere";
 }
 
 function normalizeBannerStaticLogoSrc(value) {
@@ -567,17 +569,22 @@ function renderSplashPreviewMarkup() {
   `;
 }
 
+function getSplashPreviewModes() {
+  const allowedModes = normalizeAllowedSplashModes(getSelectedAllowedSplashModes());
+  return allowedModes.length ? allowedModes : [...SPLASH_PREVIEW_MODE_ORDER];
+}
+
 async function openSplashPreviewModal() {
   if (!splashPreviewModal) return;
   splashPreviewModal.hidden = false;
   document.body.classList.add("other-settings-modal-open");
   const selectedMode = normalizeSplashMode(splashMode?.value);
-  const allowedModes = normalizeAllowedSplashModes(getSelectedAllowedSplashModes());
-  const previewPool = allowedModes.length ? allowedModes : SPLASH_PREVIEW_MODE_ORDER;
+  const previewPool = getSplashPreviewModes();
+  splashPreviewModes = [...previewPool];
   const preferredMode = selectedMode === "random"
     ? previewPool[Math.floor(Math.random() * previewPool.length)] || "nodes"
     : selectedMode;
-  const foundIndex = SPLASH_PREVIEW_MODE_ORDER.indexOf(preferredMode);
+  const foundIndex = splashPreviewModes.indexOf(preferredMode);
   splashPreviewModeIndex = foundIndex >= 0 ? foundIndex : 0;
   await showSplashPreviewMode(splashPreviewModeIndex);
 }
@@ -593,7 +600,8 @@ function closeSplashPreviewModal() {
 }
 
 async function showSplashPreviewMode(index) {
-  const modeCount = SPLASH_PREVIEW_MODE_ORDER.length;
+  splashPreviewModes = getSplashPreviewModes();
+  const modeCount = splashPreviewModes.length;
   if (!modeCount) return;
   splashPreviewModeIndex = ((Number(index) % modeCount) + modeCount) % modeCount;
 
@@ -603,7 +611,7 @@ async function showSplashPreviewMode(index) {
   }
   renderSplashPreviewMarkup();
 
-  const previewMode = SPLASH_PREVIEW_MODE_ORDER[splashPreviewModeIndex];
+  const previewMode = splashPreviewModes[splashPreviewModeIndex];
   if (splashPreviewModeName) {
     splashPreviewModeName.textContent = `Animation: ${describeSplashMode(previewMode)}`;
   }
@@ -785,7 +793,7 @@ function syncSplashModeUI(){
   }
   if (bannerLogoCurrent) {
     if (!bannerBezierEnabled) bannerLogoCurrent.textContent = `Banner: Static ${getBannerStaticLogoLabel(bannerStaticLogo)}`;
-    else bannerLogoCurrent.textContent = `Banner: Animated ${bannerAnimationStyle === "plot" ? "x/y plot" : bannerAnimationStyle === "radar" ? "radar" : "circles"} canvas`;
+    else bannerLogoCurrent.textContent = `Banner: Animated ${bannerAnimationStyle === "plot" ? "x/y plot" : bannerAnimationStyle === "radar" ? "radar" : bannerAnimationStyle === "sphere" ? "wireframe sphere" : "circles"} canvas`;
   }
   if (bannerBezierToggleLabel) bannerBezierToggleLabel.style.color = "";
   if (bannerBezierToggleBadge) {

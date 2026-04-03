@@ -43,13 +43,11 @@ export async function initializeHomeSplash(options = {}) {
       let splashSwitching = false;
       let splashClosing = false;
       let activeSplashMode = "";
-      let splashLogo3dEl = null;
-      let splashLogo3dFrame = 0;
       let splashLogoIconP5 = null;
       let splashLogoIconCanvasHost = null;
       let splashForegroundCleanup = null;
       const SPLASH_ANIMATION_ENABLED_KEY = "toji_splash_animation_enabled_v1";
-      const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "random" | "nodes" | "flock" | "circles" | "matrix" | "life" | "plot" | "bounce" | "turningcircles" | "asteroids" | "tempest" | "missilecommand" | "radar" | "mountains" | "serpentinesphere" | "orbitalbeams"
+      const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "random" | "nodes" | "flock" | "circles" | "matrix" | "life" | "plot" | "bounce" | "turningcircles" | "asteroids" | "tempest" | "missilecommand" | "radar" | "mountains" | "serpentinesphere" | "wireframesphere" | "pixeltitle" | "pixelnoise" | "orbitalbeams"
       const SPLASH_RANDOM_CYCLE_ENABLED_KEY = "toji_splash_random_cycle_enabled_v1";
       const SPLASH_RANDOM_CYCLE_SECONDS_KEY = "toji_splash_random_cycle_seconds_v1";
       const SPLASH_ALLOWED_MODES_KEY = "toji_splash_allowed_modes_v1";
@@ -58,7 +56,6 @@ export async function initializeHomeSplash(options = {}) {
       const BANNER_STATIC_LOGO_SRC_KEY = "toji_banner_static_logo_src_v1";
       const BANNER_LOGO_BORDER_ENABLED_KEY = "toji_banner_logo_border_enabled_v1";
       const BANNER_LOGO_BORDER_COLOR_KEY = "toji_banner_logo_border_color_v1";
-      const TOJI_STUDIOS_WORD = "tojistudios";
       let splashSettings = null;
 
       function normalizeBooleanSetting(value, fallback = false) {
@@ -113,10 +110,6 @@ export async function initializeHomeSplash(options = {}) {
 
       function getAllowedSplashModes() {
         return normalizeAllowedSplashModes(splashSettings?.allowedModes);
-      }
-
-      function isTojiStudiosSplashMode(mode) {
-        return String(mode || "").toLowerCase() === "tojistudios";
       }
 
       function resolveSplashAssetSrc(src = "") {
@@ -182,30 +175,6 @@ export async function initializeHomeSplash(options = {}) {
         `;
       }
 
-      function buildTojiStudiosSplashMarkup() {
-        const letters = Array.from(TOJI_STUDIOS_WORD)
-          .map((letter, index) => {
-            const mask = index === 2 || index === 3;
-            const displayLetter = index === 3 ? "&#305;" : letter;
-            const glyphClass = index === 2
-              ? "splash-wordmark-letter-glyph splash-wordmark-letter-glyph--j"
-              : "splash-wordmark-letter-glyph";
-            return `<span class="splash-wordmark-letter${mask ? " splash-wordmark-letter--masked" : ""}" data-letter-index="${index}" data-letter="${letter}"><span class="${glyphClass}">${displayLetter}</span></span>`;
-          })
-          .join("");
-        return `
-          <span class="splash-wordmark-stage" aria-hidden="true">
-            <span class="splash-wordmark-line">${letters}</span>
-            <span class="splash-wordmark-bar"></span>
-            <span class="splash-wordmark-projectile splash-wordmark-projectile--primary"></span>
-            <span class="splash-wordmark-projectile splash-wordmark-projectile--secondary"></span>
-            <span class="splash-wordmark-dot-mask splash-wordmark-dot-mask--i"></span>
-            <span class="splash-wordmark-dot-mask splash-wordmark-dot-mask--j"></span>
-          </span>
-          <span class="sr-only">Toji Studios</span>
-        `;
-      }
-
       function ensureSplashLogoButton() {
         if (!splashScreen) return null;
         if (!splashLogo || !splashScreen.contains(splashLogo)) {
@@ -228,383 +197,13 @@ export async function initializeHomeSplash(options = {}) {
         const button = ensureSplashLogoButton();
         if (!button) return null;
         stopSplashForegroundAnimation();
-        const nextMode = isTojiStudiosSplashMode(mode) ? "tojistudios" : "default";
+        const nextMode = "default";
         if (button.dataset.foregroundMode !== nextMode) {
-          button.innerHTML = nextMode === "tojistudios"
-            ? buildTojiStudiosSplashMarkup()
-            : buildDefaultSplashLogoMarkup();
+          button.innerHTML = buildDefaultSplashLogoMarkup();
           button.dataset.foregroundMode = nextMode;
         }
-        button.classList.toggle("splash-logo--tojistudios", nextMode === "tojistudios");
-        if (nextMode !== "tojistudios") applySplashLogoGlobalSettings(button);
+        applySplashLogoGlobalSettings(button);
         return button;
-      }
-
-      function startTojiStudiosSplashForegroundAnimation() {
-        const button = ensureSplashLogoButton();
-        const stage = button?.querySelector(".splash-wordmark-stage");
-        const letters = stage ? Array.from(stage.querySelectorAll("[data-letter-index]")) : [];
-        const bar = stage?.querySelector(".splash-wordmark-bar");
-        const primaryDot = stage?.querySelector(".splash-wordmark-projectile--primary");
-        const secondaryDot = stage?.querySelector(".splash-wordmark-projectile--secondary");
-        const firstIMask = stage?.querySelector(".splash-wordmark-dot-mask--i");
-        const jMask = stage?.querySelector(".splash-wordmark-dot-mask--j");
-        if (!stage || letters.length !== TOJI_STUDIOS_WORD.length || !bar || !primaryDot || !secondaryDot || !firstIMask || !jMask) return;
-
-        const animations = [];
-        const timeouts = [];
-        let resizeTimer = 0;
-        const introDuration = 1450;
-        const barIntroDelay = introDuration + 180;
-        const primaryLaunchDelay = introDuration + 1180;
-        const secondaryLaunchDelay = introDuration + 2200;
-
-        const cancelAll = () => {
-          animations.splice(0).forEach((animation) => animation?.cancel?.());
-          timeouts.splice(0).forEach((timer) => clearTimeout(timer));
-          if (resizeTimer) {
-            clearTimeout(resizeTimer);
-            resizeTimer = 0;
-          }
-        };
-
-        const resetAnimatedElements = () => {
-          letters.forEach((letter) => {
-            letter.style.opacity = "1";
-            letter.style.transform = "translate3d(0, 0, 0) rotate(0deg)";
-          });
-          [bar, primaryDot, secondaryDot].forEach((element) => {
-            element.style.opacity = "0";
-            element.style.transform = "translate3d(0, 0, 0)";
-          });
-        };
-
-        const applyLayout = (finalOnly = false) => {
-          resetAnimatedElements();
-          // Force layout after clearing any filled/cancelled animation transforms so
-          // all positioning math is based on the letters' true resting geometry.
-          void stage.offsetWidth;
-          const stageRect = stage.getBoundingClientRect();
-          if (!stageRect.width || !stageRect.height) return;
-          const getLetterRect = (index) => letters[index]?.getBoundingClientRect();
-          const getGlyphRect = (index) => letters[index]?.querySelector(".splash-wordmark-letter-glyph")?.getBoundingClientRect() || getLetterRect(index);
-          const oRect = getLetterRect(1);
-          const jRect = getGlyphRect(2);
-          const iRect = getGlyphRect(3);
-          const dRect = getLetterRect(7);
-          if (!oRect || !jRect || !iRect || !dRect) return;
-
-          const toStageX = (rect) => (rect.left - stageRect.left) + (rect.width * 0.5);
-          const toStageTop = (rect) => rect.top - stageRect.top;
-          const guideY = Math.min(toStageTop(oRect), toStageTop(iRect), toStageTop(jRect), toStageTop(dRect));
-          const letterScale = Math.min(
-            Math.max(oRect.width, jRect.width),
-            Math.max(oRect.height, jRect.height)
-          );
-          const dotSize = Math.max(8, Math.min(24, letterScale * 0.18));
-          const barWidth = Math.max(18, Math.min(52, oRect.width * 0.72));
-          const barHeight = Math.max(4, Math.min(12, dotSize * 0.42));
-          const dotRadius = dotSize * 0.5;
-          const restY = Math.max(6, guideY - (dotSize * 0.68));
-          const barLeft = toStageX(oRect) - (barWidth * 0.5);
-          const barTop = restY + (dotRadius * 0.18);
-          const barStartY = -Math.max(40, stageRect.height * 0.4);
-          const projectileStartY = barStartY - (dotSize * 0.9);
-          const projectilePrimaryImpactX = barLeft + (barWidth * 0.72) - dotRadius;
-          const projectileSecondaryImpactX = barLeft + (barWidth * 0.42) - dotRadius;
-          const projectileImpactY = barTop - dotSize;
-
-          const placeMask = (mask, rect, widthRatio) => {
-            const width = Math.max(8, rect.width * widthRatio);
-            const height = Math.max(8, Math.min(dotSize * 1.5, rect.height * 0.24));
-            mask.style.width = `${width}px`;
-            mask.style.height = `${height}px`;
-            mask.style.left = `${toStageX(rect) - (width * 0.5)}px`;
-            mask.style.top = `${Math.max(0, toStageTop(rect) - (height * 0.72))}px`;
-          };
-
-          placeMask(firstIMask, iRect, 0.56);
-          placeMask(jMask, jRect, 0.78);
-
-          const readMaskTarget = (mask) => {
-            const maskLeft = Number.parseFloat(mask.style.left || "0");
-            const maskTop = Number.parseFloat(mask.style.top || "0");
-            return {
-              x: maskLeft,
-              y: maskTop + Math.max(1, dotSize * 0.08)
-            };
-          };
-
-          const iMaskTarget = readMaskTarget(firstIMask);
-          const jMaskTarget = readMaskTarget(jMask);
-          const iStemAnchorX = (iRect.left - stageRect.left) + (iRect.width * 0.28) - dotRadius;
-          const jStemAnchorX = (jRect.left - stageRect.left) + (jRect.width * 0.32) - dotRadius;
-          const iRestX = Math.min(iMaskTarget.x, iStemAnchorX);
-          const iRestY = iMaskTarget.y;
-          const jRestX = Math.min(jMaskTarget.x, jStemAnchorX);
-          const jRestY = jMaskTarget.y;
-
-          bar.style.width = `${barWidth}px`;
-          bar.style.height = `${barHeight}px`;
-          bar.style.left = `${barLeft}px`;
-          bar.style.top = `${barTop}px`;
-          bar.style.boxShadow = `0 0 ${Math.max(8, dotSize * 1.15)}px color-mix(in srgb, var(--text) 22%, transparent)`;
-          bar.style.opacity = "1";
-          bar.style.transform = "translate3d(0, 0, 0)";
-
-          [primaryDot, secondaryDot].forEach((dot) => {
-            dot.style.width = `${dotSize}px`;
-            dot.style.height = `${dotSize}px`;
-            dot.style.boxShadow = `0 0 ${Math.max(8, dotSize * 1.15)}px color-mix(in srgb, var(--text) 26%, transparent)`;
-            dot.style.opacity = finalOnly ? "1" : "0";
-            dot.style.transform = "translate3d(0, 0, 0)";
-          });
-
-          if (finalOnly) {
-            primaryDot.style.left = `${iRestX}px`;
-            primaryDot.style.top = `${iRestY}px`;
-            secondaryDot.style.left = `${jRestX}px`;
-            secondaryDot.style.top = `${jRestY}px`;
-            return;
-          }
-
-          primaryDot.style.left = `${projectilePrimaryImpactX}px`;
-          primaryDot.style.top = `${projectileStartY}px`;
-          secondaryDot.style.left = `${projectileSecondaryImpactX}px`;
-          secondaryDot.style.top = `${projectileStartY - (dotSize * 1.15)}px`;
-          bar.style.opacity = "0";
-
-          const midIndex = (letters.length - 1) * 0.5;
-          letters.forEach((letter, index) => {
-            const letterRect = getLetterRect(index);
-            if (!letterRect) return;
-            const finalCenterX = toStageX(letterRect);
-            const finalTop = toStageTop(letterRect);
-            const distributedViewportX = (window.innerWidth * (index + 1)) / (letters.length + 1);
-            let initialCenterX = distributedViewportX - stageRect.left;
-            const minHorizontalTravel = Math.max(letterRect.width * 0.75, stageRect.width * 0.04);
-            if (index < midIndex && initialCenterX > finalCenterX - minHorizontalTravel) {
-              initialCenterX = finalCenterX - minHorizontalTravel;
-            }
-            if (index > midIndex && initialCenterX < finalCenterX + minHorizontalTravel) {
-              initialCenterX = finalCenterX + minHorizontalTravel;
-            }
-            const initialTop = (window.innerHeight - stageRect.top) - (letterRect.height * 1.05) - 10;
-            const fromX = initialCenterX - finalCenterX;
-            const fromY = initialTop - finalTop;
-            letter.style.opacity = "0";
-            letter.style.transform = `translate3d(${fromX}px, ${fromY}px, 0) rotate(0deg)`;
-            const animation = letter.animate(
-              [
-                {
-                  opacity: 0,
-                  transform: `translate3d(${fromX}px, ${fromY}px, 0) rotate(0deg)`
-                },
-                {
-                  opacity: 1,
-                  transform: `translate3d(${fromX * 0.16}px, ${fromY * 0.14}px, 0) rotate(0deg)`,
-                  offset: 0.7
-                },
-                {
-                  opacity: 1,
-                  transform: "translate3d(0, 0, 0) rotate(0deg)"
-                }
-              ],
-              {
-                duration: introDuration,
-                easing: "cubic-bezier(0.16, 0.84, 0.2, 1)",
-                fill: "forwards"
-              }
-            );
-            animations.push(animation);
-          });
-
-          const barDrop = bar.animate(
-            [
-              { opacity: 0, transform: `translate3d(0, ${barStartY - barTop}px, 0)` },
-              { opacity: 1, transform: "translate3d(0, 10px, 0)", offset: 0.82 },
-              { opacity: 1, transform: "translate3d(0, 0, 0)" }
-            ],
-            {
-              duration: 820,
-              delay: barIntroDelay,
-              easing: "cubic-bezier(0.2, 0.84, 0.22, 1)",
-              fill: "forwards"
-            }
-          );
-          animations.push(barDrop);
-
-          const launchProjectile = (dot, { startX, startY, impactX, targetX, targetY, dropDuration, arcDuration }) => {
-            dot.style.left = `${startX}px`;
-            dot.style.top = `${startY}px`;
-            dot.style.opacity = "1";
-            dot.style.transform = "translate3d(0, 0, 0)";
-            const drop = dot.animate(
-              [
-                {
-                  opacity: 0,
-                  transform: "translate3d(0, 0, 0) scale(0.52)"
-                },
-                {
-                  opacity: 1,
-                  transform: `translate3d(0, ${(projectileImpactY - startY) - Math.max(8, dotSize * 0.2)}px, 0) scale(1.02, 0.98)`,
-                  offset: 0.78
-                },
-                {
-                  opacity: 1,
-                  transform: `translate3d(0, ${projectileImpactY - startY}px, 0) scale(1.18, 0.82)`
-                }
-              ],
-              {
-                duration: dropDuration,
-                easing: "cubic-bezier(0.2, 0.88, 0.26, 1)",
-                fill: "forwards"
-              }
-            );
-            animations.push(drop);
-            drop.onfinish = () => {
-              dot.style.left = `${impactX}px`;
-              dot.style.top = `${projectileImpactY}px`;
-              dot.style.transform = "translate3d(0, 0, 0) scale(1, 1)";
-              const liftHeight = Math.max(dotSize * 2.3, stageRect.height * 0.16);
-              const arc = dot.animate(
-                [
-                  {
-                    transform: "translate3d(0, 0, 0) scale(1.16, 0.84)"
-                  },
-                  {
-                    transform: `translate3d(${(targetX - impactX) * 0.34}px, ${Math.min(targetY - projectileImpactY, -liftHeight)}px, 0) scale(0.92, 1.08)`,
-                    offset: 0.36
-                  },
-                  {
-                    transform: `translate3d(${(targetX - impactX) * 0.82}px, ${(targetY - projectileImpactY) - Math.max(4, dotSize * 0.5)}px, 0) scale(1.04, 0.96)`,
-                    offset: 0.82
-                  },
-                  {
-                    transform: `translate3d(${targetX - impactX}px, ${targetY - projectileImpactY}px, 0) scale(1, 1)`
-                  }
-                ],
-                {
-                  duration: arcDuration,
-                  easing: "cubic-bezier(0.2, 1, 0.22, 1)",
-                  fill: "forwards"
-                }
-              );
-              animations.push(arc);
-              arc.onfinish = () => {
-                dot.style.left = `${targetX}px`;
-                dot.style.top = `${targetY}px`;
-                dot.style.transform = "translate3d(0, 0, 0)";
-              };
-            };
-          };
-
-          const primaryLaunch = () => {
-            launchProjectile(primaryDot, {
-              startX: projectilePrimaryImpactX,
-              startY: projectileStartY,
-              impactX: projectilePrimaryImpactX,
-              targetX: iRestX,
-              targetY: iRestY,
-              dropDuration: 620,
-              arcDuration: 700
-            });
-          };
-
-          const secondaryLaunch = () => {
-            launchProjectile(secondaryDot, {
-              startX: projectileSecondaryImpactX,
-              startY: projectileStartY - (dotSize * 1.15),
-              impactX: projectileSecondaryImpactX,
-              targetX: jRestX,
-              targetY: jRestY,
-              dropDuration: 660,
-              arcDuration: 740
-            });
-          };
-
-          const flyLettersAway = () => {
-            const letterBurstDistance = Math.max(stageRect.width, stageRect.height) * 0.95;
-            const breakupMode = Math.random() < 0.5 ? "explode" : "shrink";
-            letters.forEach((letter, index) => {
-              const spread = ((index / Math.max(1, letters.length - 1)) - 0.5) * 1.45;
-              const dx = spread * letterBurstDistance;
-              const dy = (index % 2 === 0 ? -1 : 1) * (stageRect.height * (0.55 + (index * 0.04)));
-              const rotation = (spread * 150) + ((index % 2 === 0 ? -1 : 1) * 24);
-              const shrinkScale = 0.04 + (Math.random() * 0.18);
-              const animation = letter.animate(
-                breakupMode === "explode"
-                  ? [
-                      { opacity: 1, transform: "translate3d(0, 0, 0) rotate(0deg) scale(1)" },
-                      {
-                        opacity: 1,
-                        transform: `translate3d(${dx * 0.32}px, ${dy * 0.24}px, 0) rotate(${rotation * 0.28}deg) scale(1)`,
-                        offset: 0.28
-                      },
-                      {
-                        opacity: 0,
-                        transform: `translate3d(${dx}px, ${dy}px, 0) rotate(${rotation}deg) scale(1)`
-                      }
-                    ]
-                  : [
-                      { opacity: 1, transform: "translate3d(0, 0, 0) rotate(0deg) scale(1)" },
-                      {
-                        opacity: 1,
-                        transform: `translate3d(${spread * 14}px, ${(index % 2 === 0 ? -1 : 1) * 10}px, 0) rotate(${rotation * 0.08}deg) scale(0.56)`,
-                        offset: 0.42
-                      },
-                      {
-                        opacity: 0,
-                        transform: `translate3d(${spread * 18}px, ${(index % 2 === 0 ? -1 : 1) * 14}px, 0) rotate(${rotation * 0.12}deg) scale(${shrinkScale})`
-                      }
-                    ],
-                {
-                  duration: 980,
-                  easing: "cubic-bezier(0.18, 0.82, 0.18, 1)",
-                  fill: "forwards"
-                }
-              );
-              animations.push(animation);
-            });
-
-            [bar, primaryDot, secondaryDot].forEach((element) => {
-              const animation = element.animate(
-                [
-                  { opacity: Number(element.style.opacity || 1), transform: "translate3d(0, 0, 0) scale(1)" },
-                  { opacity: 0, transform: "translate3d(0, -24px, 0) scale(0.72)" }
-                ],
-                {
-                  duration: 520,
-                  easing: "ease-in",
-                  fill: "forwards"
-                }
-              );
-              animations.push(animation);
-            });
-          };
-
-          timeouts.push(window.setTimeout(primaryLaunch, primaryLaunchDelay));
-          timeouts.push(window.setTimeout(secondaryLaunch, secondaryLaunchDelay));
-          timeouts.push(window.setTimeout(flyLettersAway, 10000));
-          timeouts.push(window.setTimeout(rerun, 11150));
-        };
-
-        const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        const rerun = () => {
-          cancelAll();
-          window.requestAnimationFrame(() => applyLayout(prefersReducedMotion));
-        };
-        const handleResize = () => {
-          if (resizeTimer) clearTimeout(resizeTimer);
-          resizeTimer = window.setTimeout(rerun, 120);
-        };
-
-        rerun();
-        window.addEventListener("resize", handleResize);
-        splashForegroundCleanup = () => {
-          window.removeEventListener("resize", handleResize);
-          cancelAll();
-        };
       }
 
       function isSplashAnimationEnabled() {
@@ -646,7 +245,7 @@ export async function initializeHomeSplash(options = {}) {
         const mode = String(localStorage.getItem(BANNER_LOGO_ANIMATION_MODE_KEY) || "").toLowerCase();
         if (mode === "plot") return "plot";
         if (mode === "radar") return "radar";
-        return "circles";
+        return "sphere";
       }
   
       function getRandomCycleConfig() {
@@ -706,83 +305,6 @@ export async function initializeHomeSplash(options = {}) {
         const tiltStep = spinDirection < 0 ? -6 : 6;
         splashLogoTiltDeg = Math.max(-30, Math.min(30, splashLogoTiltDeg + tiltStep));
         splashLogo.style.setProperty("--splash-logo-tilt", `${splashLogoTiltDeg}deg`);
-      }
-  
-      function stopSplashLogo3dAnimation() {
-        if (splashLogo3dFrame) {
-          cancelAnimationFrame(splashLogo3dFrame);
-          splashLogo3dFrame = 0;
-        }
-        if (splashLogo3dEl) {
-          splashLogo3dEl.remove();
-          splashLogo3dEl = null;
-        }
-      }
-  
-      function startSplashLogo3dAnimation() {
-        if (!splashScreen) return;
-        stopSplashLogo3dAnimation();
-  
-        const logo = document.createElement("img");
-        logo.className = "splash-logo-drift3d";
-        logo.src = "assets/img/TojiStudios_Logo_v5.png";
-        logo.alt = "";
-        logo.setAttribute("aria-hidden", "true");
-        splashScreen.appendChild(logo);
-        splashLogo3dEl = logo;
-  
-        let x = window.innerWidth * 0.32;
-        let y = window.innerHeight * 0.34;
-        let vx = (Math.random() < 0.5 ? -1 : 1) * (0.24 + Math.random() * 0.18);
-        let vy = (Math.random() < 0.5 ? -1 : 1) * (0.20 + Math.random() * 0.14);
-        let yaw = Math.random() * 360;
-        let pitch = Math.random() * 360;
-        let roll = Math.random() * 360;
-        let yawV = (Math.random() < 0.5 ? -1 : 1) * (0.48 + Math.random() * 0.35);
-        let pitchV = (Math.random() < 0.5 ? -1 : 1) * (0.32 + Math.random() * 0.26);
-        let rollV = (Math.random() < 0.5 ? -1 : 1) * (0.21 + Math.random() * 0.24);
-        let last = 0;
-  
-        const tick = (ts) => {
-          if (!splashLogo3dEl) return;
-          if (!last) last = ts;
-          const dt = Math.min(40, ts - last);
-          last = ts;
-          const step = dt / 16.6667;
-          const w = window.innerWidth;
-          const h = window.innerHeight;
-          const margin = 42;
-          const halfW = Math.max(90, splashLogo3dEl.offsetWidth * 0.5);
-          const halfH = Math.max(56, splashLogo3dEl.offsetHeight * 0.5);
-  
-          x += vx * step;
-          y += vy * step;
-  
-          if (x < halfW + margin) {
-            x = halfW + margin;
-            vx = Math.abs(vx);
-          } else if (x > w - halfW - margin) {
-            x = w - halfW - margin;
-            vx = -Math.abs(vx);
-          }
-          if (y < halfH + margin) {
-            y = halfH + margin;
-            vy = Math.abs(vy);
-          } else if (y > h - halfH - margin) {
-            y = h - halfH - margin;
-            vy = -Math.abs(vy);
-          }
-  
-          yaw += yawV * step;
-          pitch += pitchV * step;
-          roll += rollV * step;
-  
-          splashLogo3dEl.style.transform =
-            `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) rotateX(${pitch}deg) rotateY(${yaw}deg) rotateZ(${roll}deg)`;
-          splashLogo3dFrame = requestAnimationFrame(tick);
-        };
-  
-        splashLogo3dFrame = requestAnimationFrame(tick);
       }
   
       // async function initSplashAnimation() {
@@ -855,7 +377,6 @@ export async function initializeHomeSplash(options = {}) {
         if (!splashScreen || !splashP5Host || splashP5Instance || splashScreen.classList.contains("hidden")) return;
         if (!isSplashAnimationEnabled()) {
           activeSplashMode = "off";
-          stopSplashLogo3dAnimation();
           stopSplashForegroundAnimation();
           clearSplashLogoCornerTimer();
           splashP5Host.innerHTML = "";
@@ -865,23 +386,14 @@ export async function initializeHomeSplash(options = {}) {
         activeSplashMode = splashMode;
         renderSplashLogoForeground(splashMode);
         if (!splashMode) {
-          stopSplashLogo3dAnimation();
           stopSplashForegroundAnimation();
           clearSplashLogoCornerTimer();
           splashP5Host.innerHTML = "";
-          return;
-        }
-        if (isTojiStudiosSplashMode(splashMode)) {
-          stopSplashLogo3dAnimation();
-          clearSplashLogoCornerTimer();
-          splashP5Host.innerHTML = "";
-          startTojiStudiosSplashForegroundAnimation();
           return;
         }
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         if (reduceMotion) {
           stopSplashForegroundAnimation();
-          stopSplashLogo3dAnimation();
           splashP5Host.innerHTML = "";
           return;
         }
@@ -890,8 +402,6 @@ export async function initializeHomeSplash(options = {}) {
         if (!window.p5) return;
 
         stopSplashForegroundAnimation();
-        if (splashMode === "logo3d") startSplashLogo3dAnimation();
-        else stopSplashLogo3dAnimation();
         startSplashLogoCornerTimer();
   
         splashP5Instance = new window.p5((p) => {
@@ -931,12 +441,6 @@ export async function initializeHomeSplash(options = {}) {
           const orbitalRaiderShots = [];
           const radarBlips = [];
           const radarEchoes = [];
-          const dukePlatforms = [];
-          const dukeEnemies = [];
-          const dukeBullets = [];
-          const dukeExplosions = [];
-          const dukePickups = [];
-          const dukeBackdropBuildings = [];
           const serpentineTrail = [];
           let radarGridColor = [60, 160, 110];
           let radarRingColor = [72, 220, 146];
@@ -1019,37 +523,9 @@ export async function initializeHomeSplash(options = {}) {
           let radarSweepSpeed = 0.018;
           let radarNextBlipAt = 0;
           let radarRotationDirection = 1;
-          let dukePlayer = null;
-          let dukeGroundY = 0;
-          let dukeScrollX = 0;
-          let dukeSpawnX = 0;
-          let dukeNextShotAt = 0;
-          let dukeNextEnemyShotAt = 0;
-          let dukeScore = 0;
-          let dukeLevelLabel = "SHRAPNEL CITY";
-          let dukeCycleSeed = 0;
           let serpentineHead = null;
           let serpentineTrailEmitAt = 0;
           let serpentineNextFallAt = 0;
-          let piDigitsStream = "";
-          let piDigitCursor = 0;
-          let piCellCursor = 0;
-          let piCols = 100;
-          let piRows = 1;
-          let piFontSize = 10;
-          let piCharWidth = 6;
-          let piCellWidth = 6;
-          let piLineHeight = 12;
-          let piGridRows = [];
-          let piColorRows = [];
-          let piFadeAlpha = 255;
-          let piIsFading = false;
-          let piPendingDigits = [];
-          let piGenerator = null;
-          let piLastEmitAt = 0;
-          let piEmitIntervalMs = 1;
-          let piDroppedLeadDigit = false;
-          let piInsertedDot = false;
           let lifeCols = 0;
           let lifeRows = 0;
           let lifeCellSize = 10;
@@ -1058,16 +534,6 @@ export async function initializeHomeSplash(options = {}) {
           let lifeAge = [];
           let lifeLastStepAt = 0;
           let lifeStepMs = 120;
-          let codeFontSize = 15;
-          let codeLineHeight = 22;
-          let codeVisibleRows = 18;
-          let codeQueue = [];
-          let codeRendered = [];
-          let codeLineIndex = 0;
-          let codeCharIndex = 0;
-          let codeLastTypeAt = 0;
-          let codeTypeInterval = 34;
-          let codePauseUntil = 0;
           let plotAmplitude = 1;
           let plotFreq = 1;
           let plotPhase = 0;
@@ -1165,27 +631,6 @@ export async function initializeHomeSplash(options = {}) {
             dx: p.random(-0.9, 0.9),
             dy: p.random(-0.9, 0.9)
           });
-  
-          const seedBezierCurves = () => {
-            curves.length = 0;
-            const count = 34; // dense
-            const palette = [
-              [255, 255, 255, 90],
-              [255, 255, 255, 70],
-              [255, 24, 24, 88],
-              [96, 130, 255, 74]
-            ];
-            for (let i = 0; i < count; i += 1) {
-              curves.push({
-                p0: makePoint(),
-                p1: makePoint(),
-                p2: makePoint(),
-                p3: makePoint(),
-                color: palette[i % palette.length],
-                weight: p.random(0.8, 2.4)
-              });
-            }
-          };
   
           const seedFlock = () => {
             flock.length = 0;
@@ -1818,32 +1263,6 @@ export async function initializeHomeSplash(options = {}) {
               }
               guard += 1;
             }
-          };
-  
-          const seedPiDigits = () => {
-            piCols = 100;
-            piGenerator = createPiGenerator();
-            piPendingDigits = [];
-            piDroppedLeadDigit = false;
-            piInsertedDot = false;
-            piLastEmitAt = 0;
-            refillPiQueue(64);
-            p.textFont("monospace");
-            piCellWidth = p.width / piCols;
-            piFontSize = 22;
-            p.textSize(piFontSize);
-            while (piFontSize > 1 && p.textWidth("0") > piCellWidth) {
-              piFontSize -= 0.5;
-              p.textSize(piFontSize);
-            }
-            piCharWidth = p.textWidth("0");
-            piLineHeight = Math.max(3, Math.floor(piFontSize * 1.2));
-            piRows = Math.max(1, Math.floor((p.height - 4) / piLineHeight));
-            piGridRows = Array.from({ length: piRows }, () => new Array(piCols).fill(" "));
-            piColorRows = Array.from({ length: piRows }, () => new Array(piCols).fill([184, 214, 255]));
-            piCellCursor = 0;
-            piFadeAlpha = 255;
-            piIsFading = false;
           };
   
           const shuffleCircleTargets = () => {
@@ -2532,72 +1951,28 @@ export async function initializeHomeSplash(options = {}) {
             if (aliveCount < (lifeCols * lifeRows * 0.02)) seedLife();
           };
   
-          const seedCodeWriter = () => {
-            codeFontSize = p.constrain(Math.floor(Math.min(p.width, p.height) / 56), 13, 18);
-            codeLineHeight = Math.round(codeFontSize * 1.45);
-            codeVisibleRows = Math.max(10, Math.floor((p.height - 40) / codeLineHeight));
-            codeQueue = [];
-            codeRendered = [];
-            codeLineIndex = 0;
-            codeCharIndex = 0;
-            codeLastTypeAt = 0;
-            codePauseUntil = 0;
-            codeTypeInterval = p.random(22, 46);
-  
-            const templates = [
-              "using System;",
-              "using System.Collections.Generic;",
-              "// Boot sequence for splash simulation",
-              "namespace Toji.Studio;",
-              "/// <summary>Simulates a terminal-like code stream.</summary>",
-              "public sealed class SplashRenderer",
-              "{",
-              "    // Stores visible lines in the fake terminal.",
-              "    private readonly List<string> _lines = new();",
-              "    private readonly Random _rng = new();",
-              "    public int Frame { get; private set; }",
-              "    public void Tick()",
-              "    {",
-                  "        Frame++;",
-              "        if (Frame % 2 == 0) _lines.Add($\"frame:{Frame}\"); // type every other frame",
-              "        if (_lines.Count > 120) _lines.RemoveAt(0);",
-              "    }",
-              "    // Returns a snapshot used by the painter.",
-              "    public string[] Snapshot() => _lines.ToArray();",
-              "}",
-              "public static class ThemeService",
-              "{",
-              "    // Resolve desired UI theme mode.",
-              "    public static string Resolve(string mode) =>",
-              "        mode switch { \"dark\" => \"dark\", \"light\" => \"light\", _ => \"system\" };",
-              "}",
-              "// Minimal API sample",
-              "var app = WebApplication.CreateBuilder(args).Build();",
-              "app.MapGet(\"/api/health\", () => Results.Ok(new { status = \"ok\" }));",
-              "app.MapPost(\"/api/save\", (Payload p) => Results.Json(p));",
-              "app.Run();",
-              "/// <remarks>Simple DTO for demo output.</remarks>",
-              "public record Payload(string Title, string Body, DateTime UpdatedAt);"
-            ];
-  
-            const totalLines = 180;
-            for (let i = 0; i < totalLines; i += 1) {
-              const raw = templates[Math.floor(p.random(templates.length))];
-              const indent = " ".repeat(Math.floor(p.random(0, 4)) * 2);
-              codeQueue.push(indent + raw);
-            }
-          };
-  
           const seedPlot = () => {
             plotGhostFrames.length = 0;
-            plotAmplitude = p.random(0.75, 1.35);
-            plotFreq = p.random(0.8, 2.4);
+            plotAmplitude = p.random(0.9, 1.55);
+            plotFreq = p.random(1.0, 3.1);
             plotPhase = p.random(Math.PI * 2);
             const types = [
               "harmonic-rational",
               "chirped-damped",
               "nonlinear-wave",
-              "sigmoid-oscillation"
+              "sigmoid-oscillation",
+              "nested-lissajous",
+              "resonant-fold",
+              "fractal-phase",
+              "chaotic-envelope",
+              "hyperbolic-weave",
+              "moire-twist",
+              "phase-knot",
+              "ripple-lattice",
+              "arctan-cascade",
+              "folded-sigmoid",
+              "sine-comb",
+              "logistic-moire"
             ];
             plotType = types[Math.floor(p.random(types.length))] || "sin";
             plotAxisColor = [p.random(90, 140), p.random(100, 150), p.random(120, 180)];
@@ -2608,26 +1983,103 @@ export async function initializeHomeSplash(options = {}) {
             const W = plotFreq.toFixed(2);
             const P = plotPhase.toFixed(2);
             if (plotType === "harmonic-rational") {
-              const b = p.random(0.25, 0.85);
-              const h = p.random(1.8, 3.4);
-              plotParams = { b, h };
-              plotLabel = `f(x) = ${A}[sin(${W}pi x+${P}) + 0.45cos(${(plotFreq * h).toFixed(2)}pi x)] / (1+${b.toFixed(2)}x^2)`;
+              const b = p.random(0.2, 0.95);
+              const h = p.random(1.8, 4.2);
+              const mix = p.random(0.35, 0.75);
+              plotParams = { b, h, mix };
+              plotLabel = `f(x) = ${A}[sin(${W}pi x+${P}) + ${mix.toFixed(2)}cos(${(plotFreq * h).toFixed(2)}pi x)] / (1+${b.toFixed(2)}x^2)`;
             } else if (plotType === "chirped-damped") {
-              const chirp = p.random(0.6, 1.4);
-              const damp = p.random(0.55, 1.35);
-              const mix = p.random(0.2, 0.5);
-              plotParams = { chirp, damp, mix };
-              plotLabel = `f(x) = ${A}e^(-${damp.toFixed(2)}|x|) sin(${W}pi x + ${chirp.toFixed(2)}x^2 + ${P}) + ${mix.toFixed(2)}x`;
+              const chirp = p.random(0.6, 1.8);
+              const damp = p.random(0.45, 1.35);
+              const mix = p.random(0.2, 0.55);
+              const overtone = p.random(0.15, 0.45);
+              plotParams = { chirp, damp, mix, overtone };
+              plotLabel = `f(x) = ${A}e^(-${damp.toFixed(2)}|x|)[sin(${W}pi x + ${chirp.toFixed(2)}x^2 + ${P}) + ${overtone.toFixed(2)}cos(4pi x)] + ${mix.toFixed(2)}x`;
             } else if (plotType === "nonlinear-wave") {
-              const c = p.random(0.35, 0.95);
-              const d = p.random(0.9, 1.9);
-              plotParams = { c, d };
-              plotLabel = `f(x) = ${A}tanh(${d.toFixed(2)}x) sin(${W}pi x+${P}) + ${c.toFixed(2)}cos(3pi x)/(1+x^2)`;
+              const c = p.random(0.35, 1.05);
+              const d = p.random(0.9, 2.2);
+              const bend = p.random(0.25, 0.75);
+              plotParams = { c, d, bend };
+              plotLabel = `f(x) = ${A}tanh(${d.toFixed(2)}x + ${bend.toFixed(2)}sin(2pi x)) sin(${W}pi x+${P}) + ${c.toFixed(2)}cos(3pi x)/(1+x^2)`;
             } else if (plotType === "sigmoid-oscillation") {
-              const s = p.random(1.1, 2.4);
-              const q = p.random(0.25, 0.7);
-              plotParams = { s, q };
-              plotLabel = `f(x) = ${A}(2/(1+e^(-${s.toFixed(2)}x))-1) + ${q.toFixed(2)}sin(${(plotFreq * 2).toFixed(2)}pi x + ${P})`;
+              const s = p.random(1.1, 2.8);
+              const q = p.random(0.25, 0.85);
+              const r = p.random(0.12, 0.35);
+              plotParams = { s, q, r };
+              plotLabel = `f(x) = ${A}(2/(1+e^(-${s.toFixed(2)}x))-1) + ${q.toFixed(2)}sin(${(plotFreq * 2).toFixed(2)}pi x + ${P}) + ${r.toFixed(2)}cos(5pi x)`;
+            } else if (plotType === "nested-lissajous") {
+              const h = p.random(1.8, 4.6);
+              const k = p.random(2.2, 5.4);
+              const mix = p.random(0.18, 0.4);
+              plotParams = { h, k, mix };
+              plotLabel = `f(x) = ${A}sin(${W}pi[x + ${mix.toFixed(2)}sin(${h.toFixed(2)}pi x)] + ${P}) + 0.4cos(${k.toFixed(2)}pi x)`;
+            } else if (plotType === "resonant-fold") {
+              const bend = p.random(0.35, 0.9);
+              const ridge = p.random(1.2, 2.8);
+              const mix = p.random(0.18, 0.42);
+              plotParams = { bend, ridge, mix };
+              plotLabel = `f(x) = ${A}sin(${W}pi x + ${bend.toFixed(2)}tanh(${ridge.toFixed(2)}x^3) + ${P}) + ${mix.toFixed(2)}sin(6pi x)/(1+x^2)`;
+            } else if (plotType === "fractal-phase") {
+              const c1 = p.random(0.18, 0.46);
+              const c2 = p.random(0.12, 0.34);
+              const h1 = p.random(2.0, 5.2);
+              const h2 = p.random(4.5, 8.5);
+              plotParams = { c1, c2, h1, h2 };
+              plotLabel = `f(x) = ${A}sin(${W}pi x + ${c1.toFixed(2)}sin(${h1.toFixed(2)}pi x + ${c2.toFixed(2)}cos(${h2.toFixed(2)}pi x)) + ${P})`;
+            } else if (plotType === "chaotic-envelope") {
+              const grow = p.random(1.2, 2.8);
+              const ripple = p.random(0.18, 0.42);
+              const comb = p.random(2.6, 6.4);
+              plotParams = { grow, ripple, comb };
+              plotLabel = `f(x) = ${A}[sin(${W}pi x + ${P}) + ${ripple.toFixed(2)}sin(${comb.toFixed(2)}pi x)] / (1 + ${grow.toFixed(2)}|x - 0.35sin(3pi x)|)`;
+            } else if (plotType === "hyperbolic-weave") {
+              const ridge = p.random(1.1, 2.6);
+              const skew = p.random(0.16, 0.4);
+              const mesh = p.random(3.2, 7.4);
+              plotParams = { ridge, skew, mesh };
+              plotLabel = `f(x) = ${A}tanh(${ridge.toFixed(2)}x + ${skew.toFixed(2)}sin(${mesh.toFixed(2)}pi x)) + 0.45sin(${W}pi x + ${P})/(1+0.8x^2)`;
+            } else if (plotType === "moire-twist") {
+              const a1 = p.random(2.4, 5.8);
+              const a2 = p.random(2.8, 6.6);
+              const bend = p.random(0.18, 0.48);
+              plotParams = { a1, a2, bend };
+              plotLabel = `f(x) = ${A}[sin(${a1.toFixed(2)}pi x + ${P}) - sin(${a2.toFixed(2)}pi x - ${P})] + ${bend.toFixed(2)}sin(${W}pi x^2)`;
+            } else if (plotType === "phase-knot") {
+              const loop = p.random(1.6, 3.6);
+              const knot = p.random(2.8, 6.8);
+              const mix = p.random(0.18, 0.42);
+              plotParams = { loop, knot, mix };
+              plotLabel = `f(x) = ${A}sin(${W}pi x + ${loop.toFixed(2)}sin(${knot.toFixed(2)}pi x + ${P})) + ${mix.toFixed(2)}cos(7pi x)/(1+|x|)`;
+            } else if (plotType === "ripple-lattice") {
+              const lattice = p.random(2.2, 5.2);
+              const ripple = p.random(0.18, 0.38);
+              const arch = p.random(0.8, 2.2);
+              plotParams = { lattice, ripple, arch };
+              plotLabel = `f(x) = ${A}cos(${W}pi x)/(1+${arch.toFixed(2)}x^2) + ${ripple.toFixed(2)}sin(${lattice.toFixed(2)}pi x + 0.6sin(3pi x))`;
+            } else if (plotType === "arctan-cascade") {
+              const warp = p.random(1.2, 3.2);
+              const comb = p.random(3.0, 7.2);
+              const lift = p.random(0.16, 0.42);
+              plotParams = { warp, comb, lift };
+              plotLabel = `f(x) = ${A}atan(${warp.toFixed(2)}sin(${W}pi x + ${P})) + ${lift.toFixed(2)}cos(${comb.toFixed(2)}pi x)/(1+0.6x^2)`;
+            } else if (plotType === "folded-sigmoid") {
+              const steep = p.random(1.2, 3.1);
+              const fold = p.random(0.18, 0.46);
+              const mesh = p.random(2.8, 6.2);
+              plotParams = { steep, fold, mesh };
+              plotLabel = `f(x) = ${A}(2/(1+e^(-${steep.toFixed(2)}[x+${fold.toFixed(2)}sin(${mesh.toFixed(2)}pi x)]))-1) + 0.3sin(5pi x)`;
+            } else if (plotType === "sine-comb") {
+              const h1 = p.random(2.0, 4.4);
+              const h2 = p.random(4.8, 9.2);
+              const h3 = p.random(7.0, 12.5);
+              plotParams = { h1, h2, h3 };
+              plotLabel = `f(x) = ${A}[sin(${h1.toFixed(2)}pi x)+0.5sin(${h2.toFixed(2)}pi x+${P})+0.25cos(${h3.toFixed(2)}pi x)]/(1+0.5x^2)`;
+            } else if (plotType === "logistic-moire") {
+              const gate = p.random(1.4, 3.2);
+              const drift = p.random(0.2, 0.48);
+              const weave = p.random(3.2, 7.6);
+              plotParams = { gate, drift, weave };
+              plotLabel = `f(x) = ${A}[2/(1+e^(-${gate.toFixed(2)}x))-1]sin(${W}pi x+${P}) + ${drift.toFixed(2)}sin(${weave.toFixed(2)}pi x^2)`;
             } else {
               plotLabel = `f(x) = ${A} sin(${W}pi x + ${P})`;
             }
@@ -2637,32 +2089,150 @@ export async function initializeHomeSplash(options = {}) {
             if (plotType === "harmonic-rational") {
               const b = Number(plotParams.b || 0.5);
               const h = Number(plotParams.h || 2.4);
+              const mix = Number(plotParams.mix || 0.45);
               const num =
                 Math.sin((xNorm * plotFreq * Math.PI) + plotPhase + t * 0.52) +
-                0.45 * Math.cos((xNorm * plotFreq * Math.PI * h) - plotPhase * 0.35 + t * 0.28);
+                mix * Math.cos((xNorm * plotFreq * Math.PI * h) - plotPhase * 0.35 + t * 0.28);
               return (plotAmplitude * num) / (1 + b * xNorm * xNorm * 2.4);
             }
             if (plotType === "chirped-damped") {
               const chirp = Number(plotParams.chirp || 1);
               const damp = Number(plotParams.damp || 1);
               const mix = Number(plotParams.mix || 0.35);
-              const wave = Math.sin((xNorm * plotFreq * Math.PI) + (chirp * xNorm * xNorm * 1.5) + plotPhase + t * 0.58);
+              const overtone = Number(plotParams.overtone || 0.25);
+              const wave =
+                Math.sin((xNorm * plotFreq * Math.PI) + (chirp * xNorm * xNorm * 1.5) + plotPhase + t * 0.58) +
+                overtone * Math.cos((xNorm * Math.PI * 4) - t * 0.31);
               const env = Math.exp(-damp * Math.abs(xNorm) * 1.1);
               return plotAmplitude * env * wave + mix * xNorm;
             }
             if (plotType === "nonlinear-wave") {
               const c = Number(plotParams.c || 0.6);
               const d = Number(plotParams.d || 1.2);
+              const bend = Number(plotParams.bend || 0.4);
               return (
-                plotAmplitude * Math.tanh(d * xNorm) * Math.sin((xNorm * plotFreq * Math.PI) + plotPhase + t * 0.48) +
+                plotAmplitude * Math.tanh((d * xNorm) + (bend * Math.sin(xNorm * Math.PI * 2 - t * 0.14))) * Math.sin((xNorm * plotFreq * Math.PI) + plotPhase + t * 0.48) +
                 c * Math.cos((xNorm * Math.PI * 3.0) - t * 0.22) / (1 + xNorm * xNorm * 2.2)
               );
             }
             if (plotType === "sigmoid-oscillation") {
               const s = Number(plotParams.s || 1.7);
               const q = Number(plotParams.q || 0.4);
+              const r = Number(plotParams.r || 0.2);
               const sig = 2 / (1 + Math.exp(-s * xNorm)) - 1;
-              return plotAmplitude * sig + q * Math.sin((xNorm * plotFreq * Math.PI * 2) + plotPhase + t * 0.62);
+              return plotAmplitude * sig + q * Math.sin((xNorm * plotFreq * Math.PI * 2) + plotPhase + t * 0.62) + r * Math.cos((xNorm * Math.PI * 5) - t * 0.2);
+            }
+            if (plotType === "nested-lissajous") {
+              const h = Number(plotParams.h || 2.8);
+              const k = Number(plotParams.k || 3.6);
+              const mix = Number(plotParams.mix || 0.28);
+              const warped = xNorm + mix * Math.sin((xNorm * Math.PI * h) + t * 0.23);
+              return (
+                plotAmplitude * Math.sin((warped * plotFreq * Math.PI) + plotPhase + t * 0.5) +
+                0.4 * Math.cos((xNorm * Math.PI * k) - plotPhase * 0.22 + t * 0.29)
+              );
+            }
+            if (plotType === "resonant-fold") {
+              const bend = Number(plotParams.bend || 0.55);
+              const ridge = Number(plotParams.ridge || 1.7);
+              const mix = Number(plotParams.mix || 0.28);
+              const fold = Math.tanh(ridge * xNorm * xNorm * xNorm);
+              return (
+                plotAmplitude * Math.sin((xNorm * plotFreq * Math.PI) + (bend * fold * Math.PI) + plotPhase + t * 0.54) +
+                mix * Math.sin((xNorm * Math.PI * 6) - t * 0.32) / (1 + xNorm * xNorm * 1.6)
+              );
+            }
+            if (plotType === "fractal-phase") {
+              const c1 = Number(plotParams.c1 || 0.28);
+              const c2 = Number(plotParams.c2 || 0.18);
+              const h1 = Number(plotParams.h1 || 3.2);
+              const h2 = Number(plotParams.h2 || 6.2);
+              const inner = c1 * Math.sin((xNorm * Math.PI * h1) + t * 0.31 + (c2 * Math.cos((xNorm * Math.PI * h2) - t * 0.19)));
+              return plotAmplitude * Math.sin((xNorm * plotFreq * Math.PI) + inner + plotPhase + t * 0.47);
+            }
+            if (plotType === "chaotic-envelope") {
+              const grow = Number(plotParams.grow || 1.8);
+              const ripple = Number(plotParams.ripple || 0.28);
+              const comb = Number(plotParams.comb || 4.2);
+              const wave = Math.sin((xNorm * plotFreq * Math.PI) + plotPhase + t * 0.58) + ripple * Math.sin((xNorm * Math.PI * comb) - t * 0.27);
+              const env = 1 / (1 + grow * Math.abs(xNorm - (0.35 * Math.sin((xNorm * Math.PI * 3) + t * 0.12))));
+              return plotAmplitude * wave * env;
+            }
+            if (plotType === "hyperbolic-weave") {
+              const ridge = Number(plotParams.ridge || 1.6);
+              const skew = Number(plotParams.skew || 0.24);
+              const mesh = Number(plotParams.mesh || 5.2);
+              const base = Math.tanh((ridge * xNorm) + (skew * Math.sin((xNorm * Math.PI * mesh) - t * 0.22)));
+              const woven = 0.45 * Math.sin((xNorm * plotFreq * Math.PI) + plotPhase + t * 0.51) / (1 + xNorm * xNorm * 0.8);
+              return plotAmplitude * base + woven;
+            }
+            if (plotType === "moire-twist") {
+              const a1 = Number(plotParams.a1 || 3.4);
+              const a2 = Number(plotParams.a2 || 4.4);
+              const bend = Number(plotParams.bend || 0.28);
+              return (
+                plotAmplitude * (
+                  Math.sin((xNorm * Math.PI * a1) + plotPhase + t * 0.34) -
+                  Math.sin((xNorm * Math.PI * a2) - plotPhase - t * 0.22)
+                ) * 0.6 +
+                bend * Math.sin((xNorm * xNorm * plotFreq * Math.PI * 1.8) + t * 0.41)
+              );
+            }
+            if (plotType === "phase-knot") {
+              const loop = Number(plotParams.loop || 2.2);
+              const knot = Number(plotParams.knot || 4.2);
+              const mix = Number(plotParams.mix || 0.28);
+              return (
+                plotAmplitude * Math.sin((xNorm * plotFreq * Math.PI) + (loop * Math.sin((xNorm * Math.PI * knot) + plotPhase + t * 0.27)) + t * 0.48) +
+                mix * Math.cos((xNorm * Math.PI * 7) - t * 0.23) / (1 + Math.abs(xNorm))
+              );
+            }
+            if (plotType === "ripple-lattice") {
+              const lattice = Number(plotParams.lattice || 3.4);
+              const ripple = Number(plotParams.ripple || 0.28);
+              const arch = Number(plotParams.arch || 1.4);
+              return (
+                plotAmplitude * Math.cos((xNorm * plotFreq * Math.PI) + t * 0.39) / (1 + arch * xNorm * xNorm) +
+                ripple * Math.sin((xNorm * Math.PI * lattice) + (0.6 * Math.sin((xNorm * Math.PI * 3) - t * 0.18)) + plotPhase)
+              );
+            }
+            if (plotType === "arctan-cascade") {
+              const warp = Number(plotParams.warp || 2.0);
+              const comb = Number(plotParams.comb || 4.8);
+              const lift = Number(plotParams.lift || 0.28);
+              return (
+                plotAmplitude * Math.atan(warp * Math.sin((xNorm * plotFreq * Math.PI) + plotPhase + t * 0.47)) +
+                lift * Math.cos((xNorm * Math.PI * comb) - t * 0.21) / (1 + xNorm * xNorm * 0.6)
+              );
+            }
+            if (plotType === "folded-sigmoid") {
+              const steep = Number(plotParams.steep || 2.0);
+              const fold = Number(plotParams.fold || 0.28);
+              const mesh = Number(plotParams.mesh || 4.0);
+              const sig = 2 / (1 + Math.exp(-steep * (xNorm + (fold * Math.sin((xNorm * Math.PI * mesh) - t * 0.24))))) - 1;
+              return plotAmplitude * sig + 0.3 * Math.sin((xNorm * Math.PI * 5) + t * 0.31);
+            }
+            if (plotType === "sine-comb") {
+              const h1 = Number(plotParams.h1 || 3.0);
+              const h2 = Number(plotParams.h2 || 6.6);
+              const h3 = Number(plotParams.h3 || 9.8);
+              return (
+                plotAmplitude * (
+                  Math.sin((xNorm * Math.PI * h1) + t * 0.26) +
+                  0.5 * Math.sin((xNorm * Math.PI * h2) + plotPhase - t * 0.18) +
+                  0.25 * Math.cos((xNorm * Math.PI * h3) + t * 0.13)
+                ) / (1 + xNorm * xNorm * 0.5)
+              );
+            }
+            if (plotType === "logistic-moire") {
+              const gate = Number(plotParams.gate || 2.1);
+              const drift = Number(plotParams.drift || 0.3);
+              const weave = Number(plotParams.weave || 5.2);
+              const sig = 2 / (1 + Math.exp(-gate * xNorm)) - 1;
+              return (
+                plotAmplitude * sig * Math.sin((xNorm * plotFreq * Math.PI) + plotPhase + t * 0.43) +
+                drift * Math.sin((xNorm * xNorm * Math.PI * weave) - t * 0.29)
+              );
             }
             return plotAmplitude * Math.sin((xNorm * plotFreq * Math.PI) + plotPhase + t * 0.7);
           };
@@ -2694,147 +2264,6 @@ export async function initializeHomeSplash(options = {}) {
             for (let i = 0; i < bounceBallCount; i += 1) {
               bounceBalls.push(spawnBounceBall());
             }
-          };
-  
-          const dukeRectOverlap = (a, b) =>
-            a.x < (b.x + b.w) &&
-            (a.x + a.w) > b.x &&
-            a.y < (b.y + b.h) &&
-            (a.y + a.h) > b.y;
-  
-          const spawnDukeExplosion = (x, y, palette = [255, 210, 96]) => {
-            for (let i = 0; i < 10; i += 1) {
-              dukeExplosions.push({
-                x,
-                y,
-                vx: p.random(-2.8, 2.8),
-                vy: p.random(-3.6, 1.2),
-                life: p.random(20, 36),
-                color: [
-                  Math.min(255, palette[0] + p.random(-10, 30)),
-                  Math.min(255, palette[1] + p.random(-30, 30)),
-                  Math.max(0, palette[2] + p.random(-40, 18))
-                ]
-              });
-            }
-          };
-  
-          const seedDukeNukem = () => {
-            dukePlatforms.length = 0;
-            dukeEnemies.length = 0;
-            dukeBullets.length = 0;
-            dukeExplosions.length = 0;
-            dukePickups.length = 0;
-            dukeBackdropBuildings.length = 0;
-            dukeGroundY = p.height * 0.82;
-            dukeScrollX = 0;
-            dukeSpawnX = p.width;
-            dukeNextShotAt = 0;
-            dukeNextEnemyShotAt = 0;
-            dukeScore = 0;
-            dukeCycleSeed += 1;
-            dukeLevelLabel = ["SHRAPNEL CITY", "TOXIC TUNNELS", "ROBOT DISTRICT"][dukeCycleSeed % 3];
-            dukePlayer = {
-              screenX: p.width * 0.26,
-              y: dukeGroundY - 40,
-              w: 18,
-              h: 36,
-              vy: 0,
-              onGround: true,
-              jumpLockUntil: 0,
-              facing: 1,
-              health: 8,
-              invulnUntil: 0
-            };
-  
-            for (let i = 0; i < 14; i += 1) {
-              dukeBackdropBuildings.push({
-                x: p.random(-80, p.width + 180),
-                w: p.random(60, 160),
-                h: p.random(p.height * 0.14, p.height * 0.38),
-                layer: i % 2
-              });
-            }
-  
-            const addChunk = () => {
-              const chunkStart = dukeSpawnX;
-              const chunkWidth = p.random(180, 320);
-              const variant = Math.floor(p.random(0, 6));
-  
-              if (variant === 0 || variant === 1) {
-                dukePlatforms.push({
-                  x: chunkStart + p.random(26, 58),
-                  y: dukeGroundY - p.random(88, 148),
-                  w: p.random(110, 190),
-                  h: 14,
-                  style: "catwalk"
-                });
-              } else if (variant === 2) {
-                dukePlatforms.push({
-                  x: chunkStart + p.random(40, 72),
-                  y: dukeGroundY - p.random(54, 96),
-                  w: p.random(72, 118),
-                  h: p.random(30, 48),
-                  style: "crate"
-                });
-              } else if (variant === 3) {
-                dukePlatforms.push({
-                  x: chunkStart + p.random(12, 38),
-                  y: dukeGroundY - p.random(70, 118),
-                  w: p.random(130, 210),
-                  h: 12,
-                  style: "beam"
-                });
-                dukePickups.push({
-                  x: chunkStart + p.random(68, 120),
-                  y: dukeGroundY - p.random(118, 152),
-                  w: 12,
-                  h: 12,
-                  kind: p.random() < 0.5 ? "chip" : "ammo",
-                  bob: p.random(Math.PI * 2)
-                });
-              } else if (variant === 4) {
-                dukePlatforms.push({
-                  x: chunkStart + p.random(28, 54),
-                  y: dukeGroundY - 34,
-                  w: p.random(42, 64),
-                  h: p.random(34, 48),
-                  style: "crate"
-                });
-              } else {
-                dukePickups.push({
-                  x: chunkStart + p.random(44, 120),
-                  y: dukeGroundY - p.random(50, 90),
-                  w: 12,
-                  h: 12,
-                  kind: "orb",
-                  bob: p.random(Math.PI * 2)
-                });
-              }
-  
-              if (p.random() < 0.84) {
-                const usePlatform = p.random() < 0.42 && dukePlatforms.length > 0;
-                const platform = usePlatform ? dukePlatforms[dukePlatforms.length - 1] : null;
-                const baseY = platform && platform.x < chunkStart + chunkWidth
-                  ? platform.y - 26
-                  : dukeGroundY - 28;
-                dukeEnemies.push({
-                  x: chunkStart + p.random(70, chunkWidth - 22),
-                  y: baseY,
-                  w: 18,
-                  h: 26,
-                  vx: p.random() < 0.5 ? -0.48 : 0.48,
-                  range: p.random(26, 74),
-                  anchorX: chunkStart + p.random(70, chunkWidth - 22),
-                  type: p.random() < 0.55 ? "trooper" : "bot",
-                  hp: p.random() < 0.2 ? 2 : 1
-                });
-              }
-  
-              dukeSpawnX += chunkWidth;
-            };
-  
-            while (dukeSpawnX < p.width * 2.6) addChunk();
           };
   
           const circleIntersectsRect = (cx, cy, cr, rect) => {
@@ -2938,23 +2367,21 @@ export async function initializeHomeSplash(options = {}) {
             const canvas = p.createCanvas(width, height);
             canvas.parent(splashP5Host);
             p.pixelDensity(1);
-            if (splashMode === "logo3d") {}
-            else if (splashMode === "bezier") seedBezierCurves();
-            else if (splashMode === "flock") seedFlock();
-            else if (splashMode === "pi") seedPiDigits();
+            if (splashMode === "flock") seedFlock();
             else if (splashMode === "asteroids") seedAsteroids();
             else if (splashMode === "tempest") seedTempest();
             else if (splashMode === "missilecommand") seedMissileCommand();
             else if (splashMode === "mountains") seedMountainScene();
             else if (splashMode === "serpentinesphere") seedSerpentineSphere();
+            else if (splashMode === "wireframesphere") {}
+            else if (splashMode === "pixeltitle") {}
+            else if (splashMode === "pixelnoise") {}
             else if (splashMode === "orbitalbeams") seedOrbitalBeams();
             else if (splashMode === "radar") seedRadarScreen();
-            else if (splashMode === "dukenukem") seedDukeNukem();
             else if (splashMode === "turningcircles") seedTurningCircles();
             else if (splashMode === "circles") seedCircleGrid();
             else if (splashMode === "matrix") seedMatrixRain();
             else if (splashMode === "life") seedLife();
-            else if (splashMode === "code") seedCodeWriter();
             else if (splashMode === "plot") seedPlot();
             else if (splashMode === "bounce") seedBounce();
             else seedNodes();
@@ -2963,23 +2390,21 @@ export async function initializeHomeSplash(options = {}) {
           p.windowResized = () => {
             const { width, height } = getSplashCanvasSize();
             p.resizeCanvas(width, height);
-            if (splashMode === "logo3d") {}
-            else if (splashMode === "bezier") seedBezierCurves();
-            else if (splashMode === "flock") seedFlock();
-            else if (splashMode === "pi") seedPiDigits();
+            if (splashMode === "flock") seedFlock();
             else if (splashMode === "asteroids") seedAsteroids();
             else if (splashMode === "tempest") seedTempest();
             else if (splashMode === "missilecommand") seedMissileCommand();
             else if (splashMode === "mountains") seedMountainScene();
             else if (splashMode === "serpentinesphere") seedSerpentineSphere();
+            else if (splashMode === "wireframesphere") {}
+            else if (splashMode === "pixeltitle") {}
+            else if (splashMode === "pixelnoise") {}
             else if (splashMode === "orbitalbeams") seedOrbitalBeams();
             else if (splashMode === "radar") seedRadarScreen();
-            else if (splashMode === "dukenukem") seedDukeNukem();
             else if (splashMode === "turningcircles") seedTurningCircles();
             else if (splashMode === "circles") seedCircleGrid();
             else if (splashMode === "matrix") seedMatrixRain();
             else if (splashMode === "life") seedLife();
-            else if (splashMode === "code") seedCodeWriter();
             else if (splashMode === "plot") seedPlot();
             else if (splashMode === "bounce") seedBounce();
             else seedNodes();
@@ -2988,89 +2413,395 @@ export async function initializeHomeSplash(options = {}) {
           p.draw = () => {
             p.clear();
             p.background(24, 23, 26, 245);
-  
-            if (splashMode === "logo3d") {
-              p.background(8, 8, 12, 252);
-              return;
-            }
-  
-            if (splashMode === "bezier") {
-              p.noFill();
-              for (const c of curves) {
-                movePoint(c.p0);
-                movePoint(c.p1);
-                movePoint(c.p2);
-                movePoint(c.p3);
-                p.stroke(c.color[0], c.color[1], c.color[2], c.color[3]);
-                p.strokeWeight(c.weight);
-                p.bezier(c.p0.x, c.p0.y, c.p1.x, c.p1.y, c.p2.x, c.p2.y, c.p3.x, c.p3.y);
-              }
-              return;
-            }
 
             if (splashMode === "serpentinesphere") {
               drawSerpentineSphere();
               return;
             }
   
-            if (splashMode === "flock") {
-              updateFlock();
-              drawFlock();
+            if (splashMode === "wireframesphere") {
+              const now = p.millis();
+              const cx = p.width * 0.5;
+              const cy = p.height * 0.5;
+              const driftX = Math.sin(now * 0.00023) * p.width * 0.012;
+              const driftY = Math.cos(now * 0.00017) * p.height * 0.01;
+              const centerX = cx + driftX;
+              const centerY = cy + driftY;
+              const spin = now * 0.00018;
+              const pulse = (Math.sin(now * 0.00062) + 1) * 0.5;
+              const baseRadius = Math.max(72, Math.min(p.width, p.height) * 0.255);
+              const radius = baseRadius * (0.95 + 0.1 * pulse);
+              const nodeCount = Math.max(150, Math.floor(Math.min(p.width, p.height) * 0.22));
+              if (!p.__splashWireSphereNeon) {
+                p.__splashWireSphereNeon = p.random([
+                  [57, 255, 20],
+                  [0, 255, 255],
+                  [255, 20, 147],
+                  [255, 106, 0],
+                  [191, 64, 255]
+                ]);
+              }
+              const neon = p.__splashWireSphereNeon;
+
+              if (!p.__splashWireSphereNodes || p.__splashWireSphereNodes.length !== nodeCount) {
+                p.__splashWireSphereNodes = Array.from({ length: nodeCount }, (_, index) => {
+                  const t = index + 0.5;
+                  const y = 1 - (t / nodeCount) * 2;
+                  const ring = Math.sqrt(Math.max(0, 1 - y * y));
+                  const theta = Math.PI * (3 - Math.sqrt(5)) * index;
+                  return {
+                    x: Math.cos(theta) * ring,
+                    y,
+                    z: Math.sin(theta) * ring,
+                    size: 0.95 + (((index * 17) % 13) / 13) * 2.35
+                  };
+                });
+              }
+
+              if (!p.__splashWireSphereStars || p.__splashWireSphereStars.length !== 520) {
+                p.__splashWireSphereStars = Array.from({ length: 520 }, () => ({
+                  x: p.random(p.width),
+                  y: p.random(p.height),
+                  size: p.random([1, 1, 1, 2, 2, 3, 3, 4, 5]),
+                  alpha: p.random(56, 180),
+                  phase: p.random(Math.PI * 2),
+                  drift: p.random(-0.08, 0.08),
+                  color: p.random([
+                    [255, 255, 255],
+                    [57, 255, 20],
+                    [0, 255, 255],
+                    [255, 20, 147],
+                    [255, 196, 64],
+                    [191, 64, 255]
+                  ])
+                }));
+              }
+
+              p.background(4, 6, 10, 242);
+
+              p.noStroke();
+              for (const star of p.__splashWireSphereStars) {
+                star.x += star.drift;
+                if (star.x < -2) star.x = p.width + 2;
+                else if (star.x > p.width + 2) star.x = -2;
+                if (p.random() < 0.0025) {
+                  star.y = p.random(p.height);
+                  star.x = p.random(p.width);
+                  star.color = p.random([
+                    [255, 255, 255],
+                    [57, 255, 20],
+                    [0, 255, 255],
+                    [255, 20, 147],
+                    [255, 196, 64],
+                    [191, 64, 255]
+                  ]);
+                }
+                const twinkle = 0.72 + 0.28 * Math.sin((now * 0.0011) + star.phase);
+                p.fill(star.color[0], star.color[1], star.color[2], star.alpha * twinkle);
+                p.rect(star.x, star.y, star.size, star.size, 1);
+              }
+
+              if (!p.__splashWireSphereShip) {
+                p.__splashWireSphereShip = {
+                  active: false,
+                  dir: 1,
+                  x: 0,
+                  y: 0,
+                  speed: 0,
+                  scale: 1,
+                  nextSpawnAt: now + p.random(1800, 4600),
+                  color: [255, 255, 255]
+                };
+              }
+              if (!p.__splashWireSphereShipPuffs) p.__splashWireSphereShipPuffs = [];
+              const shipPuffs = p.__splashWireSphereShipPuffs;
+              for (let i = shipPuffs.length - 1; i >= 0; i -= 1) {
+                const puff = shipPuffs[i];
+                puff.x += puff.vx;
+                puff.y += puff.vy;
+                puff.vx *= 0.992;
+                puff.vy *= 0.992;
+                puff.size *= 1.018;
+                puff.alpha *= 0.965;
+                if (puff.alpha < 4) {
+                  shipPuffs.splice(i, 1);
+                  continue;
+                }
+                p.noStroke();
+                p.fill(214, 224, 236, puff.alpha * 0.55);
+                p.circle(puff.x, puff.y, puff.size * 1.18);
+                p.fill(248, 250, 255, puff.alpha * 0.42);
+                p.circle(puff.x, puff.y, puff.size * 0.74);
+              }
+              const ship = p.__splashWireSphereShip;
+              if (!ship.active && now >= ship.nextSpawnAt) {
+                ship.active = true;
+                ship.dir = p.random() < 0.5 ? -1 : 1;
+                ship.scale = p.random(0.7, 1.25);
+                ship.speed = p.random(1.8, 5.8) * ship.dir;
+                ship.vy = p.random(-0.65, 0.65);
+                ship.y = p.random(p.height * 0.18, p.height * 0.82);
+                ship.x = ship.dir > 0 ? -48 : p.width + 48;
+                ship.color = p.random([
+                  [255, 255, 255],
+                  [57, 255, 20],
+                  [0, 255, 255],
+                  [255, 20, 147],
+                  [255, 196, 64],
+                  [191, 64, 255]
+                ]);
+              }
+              if (ship.active) {
+                ship.x += ship.speed;
+                ship.y += ship.vy;
+                if (ship.y < p.height * 0.12 || ship.y > p.height * 0.88) ship.vy *= -1;
+                if (p.random() < 0.78) {
+                  shipPuffs.push({
+                    x: ship.x - (ship.dir * 14 * ship.scale),
+                    y: ship.y + (4 * ship.scale) + p.random(-2, 2),
+                    vx: (-ship.speed * 0.18) + p.random(-0.16, 0.16),
+                    vy: (ship.vy * 0.2) + p.random(-0.08, 0.08),
+                    size: p.random(4, 8) * ship.scale,
+                    alpha: p.random(90, 165)
+                  });
+                  if (shipPuffs.length > 90) shipPuffs.splice(0, shipPuffs.length - 90);
+                }
+                p.push();
+                p.translate(ship.x, ship.y);
+                if (ship.dir < 0) p.scale(-1, 1);
+                p.noStroke();
+                p.fill(ship.color[0], ship.color[1], ship.color[2], 36);
+                p.ellipse(0, 8 * ship.scale, 30 * ship.scale, 8 * ship.scale);
+                p.stroke(ship.color[0], ship.color[1], ship.color[2], 220);
+                p.strokeWeight(1.2);
+                p.noFill();
+                p.beginShape();
+                p.vertex(-16 * ship.scale, 3 * ship.scale);
+                p.vertex(-5 * ship.scale, -4 * ship.scale);
+                p.vertex(10 * ship.scale, -2 * ship.scale);
+                p.vertex(18 * ship.scale, 0);
+                p.vertex(10 * ship.scale, 2 * ship.scale);
+                p.vertex(-6 * ship.scale, 5 * ship.scale);
+                p.endShape(p.CLOSE);
+                p.line(-10 * ship.scale, 4 * ship.scale, -18 * ship.scale, 9 * ship.scale);
+                p.line(-2 * ship.scale, 5 * ship.scale, -7 * ship.scale, 11 * ship.scale);
+                p.noStroke();
+                p.fill(255, 255, 255, 210);
+                p.circle(4 * ship.scale, 0, 2.2 * ship.scale);
+                p.pop();
+                if ((ship.dir > 0 && ship.x > p.width + 56) || (ship.dir < 0 && ship.x < -56)) {
+                  ship.active = false;
+                  ship.nextSpawnAt = now + p.random(2800, 6800);
+                }
+              }
+
+              const pitch = -0.4 + (Math.sin(spin * 1.9) * 0.11);
+              const roll = Math.cos(spin * 1.3) * 0.08;
+              const cosYaw = Math.cos(spin);
+              const sinYaw = Math.sin(spin);
+              const cosPitch = Math.cos(pitch);
+              const sinPitch = Math.sin(pitch);
+              const cosRoll = Math.cos(roll);
+              const sinRoll = Math.sin(roll);
+              const spherePoints = p.__splashWireSphereNodes.map((node) => {
+                const x1 = node.x * cosYaw - node.z * sinYaw;
+                const z1 = node.x * sinYaw + node.z * cosYaw;
+                const y2 = node.y * cosPitch - z1 * sinPitch;
+                const z2 = node.y * sinPitch + z1 * cosPitch;
+                const x3 = x1 * cosRoll - y2 * sinRoll;
+                const y3 = x1 * sinRoll + y2 * cosRoll;
+                const perspective = 0.69 + ((z2 + 1) * 0.24);
+                return {
+                  sx: centerX + x3 * radius * perspective,
+                  sy: centerY + y3 * radius * perspective,
+                  depth: z2,
+                  size: node.size * (0.72 + ((z2 + 1) * 0.24)),
+                  sortKey: z2
+                };
+              });
+
+              p.strokeWeight(1);
+              for (let i = 0; i < spherePoints.length; i += 1) {
+                const a = spherePoints[i];
+                for (let j = i + 1; j < spherePoints.length; j += 1) {
+                  const b = spherePoints[j];
+                  const dx = a.sx - b.sx;
+                  const dy = a.sy - b.sy;
+                  const dist = Math.hypot(dx, dy);
+                  if (dist > radius * 0.31) continue;
+                  const depthMix = (a.depth + b.depth + 2) / 4;
+                  const alpha = Math.max(8, 108 - (dist / (radius * 0.31)) * 82) * (0.32 + depthMix * 1.02);
+                  if (alpha < 8) continue;
+                  p.stroke(neon[0], neon[1], neon[2], alpha);
+                  p.line(a.sx, a.sy, b.sx, b.sy);
+                }
+              }
+
+              spherePoints.sort((a, b) => a.sortKey - b.sortKey);
+              p.noStroke();
+              for (const point of spherePoints) {
+                const fillAlpha = 72 + ((point.depth + 1) * 80);
+                p.fill(neon[0], neon[1], neon[2], fillAlpha * 0.06);
+                p.circle(point.sx, point.sy, point.size * 3.1);
+                p.fill(neon[0], neon[1], neon[2], fillAlpha * 0.14);
+                p.circle(point.sx, point.sy, point.size * 1.95);
+                p.fill(neon[0], neon[1], neon[2], fillAlpha);
+                p.circle(point.sx, point.sy, point.size);
+              }
               return;
             }
   
-            if (splashMode === "pi") {
-              p.background(8, 10, 14, 252);
-              if (!piGridRows.length) seedPiDigits();
-              const totalCells = piCols * piRows;
-              const now = p.millis();
-  
-              if (!piIsFading) {
-                if (piCellCursor >= totalCells) {
-                  piIsFading = true;
-                } else if (!piLastEmitAt || (now - piLastEmitAt) >= piEmitIntervalMs) {
-                  if (!piPendingDigits.length) refillPiQueue(32);
-                  const nextCh = piPendingDigits.shift() || "0";
-                  const row = Math.floor(piCellCursor / piCols);
-                  const col = piCellCursor % piCols;
-                  piGridRows[row][col] = nextCh;
-                  piColorRows[row][col] = [
-                    Math.floor(p.random(120, 256)),
-                    Math.floor(p.random(120, 256)),
-                    Math.floor(p.random(120, 256))
-                  ];
-                  piDigitCursor += 1;
-                  piCellCursor += 1;
-                  piLastEmitAt = now;
-                }
-              } else {
-                piFadeAlpha -= 3.2;
-                if (piFadeAlpha <= 0) {
-                  for (let r = 0; r < piRows; r += 1) {
-                    piGridRows[r].fill(" ");
-                    piColorRows[r].fill([184, 214, 255]);
+            if (splashMode === "pixeltitle") {
+              const viewportBasis = Math.min(p.width, p.height);
+              const cell = Math.max(14, Math.min(28, Math.round(viewportBasis / 38)));
+              const gap = Math.max(3, Math.min(8, Math.round(cell * 0.25)));
+              const tile = Math.max(1, cell - gap);
+              const cols = Math.ceil(p.width / cell);
+              const rows = Math.ceil(p.height / cell);
+              const phrase = "TOJI STUDIOS";
+              const font = {
+                "T":["11111","00100","00100","00100","00100","00100"],
+                "O":["01110","10001","10001","10001","10001","01110"],
+                "J":["00011","00010","00010","10010","10010","01100"],
+                "I":["11111","00100","00100","00100","00100","11111"],
+                "S":["01111","10000","01110","00001","00001","11110"],
+                "U":["10001","10001","10001","10001","10001","01110"],
+                "D":["11110","10001","10001","10001","10001","11110"],
+                " ":["000","000","000","000","000","000"]
+              };
+              const buildPhraseBitmap = () => {
+                const rowsOut = Array.from({ length: 6 }, () => []);
+                for (const ch of phrase) {
+                  const glyph = font[ch] || font[" "];
+                  for (let r = 0; r < 6; r += 1) {
+                    const rowBits = glyph[r] || "00000";
+                    for (const bit of rowBits) rowsOut[r].push(bit === "1" ? 1 : 0);
+                    rowsOut[r].push(0);
                   }
-                  piCellCursor = 0;
-                  piFadeAlpha = 255;
-                  piIsFading = false;
                 }
+                rowsOut.forEach((row) => { if (row.length) row.pop(); });
+                return rowsOut;
+              };
+              if (!p.__pixelTitleBitmap) p.__pixelTitleBitmap = buildPhraseBitmap();
+              const bitmap = p.__pixelTitleBitmap;
+              const phraseCols = bitmap[0]?.length || 0;
+              const phraseRows = bitmap.length;
+              const maxCol = Math.max(0, cols - phraseCols);
+              const maxRow = Math.max(0, rows - phraseRows);
+              if (!p.__pixelTitleState || p.__pixelTitleState.cols !== cols || p.__pixelTitleState.rows !== rows) {
+                p.__pixelTitleState = {
+                  cols,
+                  rows,
+                  currentCol: Math.floor(maxCol * 0.5),
+                  currentRow: Math.floor(maxRow * 0.5),
+                  targetCol: Math.floor(maxCol * 0.5),
+                  targetRow: Math.floor(maxRow * 0.5),
+                  nextMoveAt: p.millis() + p.random(3200, 5200)
+                };
               }
-  
-              p.textFont("monospace");
-              p.textSize(piFontSize);
-              p.textAlign(p.LEFT, p.TOP);
+              const state = p.__pixelTitleState;
+              state.cols = cols;
+              state.rows = rows;
+              const now = p.millis();
+              if (now >= state.nextMoveAt) {
+                state.targetCol = Math.floor(p.random(0, maxCol + 1));
+                state.targetRow = Math.floor(p.random(0, maxRow + 1));
+                state.nextMoveAt = now + p.random(3200, 5600);
+              }
+              state.currentCol = p.lerp(state.currentCol, state.targetCol, 0.018);
+              state.currentRow = p.lerp(state.currentRow, state.targetRow, 0.018);
+              p.background(4, 4, 4, 255);
               p.noStroke();
-              for (let r = 0; r < piRows; r += 1) {
-                const y = 4 + (r * piLineHeight);
-                for (let c = 0; c < piCols; c += 1) {
-                  const ch = piGridRows[r][c];
-                  if (ch === " ") continue;
-                  const cc = piColorRows[r][c] || [184, 214, 255];
-                  p.fill(cc[0], cc[1], cc[2], piIsFading ? piFadeAlpha : 240);
-                  const x = (c * piCellWidth) + ((piCellWidth - piCharWidth) * 0.5);
-                  p.text(ch, x, y);
+              const activeOffsetCol = Math.round(state.currentCol);
+              const activeOffsetRow = Math.round(state.currentRow);
+              for (let row = 0; row < rows; row += 1) {
+                for (let col = 0; col < cols; col += 1) {
+                  const localRow = row - activeOffsetRow;
+                  const localCol = col - activeOffsetCol;
+                  const lit = localRow >= 0 && localRow < phraseRows && localCol >= 0 && localCol < phraseCols && bitmap[localRow][localCol];
+                  p.fill(lit ? 255 : 22, lit ? 255 : 22, lit ? 255 : 22, lit ? 255 : 150);
+                  p.rect(col * cell, row * cell, tile, tile, 1);
                 }
               }
+              return;
+            }
+
+            if (splashMode === "pixelnoise") {
+              const viewportBasis = Math.min(p.width, p.height);
+              const cell = Math.max(14, Math.min(28, Math.round(viewportBasis / 38)));
+              const gap = Math.max(3, Math.min(8, Math.round(cell * 0.25)));
+              const tile = Math.max(1, cell - gap);
+              const cols = Math.ceil(p.width / cell);
+              const rows = Math.ceil(p.height / cell);
+              if (!p.__pixelNoiseState || p.__pixelNoiseState.cols !== cols || p.__pixelNoiseState.rows !== rows) {
+                const total = cols * rows;
+                const hues = Array.from({ length: total }, () => p.random(0, 360));
+                const sats = Array.from({ length: total }, () => p.random(55, 95));
+                const brights = Array.from({ length: total }, () => p.random(65, 100));
+                const lit = Array.from({ length: total }, () => p.random() > 0.925);
+                const alpha = lit.map((isLit) => (isLit ? p.random(90, 220) : 0));
+                const targetAlpha = [...alpha];
+                const expiresAt = lit.map((isLit) => (isLit ? p.millis() + p.random(1800, 4000) : 0));
+                p.__pixelNoiseState = { cols, rows, hues, sats, brights, lit, alpha, targetAlpha, expiresAt, nextTickAt: p.millis() + 120 };
+              }
+              const state = p.__pixelNoiseState;
+              const total = cols * rows;
+              if (state.hues.length !== total) {
+                state.hues = Array.from({ length: total }, () => p.random(0, 360));
+                state.sats = Array.from({ length: total }, () => p.random(55, 95));
+                state.brights = Array.from({ length: total }, () => p.random(65, 100));
+                state.lit = Array.from({ length: total }, () => p.random() > 0.925);
+                state.alpha = state.lit.map((isLit) => (isLit ? p.random(90, 220) : 0));
+                state.targetAlpha = [...state.alpha];
+                state.expiresAt = state.lit.map((isLit) => (isLit ? p.millis() + p.random(1800, 4000) : 0));
+              }
+              state.cols = cols;
+              state.rows = rows;
+              const now = p.millis();
+              if (now >= state.nextTickAt) {
+                const flips = Math.max(4, Math.round(total * 0.00625));
+                for (let i = 0; i < flips; i += 1) {
+                  const idx = Math.floor(p.random(total));
+                  const turnOn = p.random() > 0.45;
+                  state.lit[idx] = turnOn;
+                  if (turnOn) {
+                    state.hues[idx] = p.random(0, 360);
+                    state.sats[idx] = p.random(55, 95);
+                    state.brights[idx] = p.random(72, 100);
+                    state.targetAlpha[idx] = p.random(120, 255);
+                    state.expiresAt[idx] = now + p.random(1800, 4000);
+                  } else {
+                    state.targetAlpha[idx] = 0;
+                    state.expiresAt[idx] = 0;
+                  }
+                }
+                state.nextTickAt = now + p.random(90, 180);
+              }
+              p.colorMode(p.HSB, 360, 100, 100, 255);
+              p.background(4, 0, 2, 255);
+              for (let row = 0; row < rows; row += 1) {
+                for (let col = 0; col < cols; col += 1) {
+                  const idx = row * cols + col;
+                  if (state.expiresAt[idx] && now >= state.expiresAt[idx]) {
+                    state.lit[idx] = false;
+                    state.targetAlpha[idx] = 0;
+                    state.expiresAt[idx] = 0;
+                  }
+                  state.alpha[idx] = p.lerp(state.alpha[idx] || 0, state.targetAlpha[idx] || 0, 0.12);
+                  p.noFill();
+                  if (state.alpha[idx] > 2) p.stroke(state.hues[idx], state.sats[idx], state.brights[idx], state.alpha[idx]);
+                  else p.stroke(0, 0, 8, 135);
+                  p.strokeWeight(Math.max(1, tile * 0.12));
+                  p.rect(col * cell, row * cell, tile, tile, 1);
+                }
+              }
+              p.colorMode(p.RGB, 255, 255, 255, 255);
+              return;
+            }
+
+            if (splashMode === "flock") {
+              updateFlock();
+              drawFlock();
               return;
             }
   
@@ -4557,373 +4288,17 @@ export async function initializeHomeSplash(options = {}) {
               return;
             }
   
-            if (splashMode === "dukenukem") {
-              const now = p.millis();
-              const scrollSpeed = Math.max(3.2, p.width * 0.0031);
-              dukeScrollX += scrollSpeed;
-              const playerWorldX = dukeScrollX + dukePlayer.screenX;
-              const wasOnGround = dukePlayer.onGround;
-              dukePlayer.onGround = false;
-  
-              while (dukeSpawnX < dukeScrollX + p.width * 1.9) {
-                const chunkStart = dukeSpawnX;
-                const chunkWidth = p.random(180, 320);
-                const variant = Math.floor(p.random(0, 6));
-                if (variant === 0 || variant === 1) {
-                  dukePlatforms.push({
-                    x: chunkStart + p.random(26, 58),
-                    y: dukeGroundY - p.random(88, 148),
-                    w: p.random(110, 190),
-                    h: 14,
-                    style: "catwalk"
-                  });
-                } else if (variant === 2) {
-                  dukePlatforms.push({
-                    x: chunkStart + p.random(40, 72),
-                    y: dukeGroundY - p.random(54, 96),
-                    w: p.random(72, 118),
-                    h: p.random(30, 48),
-                    style: "crate"
-                  });
-                } else if (variant === 3) {
-                  dukePlatforms.push({
-                    x: chunkStart + p.random(12, 38),
-                    y: dukeGroundY - p.random(70, 118),
-                    w: p.random(130, 210),
-                    h: 12,
-                    style: "beam"
-                  });
-                  dukePickups.push({
-                    x: chunkStart + p.random(68, 120),
-                    y: dukeGroundY - p.random(118, 152),
-                    w: 12,
-                    h: 12,
-                    kind: p.random() < 0.5 ? "chip" : "ammo",
-                    bob: p.random(Math.PI * 2)
-                  });
-                } else if (variant === 4) {
-                  dukePlatforms.push({
-                    x: chunkStart + p.random(28, 54),
-                    y: dukeGroundY - 34,
-                    w: p.random(42, 64),
-                    h: p.random(34, 48),
-                    style: "crate"
-                  });
-                } else {
-                  dukePickups.push({
-                    x: chunkStart + p.random(44, 120),
-                    y: dukeGroundY - p.random(50, 90),
-                    w: 12,
-                    h: 12,
-                    kind: "orb",
-                    bob: p.random(Math.PI * 2)
-                  });
-                }
-                if (p.random() < 0.84) {
-                  const recentPlatform = dukePlatforms.length ? dukePlatforms[dukePlatforms.length - 1] : null;
-                  const platformUsable = recentPlatform && recentPlatform.x >= chunkStart && recentPlatform.x <= chunkStart + chunkWidth;
-                  const spawnX = chunkStart + p.random(70, chunkWidth - 22);
-                  dukeEnemies.push({
-                    x: spawnX,
-                    y: platformUsable ? recentPlatform.y - 26 : dukeGroundY - 28,
-                    w: 18,
-                    h: 26,
-                    vx: p.random() < 0.5 ? -0.48 : 0.48,
-                    range: p.random(26, 74),
-                    anchorX: spawnX,
-                    type: p.random() < 0.55 ? "trooper" : "bot",
-                    hp: p.random() < 0.2 ? 2 : 1
-                  });
-                }
-                dukeSpawnX += chunkWidth;
-              }
-  
-              const solidAhead = dukePlatforms.find((plat) => {
-                const nearX = plat.x - playerWorldX;
-                return nearX > 16 && nearX < 124 && plat.y >= dukeGroundY - 56 && plat.h > 20;
-              });
-              const platformAhead = dukePlatforms.find((plat) => {
-                const nearX = plat.x - playerWorldX;
-                return nearX > 44 && nearX < 160 && plat.y < dukeGroundY - 60 && plat.y > dukeGroundY - 150;
-              });
-              const enemyAhead = dukeEnemies.find((enemy) => {
-                const dx = enemy.x - playerWorldX;
-                return dx > 18 && dx < 220 && Math.abs((enemy.y + enemy.h * 0.5) - (dukePlayer.y + dukePlayer.h * 0.5)) < 54;
-              });
-  
-              if (wasOnGround && now >= dukePlayer.jumpLockUntil) {
-                if (solidAhead || (platformAhead && p.random() < 0.08) || (enemyAhead && enemyAhead.x - playerWorldX < 74 && p.random() < 0.16)) {
-                  dukePlayer.vy = -9.1;
-                  dukePlayer.onGround = false;
-                  dukePlayer.jumpLockUntil = now + 420;
-                }
-              }
-  
-              if (enemyAhead && now >= dukeNextShotAt) {
-                dukeBullets.push({
-                  x: playerWorldX + dukePlayer.w,
-                  y: dukePlayer.y + 14,
-                  vx: 8.5,
-                  vy: p.random(-0.12, 0.12),
-                  owner: "player",
-                  w: 8,
-                  h: 3
-                });
-                dukeNextShotAt = now + p.random(170, 260);
-              }
-  
-              dukePlayer.vy += 0.48;
-              dukePlayer.y += dukePlayer.vy;
-              let supportY = dukeGroundY;
-              for (const plat of dukePlatforms) {
-                const overlapX = (playerWorldX + dukePlayer.w) > plat.x && playerWorldX < (plat.x + plat.w);
-                if (!overlapX) continue;
-                if (plat.y >= dukePlayer.y + dukePlayer.h - 18 && plat.y < supportY) supportY = plat.y;
-              }
-              if ((dukePlayer.y + dukePlayer.h) >= supportY) {
-                dukePlayer.y = supportY - dukePlayer.h;
-                dukePlayer.vy = 0;
-                dukePlayer.onGround = true;
-              }
-              if (dukePlayer.y > p.height + 80) {
-                seedDukeNukem();
-              }
-  
-              for (const enemy of dukeEnemies) {
-                enemy.x += enemy.vx;
-                if (enemy.x < enemy.anchorX - enemy.range || enemy.x > enemy.anchorX + enemy.range) {
-                  enemy.vx *= -1;
-                }
-                if (enemy.type === "bot" && now >= dukeNextEnemyShotAt) {
-                  const dx = enemy.x - playerWorldX;
-                  if (dx > -40 && dx < 280 && Math.abs(enemy.y - dukePlayer.y) < 70 && p.random() < 0.025) {
-                    dukeBullets.push({
-                      x: enemy.x - 4,
-                      y: enemy.y + 12,
-                      vx: -5.6,
-                      vy: 0,
-                      owner: "enemy",
-                      w: 7,
-                      h: 3
-                    });
-                    dukeNextEnemyShotAt = now + p.random(380, 700);
-                  }
-                }
-              }
-  
-              for (let i = dukeBullets.length - 1; i >= 0; i -= 1) {
-                const bullet = dukeBullets[i];
-                bullet.x += bullet.vx;
-                bullet.y += bullet.vy;
-                if (bullet.owner === "player") {
-                  let hit = false;
-                  for (let j = dukeEnemies.length - 1; j >= 0; j -= 1) {
-                    const enemy = dukeEnemies[j];
-                    if (!dukeRectOverlap(bullet, enemy)) continue;
-                    enemy.hp -= 1;
-                    spawnDukeExplosion(enemy.x + enemy.w * 0.5, enemy.y + enemy.h * 0.5, enemy.type === "bot" ? [255, 120, 82] : [255, 214, 110]);
-                    if (enemy.hp <= 0) {
-                      dukeEnemies.splice(j, 1);
-                      dukeScore += 125;
-                    }
-                    hit = true;
-                    break;
-                  }
-                  if (hit) {
-                    dukeBullets.splice(i, 1);
-                    continue;
-                  }
-                } else if (dukePlayer && now >= dukePlayer.invulnUntil) {
-                  const playerRect = {
-                    x: playerWorldX,
-                    y: dukePlayer.y,
-                    w: dukePlayer.w,
-                    h: dukePlayer.h
-                  };
-                  if (dukeRectOverlap(bullet, playerRect)) {
-                    dukePlayer.health = Math.max(0, dukePlayer.health - 1);
-                    dukePlayer.invulnUntil = now + 800;
-                    spawnDukeExplosion(playerWorldX + dukePlayer.w * 0.5, dukePlayer.y + 12, [255, 90, 90]);
-                    dukeBullets.splice(i, 1);
-                    continue;
-                  }
-                }
-                if (bullet.x < dukeScrollX - 40 || bullet.x > dukeScrollX + p.width + 80) dukeBullets.splice(i, 1);
-              }
-  
-              for (let i = dukePickups.length - 1; i >= 0; i -= 1) {
-                const pickup = dukePickups[i];
-                pickup.bob += 0.08;
-                const pickupRect = {
-                  x: pickup.x,
-                  y: pickup.y + Math.sin(pickup.bob) * 4,
-                  w: pickup.w,
-                  h: pickup.h
-                };
-                const playerRect = { x: playerWorldX, y: dukePlayer.y, w: dukePlayer.w, h: dukePlayer.h };
-                if (dukeRectOverlap(pickupRect, playerRect)) {
-                  dukeScore += pickup.kind === "orb" ? 250 : 100;
-                  if (pickup.kind === "ammo") dukePlayer.health = Math.min(8, dukePlayer.health + 1);
-                  spawnDukeExplosion(pickup.x + pickup.w * 0.5, pickup.y + pickup.h * 0.5, [110, 255, 180]);
-                  dukePickups.splice(i, 1);
-                }
-              }
-  
-              if (now >= dukePlayer.invulnUntil) {
-                const playerRect = { x: playerWorldX, y: dukePlayer.y, w: dukePlayer.w, h: dukePlayer.h };
-                for (const enemy of dukeEnemies) {
-                  if (!dukeRectOverlap(playerRect, enemy)) continue;
-                  dukePlayer.health = Math.max(0, dukePlayer.health - 1);
-                  dukePlayer.invulnUntil = now + 1000;
-                  dukePlayer.vy = -6.8;
-                  spawnDukeExplosion(playerWorldX + dukePlayer.w * 0.5, dukePlayer.y + 16, [255, 96, 96]);
-                  break;
-                }
-              }
-  
-              for (let i = dukeExplosions.length - 1; i >= 0; i -= 1) {
-                const particle = dukeExplosions[i];
-                particle.x += particle.vx;
-                particle.y += particle.vy;
-                particle.vy += 0.13;
-                particle.life -= 1;
-                if (particle.life <= 0) dukeExplosions.splice(i, 1);
-              }
-  
-              while (dukePlatforms.length && (dukePlatforms[0].x + dukePlatforms[0].w) < dukeScrollX - 120) dukePlatforms.shift();
-              while (dukeEnemies.length && (dukeEnemies[0].x + dukeEnemies[0].w) < dukeScrollX - 140) dukeEnemies.shift();
-              while (dukePickups.length && (dukePickups[0].x + dukePickups[0].w) < dukeScrollX - 120) dukePickups.shift();
-  
-              if (dukePlayer.health <= 0) {
-                seedDukeNukem();
-              }
-  
-              p.background(18, 20, 42, 255);
-              for (let y = 0; y < p.height * 0.68; y += 1) {
-                const mix = y / Math.max(1, p.height * 0.68);
-                p.stroke(28 + 80 * mix, 24 + 28 * mix, 58 + 12 * mix, 160);
-                p.line(0, y, p.width, y);
-              }
-              p.noStroke();
-              p.fill(255, 154, 78, 170);
-              p.circle(p.width * 0.78, p.height * 0.2, Math.min(p.width, p.height) * 0.18);
-              p.fill(74, 62, 104, 255);
-              for (let i = 0; i < 6; i += 1) {
-                const ridgeX = ((i * 190) - (dukeScrollX * 0.16 % 220));
-                p.triangle(ridgeX, dukeGroundY, ridgeX + 120, dukeGroundY - 120, ridgeX + 260, dukeGroundY);
-              }
-              p.fill(40, 44, 72, 220);
-              for (const b of dukeBackdropBuildings) {
-                const parallaxX = ((b.x - dukeScrollX * (b.layer === 0 ? 0.28 : 0.42)) % (p.width + 220)) - 60;
-                const baseY = dukeGroundY - (b.layer === 0 ? 28 : 0);
-                p.rect(parallaxX, baseY - b.h, b.w, b.h, 3);
-                p.fill(255, 218, 124, b.layer === 0 ? 76 : 104);
-                for (let wy = baseY - b.h + 10; wy < baseY - 12; wy += 16) {
-                  for (let wx = parallaxX + 8; wx < parallaxX + b.w - 10; wx += 14) {
-                    if (((Math.floor(wx + b.w) + Math.floor(wy) + b.layer * 7) % 5) <= 1) p.rect(wx, wy, 6, 8);
-                  }
-                }
-                p.fill(40, 44, 72, 220);
-              }
-  
-              p.fill(48, 54, 68, 255);
-              p.rect(0, dukeGroundY, p.width, p.height - dukeGroundY);
-              p.stroke(88, 96, 112, 200);
-              p.strokeWeight(1);
-              for (let x = -((dukeScrollX * 0.5) % 34); x < p.width; x += 34) p.line(x, dukeGroundY, x + 20, p.height);
-              p.noStroke();
-  
-              for (const plat of dukePlatforms) {
-                const sx = plat.x - dukeScrollX;
-                if (sx > p.width + 60 || sx + plat.w < -60) continue;
-                if (plat.style === "crate") {
-                  p.fill(122, 84, 52);
-                  p.rect(sx, plat.y, plat.w, plat.h, 2);
-                  p.stroke(166, 118, 70, 220);
-                  p.line(sx + 4, plat.y + 4, sx + plat.w - 4, plat.y + plat.h - 4);
-                  p.line(sx + plat.w - 4, plat.y + 4, sx + 4, plat.y + plat.h - 4);
-                  p.noStroke();
-                } else {
-                  p.fill(76, 86, 118);
-                  p.rect(sx, plat.y, plat.w, plat.h, 2);
-                  p.fill(154, 184, 246, 160);
-                  p.rect(sx + 4, plat.y + 3, plat.w - 8, 3, 1);
-                  p.fill(42, 48, 70);
-                  for (let x = sx + 8; x < sx + plat.w - 8; x += 18) p.rect(x, plat.y + plat.h - 3, 8, 3, 1);
-                }
-              }
-  
-              for (const pickup of dukePickups) {
-                const sx = pickup.x - dukeScrollX;
-                const sy = pickup.y + Math.sin(pickup.bob) * 4;
-                if (sx > p.width + 30 || sx < -30) continue;
-                p.fill(pickup.kind === "orb" ? 110 : pickup.kind === "ammo" ? 255 : 84, pickup.kind === "orb" ? 255 : 220, pickup.kind === "ammo" ? 118 : 208, 220);
-                p.rect(sx, sy, pickup.w, pickup.h, 2);
-                p.fill(255, 255, 255, 160);
-                p.rect(sx + 2, sy + 2, pickup.w - 4, 2, 1);
-              }
-  
-              for (const enemy of dukeEnemies) {
-                const sx = enemy.x - dukeScrollX;
-                if (sx > p.width + 40 || sx < -40) continue;
-                p.fill(enemy.type === "bot" ? 128 : 98, enemy.type === "bot" ? 210 : 164, enemy.type === "bot" ? 255 : 92, 240);
-                p.rect(sx, enemy.y, enemy.w, enemy.h, 2);
-                p.fill(42, 46, 64, 255);
-                p.rect(sx + 4, enemy.y + 4, enemy.w - 8, 8, 1);
-                p.fill(255, 230, 132, 255);
-                p.rect(sx + 5, enemy.y + 14, enemy.w - 10, 3, 1);
-                p.fill(20, 20, 24, 255);
-                p.rect(sx + (enemy.vx < 0 ? -6 : enemy.w - 2), enemy.y + 12, 8, 3, 1);
-              }
-  
-              for (const bullet of dukeBullets) {
-                const sx = bullet.x - dukeScrollX;
-                if (sx > p.width + 20 || sx < -20) continue;
-                p.fill(bullet.owner === "player" ? 255 : 255, bullet.owner === "player" ? 230 : 110, bullet.owner === "player" ? 84 : 110, 240);
-                p.rect(sx, bullet.y, bullet.w, bullet.h, 1);
-              }
-  
-              for (const particle of dukeExplosions) {
-                const sx = particle.x - dukeScrollX;
-                p.fill(particle.color[0], particle.color[1], particle.color[2], Math.max(0, particle.life * 8));
-                p.rect(sx, particle.y, 3, 3, 1);
-              }
-  
-              if (dukePlayer) {
-                const blink = now < dukePlayer.invulnUntil && Math.floor(now / 70) % 2 === 0;
-                if (!blink) {
-                  const px = dukePlayer.screenX;
-                  const py = dukePlayer.y;
-                  p.fill(255, 222, 162, 255);
-                  p.rect(px + 5, py, 8, 8, 2);
-                  p.fill(255, 204, 66, 255);
-                  p.rect(px + 3, py - 2, 12, 4, 2);
-                  p.fill(198, 42, 42, 255);
-                  p.rect(px + 3, py + 9, 12, 10, 2);
-                  p.fill(72, 120, 224, 255);
-                  p.rect(px + 3, py + 20, 5, 14, 1);
-                  p.rect(px + 10, py + 20, 5, 14, 1);
-                  p.fill(54, 54, 62, 255);
-                  p.rect(px + 1, py + 18, 4, 12, 1);
-                  p.rect(px + 15, py + 18, 4, 12, 1);
-                  p.fill(226, 226, 230, 255);
-                  p.rect(px + 15, py + 12, 8, 4, 1);
-                }
-              }
-  
-              p.fill(230, 236, 255, 220);
-              p.textFont("monospace");
-              p.textAlign(p.LEFT, p.TOP);
-              p.textSize(16);
-              p.text("DUKE NUKEM", 18, 14);
-              p.textSize(12);
-              p.text(`${dukeLevelLabel}  SCORE ${String(dukeScore).padStart(5, "0")}`, 18, 36);
-              p.textAlign(p.RIGHT, p.TOP);
-              p.text(`HP ${"=".repeat(Math.max(0, dukePlayer?.health || 0))}`, p.width - 18, 14);
-              return;
-            }
-  
             if (splashMode === "asteroids") {
+              if (!p.__asteroidNeon) {
+                p.__asteroidNeon = p.random([
+                  [57, 255, 20],
+                  [0, 255, 255],
+                  [255, 20, 147],
+                  [255, 106, 0],
+                  [191, 64, 255]
+                ]);
+              }
+              const neon = p.__asteroidNeon;
               p.background(6, 7, 11, 252);
               p.noStroke();
               for (const s of asteroidStars) {
@@ -5039,9 +4414,9 @@ export async function initializeHomeSplash(options = {}) {
                 spawnAsteroidFar(p.random(28, 54));
                 asteroidNextSpawnAt = now + p.random(800, 1700);
               }
-  
+
               p.noFill();
-              p.stroke(198, 210, 230, 205);
+              p.stroke(neon[0], neon[1], neon[2], 205);
               p.strokeWeight(1.6);
               for (const rock of asteroidRocks) {
                 p.push();
@@ -5056,21 +4431,21 @@ export async function initializeHomeSplash(options = {}) {
                 p.endShape(p.CLOSE);
                 p.pop();
               }
-  
+
               p.noStroke();
-              p.fill(255, 190, 125, 236);
+              p.fill(neon[0], neon[1], neon[2], 236);
               for (const shot of asteroidShots) p.circle(shot.x, shot.y, 3.4);
-  
+
               if (asteroidShip.invuln % 6 < 3) {
                 p.push();
                 p.translate(asteroidShip.x, asteroidShip.y);
                 p.rotate(asteroidShip.heading);
                 p.noFill();
-                p.stroke(226, 234, 248, 240);
+                p.stroke(neon[0], neon[1], neon[2], 240);
                 p.strokeWeight(1.8);
                 p.triangle(14, 0, -10, -8, -8, 8);
                 if (asteroidShip.thrusting) {
-                  p.stroke(255, 168, 96, 220);
+                  p.stroke(neon[0], neon[1], neon[2], 220);
                   p.line(-9, 0, -15 - p.random(3, 7), 0);
                 }
                 p.pop();
@@ -5241,59 +4616,6 @@ export async function initializeHomeSplash(options = {}) {
               return;
             }
   
-            if (splashMode === "code") {
-              p.background(0, 0, 0, 255);
-  
-              const now = p.millis();
-              if (now >= codePauseUntil && codeQueue.length) {
-                const current = codeQueue[codeLineIndex % codeQueue.length];
-                const shouldType = !codeLastTypeAt || (now - codeLastTypeAt) >= codeTypeInterval;
-                if (shouldType) {
-                  codeCharIndex += 1;
-                  codeLastTypeAt = now;
-                  codeTypeInterval = p.random(18, 52);
-  
-                  if (codeCharIndex > current.length) {
-                    codeRendered.push(current);
-                    if (codeRendered.length > codeVisibleRows) codeRendered.shift();
-                    codeLineIndex = (codeLineIndex + 1) % codeQueue.length;
-                    codeCharIndex = 0;
-                    codePauseUntil = now + p.random(80, 280);
-                  }
-                }
-              }
-  
-              p.textFont("monospace");
-              p.textSize(codeFontSize);
-              p.textAlign(p.LEFT, p.TOP);
-              p.noStroke();
-  
-              let y = 20;
-              for (let i = 0; i < codeRendered.length; i += 1) {
-                const lineNo = String((codeLineIndex - codeRendered.length + i + codeQueue.length + 1) % codeQueue.length).padStart(3, "0");
-                p.fill(36, 84, 36, 170);
-                p.text(`${lineNo} `, 18, y);
-                p.fill(94, 255, 94, 220);
-                p.text(codeRendered[i], 66, y);
-                y += codeLineHeight;
-              }
-  
-              const activeLine = codeQueue[codeLineIndex % codeQueue.length] || "";
-              const typed = activeLine.slice(0, Math.max(0, codeCharIndex));
-              const cursorOn = Math.floor(now / 360) % 2 === 0;
-              p.fill(36, 84, 36, 170);
-              p.text(">>>", 18, y);
-              p.fill(110, 255, 110, 232);
-              p.text(typed, 66, y);
-  
-              if (cursorOn) {
-                const w = p.textWidth(typed);
-                p.fill(140, 255, 140, 235);
-                p.rect(66 + w + 1, y + 2, Math.max(2, Math.floor(codeFontSize * 0.15)), Math.floor(codeFontSize * 1.05));
-              }
-              return;
-            }
-  
             if (splashMode === "plot") {
               p.background(12, 14, 20, 250);
               const nowT = p.millis() / 1000;
@@ -5332,18 +4654,22 @@ export async function initializeHomeSplash(options = {}) {
   
               for (const ghost of plotGhostFrames) {
                 if (!ghost.points?.length) continue;
+                if (!ghost.color) {
+                  const mix = 0.25 + (Math.random() * 0.55);
+                  ghost.color = [
+                    Math.min(255, Math.round((plotLineColor[0] * (1 - mix)) + (Math.random() * 255 * mix))),
+                    Math.min(255, Math.round((plotLineColor[1] * (1 - mix)) + (Math.random() * 255 * mix))),
+                    Math.min(255, Math.round((plotLineColor[2] * (1 - mix)) + (Math.random() * 255 * mix)))
+                  ];
+                }
                 p.noFill();
-                p.stroke(plotLineColor[0], plotLineColor[1], plotLineColor[2], ghost.alpha);
+                p.stroke(ghost.color[0], ghost.color[1], ghost.color[2], ghost.alpha);
                 p.strokeWeight(1.1);
                 p.beginShape();
                 for (const pt of ghost.points) p.vertex(pt.x, pt.y);
                 p.endShape();
               }
   
-              p.noFill();
-              p.stroke(plotLineColor[0], plotLineColor[1], plotLineColor[2], 230);
-              p.strokeWeight(2.2);
-              p.beginShape();
               const steps = Math.max(180, Math.floor((right - left) / 3));
               const currentPoints = [];
               for (let i = 0; i <= steps; i += 1) {
@@ -5353,20 +4679,60 @@ export async function initializeHomeSplash(options = {}) {
                 const yVal = evalPlot(xNorm, nowT);
                 const y = centerY - yVal * ((bottom - top) * 0.36);
                 currentPoints.push({ x, y });
-                p.vertex(x, y);
               }
-              p.endShape();
+              p.noFill();
+              p.strokeWeight(2.2);
+              let segmentColor = [...plotLineColor];
+              let segmentRunRemaining = 0;
+              for (let i = 1; i < currentPoints.length; i += 1) {
+                if (segmentRunRemaining <= 0) {
+                  const mix = 0.35 + (Math.random() * 0.65);
+                  segmentColor = [
+                    Math.min(255, Math.round((plotLineColor[0] * (1 - mix)) + (Math.random() * 255 * mix))),
+                    Math.min(255, Math.round((plotLineColor[1] * (1 - mix)) + (Math.random() * 255 * mix))),
+                    Math.min(255, Math.round((plotLineColor[2] * (1 - mix)) + (Math.random() * 255 * mix)))
+                  ];
+                  segmentRunRemaining = 4 + Math.floor(Math.random() * 14);
+                }
+                const prev = currentPoints[i - 1];
+                const curr = currentPoints[i];
+                p.stroke(segmentColor[0], segmentColor[1], segmentColor[2], 230);
+                p.line(prev.x, prev.y, curr.x, curr.y);
+                segmentRunRemaining -= 1;
+              }
               plotGhostFrames.push({ points: currentPoints, alpha: 128 });
               if (plotGhostFrames.length > 24) {
                 plotGhostFrames.splice(0, plotGhostFrames.length - 24);
               }
   
+              const plotTypeLabel = String(plotType || "plot")
+                .replace(/-/g, " ")
+                .replace(/\b([a-z])/g, (_, c) => c.toUpperCase());
+              const plotTypeFontSize = 27;
+              p.textFont("monospace");
+              p.textSize(plotTypeFontSize);
+              p.textAlign(p.LEFT, p.TOP);
+              const countdownVisible = !!(splashCountdown && !splashCountdown.classList.contains("hidden") && String(splashCountdown.textContent || "").trim());
+              const plotTypePanelX = left + 12;
+              const plotTypePanelY = countdownVisible ? 72 : 12;
+              const plotTypePanelPadX = 12;
+              const plotTypePanelPadY = 8;
+              const plotTypePanelW = p.textWidth(plotTypeLabel) + (plotTypePanelPadX * 2);
+              const plotTypePanelH = plotTypeFontSize + (plotTypePanelPadY * 2);
+              p.stroke(184, 198, 220, 110);
+              p.strokeWeight(1);
+              p.fill(18, 22, 30, 88);
+              p.rect(plotTypePanelX, plotTypePanelY, plotTypePanelW, plotTypePanelH, 8);
+              p.noStroke();
+              p.fill(214, 224, 240, 230);
+              p.text(plotTypeLabel, plotTypePanelX + plotTypePanelPadX, plotTypePanelY + plotTypePanelPadY);
+
               p.textFont("monospace");
               p.textSize(14);
-              p.textAlign(p.LEFT, p.BOTTOM);
+              p.textAlign(p.CENTER, p.BOTTOM);
               p.noStroke();
               p.fill(180, 196, 220, 220);
-              p.text(plotLabel, left, p.height - 14);
+              p.text(plotLabel, (left + right) * 0.5, p.height - 14);
               return;
             }
   
@@ -5498,7 +4864,6 @@ export async function initializeHomeSplash(options = {}) {
   
   
       function destroySplashAnimation() {
-        stopSplashLogo3dAnimation();
         stopSplashForegroundAnimation();
         if (splashP5Instance) {
           splashP5Instance.remove();
@@ -5583,20 +4948,12 @@ export async function initializeHomeSplash(options = {}) {
         resetSplashLogoImpactVisual();
         splashScreen?.classList.remove("hidden");
         document.body.classList.add("splash-active");
-        if (isTojiStudiosSplashMode(activeMode)) {
-          if (splashLogoIconP5) {
-            splashLogoIconP5.remove();
-            splashLogoIconP5 = null;
-            splashLogoIconCanvasHost = null;
-          }
-        } else {
-          ({ splashLogoIconP5, splashLogoIconCanvasHost } = await mountSplashLogoIconAnimation({
+        ({ splashLogoIconP5, splashLogoIconCanvasHost } = await mountSplashLogoIconAnimation({
             splashLogo,
             getBannerLogoAnimationMode,
             currentInstance: splashLogoIconP5,
             currentCanvasHost: splashLogoIconCanvasHost
           }));
-        }
         initSplashAnimation(activeMode);
         startSplashRotationIfNeeded();
       } else {
@@ -5617,20 +4974,12 @@ export async function initializeHomeSplash(options = {}) {
           resetSplashLogoImpactVisual();
           splashScreen?.classList.remove("hidden");
           document.body.classList.add("splash-active");
-          if (isTojiStudiosSplashMode(activeMode)) {
-            if (splashLogoIconP5) {
-              splashLogoIconP5.remove();
-              splashLogoIconP5 = null;
-              splashLogoIconCanvasHost = null;
-            }
-          } else {
-            ({ splashLogoIconP5, splashLogoIconCanvasHost } = await mountSplashLogoIconAnimation({
-              splashLogo,
-              getBannerLogoAnimationMode,
-              currentInstance: splashLogoIconP5,
-              currentCanvasHost: splashLogoIconCanvasHost
-            }));
-          }
+          ({ splashLogoIconP5, splashLogoIconCanvasHost } = await mountSplashLogoIconAnimation({
+            splashLogo,
+            getBannerLogoAnimationMode,
+            currentInstance: splashLogoIconP5,
+            currentCanvasHost: splashLogoIconCanvasHost
+          }));
           initSplashAnimation(activeMode);
           startSplashRotationIfNeeded();
         });
@@ -5672,6 +5021,7 @@ export async function initializeHomeSplash(options = {}) {
       });
       // ---- Data source: Admin localStorage first, fallback JSON ----
 }
+
 
 
 

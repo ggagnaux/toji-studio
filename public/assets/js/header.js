@@ -221,6 +221,11 @@ export function applyBannerLogoBehavior(headerHost) {
     mountBannerRadarLogo(headerHost);
     return;
   }
+  if (mode === "sphere") {
+    ensureDefaultBannerLogoMarkup(headerHost);
+    mountBannerWireframeSphereLogo(headerHost);
+    return;
+  }
   applyStaticBannerLogo(headerHost);
 }
 
@@ -322,6 +327,7 @@ function getBannerLogoAnimationMode() {
     const mode = String(localStorage.getItem(BANNER_LOGO_ANIMATION_MODE_KEY) || "").toLowerCase();
     if (mode === "plot") return "plot";
     if (mode === "radar") return "radar";
+    if (mode === "sphere") return "sphere";
     return "circles";
   } catch {
     return "off";
@@ -681,6 +687,7 @@ function mountBannerRadarLogo(headerHost) {
           p.resizeCanvas(cw, ch);
         }
 
+        const ink = readThemeInk();
         const cx = cw * 0.5;
         const cy = ch * 0.5;
         const radius = Math.max(8, Math.min(cw, ch) * 0.42);
@@ -800,4 +807,151 @@ function escapeAttr(s) {
 
 
 
+
+
+function mountBannerWireframeSphereLogo(headerHost) {
+  if (getBannerLogoAnimationMode() !== "sphere") return;
+
+  const brand = headerHost.querySelector(".brand");
+  const logoCombo = brand?.querySelector(".brand-logo-combo");
+  const iconStack = logoCombo?.querySelector(".brand-logo-icon-stack");
+  if (!brand || !logoCombo || !iconStack) return;
+
+  const iconLogo = iconStack.querySelector(".brand-logo-icon-image");
+  const run = async () => {
+    if (!iconStack.isConnected) return;
+    const rect = iconStack.getBoundingClientRect();
+    const ratioFromRect = (rect.width > 1 && rect.height > 1) ? (rect.width / rect.height) : 0;
+    const ratioFromImage = (iconLogo?.naturalWidth > 1 && iconLogo?.naturalHeight > 1)
+      ? (iconLogo.naturalWidth / iconLogo.naturalHeight)
+      : 0;
+    const ratio = Math.max(0.6, Math.min(1.8, ratioFromRect || ratioFromImage || 1));
+
+    const canvasHost = document.createElement("span");
+    canvasHost.className = "brand-logo-canvas brand-logo-canvas--icon";
+    canvasHost.setAttribute("aria-hidden", "true");
+    canvasHost.style.setProperty("--brand-logo-ratio", String(ratio));
+    iconStack.replaceWith(canvasHost);
+
+    try {
+      await ensureBannerP5();
+    } catch {
+      return;
+    }
+    if (!window.p5 || !canvasHost.isConnected) return;
+
+    const readThemeInk = () => {
+      const raw = getComputedStyle(document.body).color || "";
+      const m = raw.match(/(\d+)\D+(\d+)\D+(\d+)/);
+      if (!m) return [220, 236, 255];
+      return [Number(m[1]), Number(m[2]), Number(m[3])];
+    };
+
+    new window.p5((p) => {
+      let cw = 0;
+      let ch = 0;
+      let spin = 0;
+
+      p.setup = () => {
+        cw = Math.max(2, Math.floor(canvasHost.clientWidth || 1));
+        ch = Math.max(2, Math.floor(canvasHost.clientHeight || 1));
+        const canvas = p.createCanvas(cw, ch);
+        canvas.parent(canvasHost);
+        p.clear();
+      };
+
+      p.draw = () => {
+        const nw = Math.max(2, Math.floor(canvasHost.clientWidth || 1));
+        const nh = Math.max(2, Math.floor(canvasHost.clientHeight || 1));
+        if (nw !== cw || nh !== ch) {
+          cw = nw;
+          ch = nh;
+          p.resizeCanvas(cw, ch);
+        }
+
+        const ink = readThemeInk();
+        const cx = cw * 0.5;
+        const cy = ch * 0.5;
+        spin += 0.0048;
+        const baseRadius = Math.max(10, Math.min(cw, ch) * 0.35);
+        const radius = baseRadius * (0.94 + 0.08 * ((Math.sin(spin * 1.7) + 1) * 0.5));
+        const nodeCount = 92;
+        if (!p.__wireSphereNodes || p.__wireSphereNodes.length !== nodeCount) {
+          p.__wireSphereNodes = Array.from({ length: nodeCount }, (_, index) => {
+            const t = index + 0.5;
+            const y = 1 - (t / nodeCount) * 2;
+            const ring = Math.sqrt(Math.max(0, 1 - y * y));
+            const theta = Math.PI * (3 - Math.sqrt(5)) * index;
+            return {
+              x: Math.cos(theta) * ring,
+              y,
+              z: Math.sin(theta) * ring,
+              size: 1.0 + (((index * 17) % 13) / 13) * 2.1
+            };
+          });
+        }
+
+        p.clear();
+        p.blendMode(p.BLEND);
+
+        const spherePoints = p.__wireSphereNodes.map((node, index) => {
+          const yaw = spin;
+          const pitch = -0.42 + (Math.sin(spin * 0.55) * 0.18);
+          const cosYaw = Math.cos(yaw);
+          const sinYaw = Math.sin(yaw);
+          const cosPitch = Math.cos(pitch);
+          const sinPitch = Math.sin(pitch);
+
+          const x1 = node.x * cosYaw - node.z * sinYaw;
+          const z1 = node.x * sinYaw + node.z * cosYaw;
+          const y2 = node.y * cosPitch - z1 * sinPitch;
+          const z2 = node.y * sinPitch + z1 * cosPitch;
+          const perspective = 0.7 + ((z2 + 1) * 0.22);
+          return {
+            sx: cx + x1 * radius * perspective,
+            sy: cy + y2 * radius * perspective,
+            depth: z2,
+            size: node.size * (0.72 + ((z2 + 1) * 0.22)),
+            sortKey: z2,
+            index
+          };
+        });
+
+        p.strokeWeight(1);
+        for (let i = 0; i < spherePoints.length; i += 1) {
+          const a = spherePoints[i];
+          for (let j = i + 1; j < spherePoints.length; j += 1) {
+            const b = spherePoints[j];
+            const dx = a.sx - b.sx;
+            const dy = a.sy - b.sy;
+            const dist = Math.hypot(dx, dy);
+            if (dist > radius * 0.38) continue;
+            const depthMix = (a.depth + b.depth + 2) / 4;
+            const alpha = Math.max(14, 138 - (dist / (radius * 0.38)) * 104) * (0.35 + depthMix * 0.95);
+            if (alpha < 10) continue;
+            p.stroke(ink[0], ink[1], ink[2], alpha);
+            p.line(a.sx, a.sy, b.sx, b.sy);
+          }
+        }
+
+        spherePoints.sort((a, b) => a.sortKey - b.sortKey);
+        p.noStroke();
+        for (const point of spherePoints) {
+          const fillAlpha = 90 + ((point.depth + 1) * 70);
+          const glowSize = point.size * 1.95;
+          p.fill(ink[0], ink[1], ink[2], fillAlpha * 0.12);
+          p.circle(point.sx, point.sy, glowSize);
+          p.fill(ink[0], ink[1], ink[2], fillAlpha);
+          p.circle(point.sx, point.sy, point.size);
+        }
+      };
+    });
+  };
+  if (iconLogo && !iconLogo.complete) {
+    iconLogo.addEventListener("load", run, { once: true });
+    iconLogo.addEventListener("error", run, { once: true });
+    return;
+  }
+  run();
+}
 

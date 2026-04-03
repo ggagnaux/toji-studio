@@ -1,5 +1,4 @@
 export const SPLASH_MODE_CATALOG = Object.freeze([
-  { id: "tojistudios", label: "Tojistudios dot chase" },
   { id: "nodes", label: "Nodes and edges" },
   { id: "flock", label: "Flocking triangles (mouse follow)" },
   { id: "circles", label: "Outlined circles grid (fill/unfill)" },
@@ -14,6 +13,9 @@ export const SPLASH_MODE_CATALOG = Object.freeze([
   { id: "radar", label: "Radar screen sweep" },
   { id: "mountains", label: "Mountain night pan" },
   { id: "serpentinesphere", label: "Serpentine sphere sweep" },
+  { id: "wireframesphere", label: "Wireframe sphere globe" },
+  { id: "pixeltitle", label: "Pixel title drift" },
+  { id: "pixelnoise", label: "Pixel noise shimmer" },
   { id: "orbitalbeams", label: "Black Holes vs Bubbles" }
 ]);
 

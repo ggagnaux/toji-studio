@@ -216,7 +216,6 @@ export const DEFAULT_CONTACT_SETTINGS = Object.freeze({
 });
 export const SPLASH_SETTINGS_KEY = "splashSettings";
 export const DEFAULT_SPLASH_ALLOWED_MODES = Object.freeze([
-  "tojistudios",
   "nodes",
   "flock",
   "circles",
@@ -231,6 +230,9 @@ export const DEFAULT_SPLASH_ALLOWED_MODES = Object.freeze([
   "radar",
   "mountains",
   "serpentinesphere",
+  "wireframesphere",
+  "pixeltitle",
+  "pixelnoise",
   "orbitalbeams"
 ]);
 export const DEFAULT_SPLASH_SETTINGS = Object.freeze({

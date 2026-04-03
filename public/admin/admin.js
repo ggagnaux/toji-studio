@@ -8,17 +8,27 @@ const ADMIN_SESSION_KEY = "toji_admin_session_v1";
 const ADMIN_JUST_LOGGED_IN_KEY = "toji_admin_just_logged_in_v1";
 export const ADMIN_PASSWORD_KEY = "toji_admin_login_password_v1";
 export const ADMIN_DEFAULT_PASSWORD = "toji-admin";
-const ADMIN_NAV_ITEMS = Object.freeze([
-  { href: "index.html", label: "Image Manager" },
-  { href: "upload.html", label: "Upload" },
-  { href: "series.html", label: "Series Manager" },
-  { href: "linkmanager.html", label: "Link Manager" },
-  { href: "HomePageManager.html", label: "Home Page Manager" },
-  { href: "SocialMediaManager.html", label: "Social Media Manager" },
-  { href: "SocialQueue.html", label: "Social Media Queue" },
-  { href: "DataManager.html", label: "Data Manager" },
-  { href: "OtherSettings.html", label: "Other Settings" },
-  { href: "SecurityManager.html", label: "Security Manager" }
+const ADMIN_NAV_GROUPS = Object.freeze([
+  Object.freeze([
+    { href: "index.html", label: "Image Manager" },
+    { href: "upload.html", label: "Upload" },
+    { href: "series.html", label: "Series Manager" }
+  ]),
+  Object.freeze([
+    { href: "linkmanager.html", label: "Link Manager" },
+    { href: "HomePageManager.html", label: "Homepage Manager" }
+  ]),
+  Object.freeze([
+    { href: "SocialMediaManager.html", label: "Social Media Manager" },
+    { href: "SocialQueue.html", label: "Social Queue" }
+  ]),
+  Object.freeze([
+    { href: "OtherSettings.html", label: "Other Settings" }
+  ]),
+  Object.freeze([
+    { href: "DataManager.html", label: "Data Manager" },
+    { href: "SecurityManager.html", label: "Security Manager" }
+  ])
 ]);
 // GVG
 // const ADMIN_QUICK_NAV_ITEMS = Object.freeze([
@@ -43,12 +53,19 @@ function renderAdminSidebarNav() {
   const extra = sidebar.querySelector("[data-admin-sidebar-extra]");
   const preservedExtra = extra ? extra.cloneNode(true) : null;
   sidebar.innerHTML = "";
-  ADMIN_NAV_ITEMS.forEach((item) => {
-    const link = document.createElement("a");
-    link.href = item.href;
-    link.textContent = item.label;
-    if (isActiveAdminHref(item.href)) link.classList.add("active");
-    sidebar.appendChild(link);
+  ADMIN_NAV_GROUPS.forEach((group, groupIndex) => {
+    group.forEach((item) => {
+      const link = document.createElement("a");
+      link.href = item.href;
+      link.textContent = item.label;
+      if (isActiveAdminHref(item.href)) link.classList.add("active");
+      sidebar.appendChild(link);
+    });
+    if (groupIndex < ADMIN_NAV_GROUPS.length - 1) {
+      const sep = document.createElement("hr");
+      sep.className = "sep";
+      sidebar.appendChild(sep);
+    }
   });
   if (preservedExtra) {
     const sep = document.createElement("hr");
@@ -235,8 +252,19 @@ export function setYearFooter() {
 export function ensureBaseStyles() {
   const style = document.createElement("style");
   style.textContent = `
-    .admin-layout{ display:grid; grid-template-columns: 240px 1fr; gap:16px; }
-    .sidebar{ position:sticky; top:var(--admin-sidebar-top, 84px); align-self:start; border:1px solid var(--line); border-radius: var(--radius); padding:14px; background: var(--panel); }
+    .admin-layout{ display:grid; grid-template-columns: 216px 1fr; gap:10px; }
+    .sidebar{
+      position:sticky;
+      top:var(--admin-sidebar-top, 84px);
+      align-self:start;
+      width:216px;
+      max-width:216px;
+      border:1px solid var(--line);
+      border-radius: var(--radius);
+      padding:14px;
+      background: var(--panel);
+      overflow:visible;
+    }
     .dashboard-controls{
       position:relative;
       top:auto;
@@ -247,7 +275,7 @@ export function ensureBaseStyles() {
       background:var(--bg);
       isolation:isolate;
     }
-    .sidebar a{ display:block; padding:10px 10px; border-radius:12px; color:var(--muted); border:1px solid transparent; }
+    .sidebar a{ display:block; padding:5px 10px; border-radius:12px; color:var(--muted); border:1px solid transparent; }
     .sidebar a.active{ color:var(--text); border-color: var(--accent-border); background: var(--accent-soft); }
     .sidebar .logout-btn{
       width: 100%;
@@ -498,8 +526,13 @@ export function ensureBaseStyles() {
         box-shadow: 0 0 0 2px rgba(255,138,61,.55), 0 14px 36px rgba(0,0,0,.18);
       }
     }
-    .sep{ border:0; border-top:1px solid var(--line); margin:14px 0; }
-    @media (max-width: 920px){ .admin-layout{ grid-template-columns: 1fr; } .sidebar, .dashboard-controls{ position:relative; top:auto; } .table-scroll-shell{ height:auto; min-height:0; } .kpi{ grid-template-columns: 1fr; } }
+    .sep{ border:0; border-top:1px solid var(--line); margin:8px 0; }
+    @media (max-width: 920px){
+      .admin-layout{ grid-template-columns: 1fr; }
+      .sidebar, .dashboard-controls{ position:relative; top:auto; width:auto; max-width:none; }
+      .table-scroll-shell{ height:auto; min-height:0; }
+      .kpi{ grid-template-columns: 1fr; }
+    }
   `;
   document.head.appendChild(style);
   initAdminNavMenu();

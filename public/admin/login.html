@@ -39,14 +39,18 @@
       background:color-mix(in srgb, #d15353 12%, var(--panel));
       color:#ffb1b1;
     }
-    .card,
-    .card:hover{
-      transform:none !important;
-      border-color:var(--line) !important;
-    }
-    .btn,
-    .btn:hover,
-    .btn.primary,
+	    .card,
+	    .card:hover{
+	      transform:none !important;
+	      border-color:var(--line) !important;
+	    }
+	    .login-card{
+	      width:min(100%, 380px);
+	      margin:0 auto;
+	    }
+	    .btn,
+	    .btn:hover,
+	    .btn.primary,
     .btn.primary:hover,
     .icon-btn,
     .icon-btn:hover{
@@ -65,8 +69,8 @@
   </style>
 </head>
 <body>
-  <main class="container" style="max-width: 560px; padding-top: min(10vh, 80px);">
-    <section class="card">
+  <main class="container" style="padding-top: min(10vh, 80px);">
+	    <section class="card login-card">
       <div class="meta" style="display:grid; gap:12px;">
         <h1 style="margin:0; font-size: clamp(24px, 4vw, 32px);">Admin Login</h1>
         <p class="sub" style="margin:0;">Sign in to access Toji Studio administration pages.</p>

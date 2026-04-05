@@ -170,6 +170,38 @@
           overflow:auto;
           padding-right:4px;
         }
+        .series-manager-page .series-cover-modal-body::-webkit-scrollbar{
+          width:12px;
+          height:12px;
+        }
+        .series-manager-page .series-cover-modal-body::-webkit-scrollbar-track{
+          background:color-mix(in srgb, var(--bg) 54%, #05070d 46%);
+          border-radius:999px;
+          border:2px solid transparent;
+          background-clip:padding-box;
+        }
+        .series-manager-page .series-cover-modal-body::-webkit-scrollbar-thumb{
+          background:linear-gradient(
+            180deg,
+            color-mix(in srgb, var(--accent) 32%, #a991ff 68%),
+            color-mix(in srgb, var(--accent) 18%, #6d617f 82%)
+          );
+          border-radius:999px;
+          border:2px solid color-mix(in srgb, var(--panel) 88%, transparent);
+          box-shadow:
+            inset 0 0 0 1px color-mix(in srgb, #cbbdff 20%, transparent),
+            0 0 10px color-mix(in srgb, #9d8bff 18%, transparent);
+        }
+        .series-manager-page .series-cover-modal-body::-webkit-scrollbar-thumb:hover{
+          background:linear-gradient(
+            180deg,
+            color-mix(in srgb, #cdbdff 46%, var(--accent)),
+            color-mix(in srgb, #8776c7 34%, var(--accent))
+          );
+        }
+        .series-manager-page .series-cover-modal-body::-webkit-scrollbar-corner{
+          background:transparent;
+        }
         .series-manager-page .series-cover-modal-top{
           display:flex;
           align-items:center;
@@ -1658,7 +1690,9 @@ This will also clear its series assignment from any existing artwork.
           closeBtn
         )
       );
-      panel.appendChild(picker);
+      panel.appendChild(
+        el("div", { class:"series-cover-modal-body" }, picker)
+      );
       backdrop.appendChild(panel);
       document.body.appendChild(backdrop);
 
@@ -1670,5 +1704,9 @@ This will also clear its series assignment from any existing artwork.
     }
     renderList();
   
+
+
+
+
 
 

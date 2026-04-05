@@ -75,6 +75,70 @@ function renderAdminSidebarNav() {
   }
 }
 
+function getActiveAdminNavGroup() {
+  return (
+    ADMIN_NAV_GROUPS.find((group) => group.some((item) => isActiveAdminHref(item.href))) ||
+    ADMIN_NAV_GROUPS[0]
+  );
+}
+
+function renderAdminTopToolbar() {
+  const mainHost = document.querySelector("main.container");
+  if (!mainHost) return;
+
+  document.querySelector("[data-admin-page-toolbar]")?.remove();
+
+  const toolbar = document.createElement("section");
+  toolbar.className = "page-toolbar admin-page-toolbar";
+  toolbar.setAttribute("data-admin-page-toolbar", "");
+  toolbar.setAttribute("aria-label", "Studio section tools");
+
+  const shell = document.createElement("div");
+  shell.className = "container page-toolbar__shell";
+
+  const left = document.createElement("div");
+  left.className = "page-toolbar__left";
+  getActiveAdminNavGroup().forEach((item) => {
+    const link = document.createElement("a");
+    link.className = "page-toolbar__pill";
+    link.href = item.href;
+    link.textContent = item.label;
+    if (isActiveAdminHref(item.href)) {
+      link.classList.add("is-active");
+      link.setAttribute("aria-current", "page");
+    }
+    left.appendChild(link);
+  });
+
+  const right = document.createElement("div");
+  right.className = "page-toolbar__right";
+
+  const themeGroup = document.createElement("div");
+  themeGroup.className = "segmented page-toolbar__theme";
+  themeGroup.setAttribute("role", "group");
+  themeGroup.setAttribute("aria-label", "Theme mode");
+  [
+    ["system", "System"],
+    ["light", "Light"],
+    ["dark", "Dark"],
+  ].forEach(([choice, label]) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.setAttribute("data-theme-choice", choice);
+    btn.textContent = label;
+    const activeChoice = String(document.documentElement.dataset.themeMode || "system").toLowerCase();
+    const isActive = choice === activeChoice;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+    themeGroup.appendChild(btn);
+  });
+  right.appendChild(themeGroup);
+
+  shell.append(left, right);
+  toolbar.appendChild(shell);
+  mainHost.before(toolbar);
+}
+
 // GVG
 // function renderAdminQuickNav() {
 //   const host = document.querySelector("[data-admin-quicknav]");
@@ -191,8 +255,11 @@ export function setYearFooter() {
       active: "studio",
       linkPrefix: "../",
       studioHref: "admin/index.html",
-      assetPrefix: "../assets/"
+      assetPrefix: "../assets/",
+      showThemeControls: false
     });
+    renderAdminTopToolbar();
+    const adminToolbar = document.querySelector("[data-admin-page-toolbar]");
 
     syncAdminHeaderHeight = () => {
       const h = Math.ceil(siteHeader.getBoundingClientRect().height || 0);
@@ -200,20 +267,28 @@ export function setYearFooter() {
     };
     syncAdminStickyOffsets = () => {
       const headerHeight = siteHeader.getBoundingClientRect().height || 0;
-      const heroHeight = hero?.getBoundingClientRect().height || 0;
+      const toolbarHeight = adminToolbar?.getBoundingClientRect().height || 0;
       const compactGap = (window.scrollY || 0) > 8 ? 8 : 0;
-      const stickyTop = headerHeight + heroHeight + compactGap;
+      const stickyTop = headerHeight + toolbarHeight + compactGap;
       document.documentElement.style.setProperty("--admin-sidebar-top", `${stickyTop}px`);
       document.documentElement.style.setProperty("--admin-table-head-top", `${stickyTop}px`);
     };
     syncAdminHeaderHeight();
     syncAdminStickyOffsets();
     window.addEventListener("resize", syncAdminHeaderHeight, { passive: true });
+    window.addEventListener("scroll", syncAdminHeaderHeight, { passive: true });
     window.addEventListener("resize", syncAdminStickyOffsets, { passive: true });
     window.addEventListener("scroll", syncAdminStickyOffsets, { passive: true });
     if (dashboardControls && typeof ResizeObserver !== "undefined") {
       const controlsResizeObserver = new ResizeObserver(() => syncAdminStickyOffsets?.());
       controlsResizeObserver.observe(dashboardControls);
+    }
+    if (adminToolbar && typeof ResizeObserver !== "undefined") {
+      const toolbarResizeObserver = new ResizeObserver(() => {
+        syncAdminHeaderHeight?.();
+        syncAdminStickyOffsets?.();
+      });
+      toolbarResizeObserver.observe(adminToolbar);
     }
   }
 
@@ -233,9 +308,12 @@ export function setYearFooter() {
     if (siteHeader) {
       const activeFooterLink = siteFooter.querySelector(".row a[aria-current='page'], .row a.active");
       const activePath = activeFooterLink ? new URL(activeFooterLink.href, window.location.href).pathname : "";
+      const currentPath = String(window.location.pathname || "");
+      const isAdminPath = currentPath.toLowerCase().includes("/admin/");
       siteHeader.querySelectorAll(".navlinks a[data-nav]").forEach((a) => {
         const linkPath = new URL(a.href, window.location.href).pathname;
-        const isActive = !!activePath && linkPath === activePath;
+        const isStudioLink = a.getAttribute("data-nav") === "studio";
+        const isActive = isStudioLink ? isAdminPath : (!!activePath && linkPath === activePath);
         a.classList.toggle("active", isActive);
         if (isActive) a.setAttribute("aria-current", "page");
         else a.removeAttribute("aria-current");
@@ -252,7 +330,22 @@ export function setYearFooter() {
 export function ensureBaseStyles() {
   const style = document.createElement("style");
   style.textContent = `
-    .admin-layout{ display:grid; grid-template-columns: 216px 1fr; gap:10px; }
+    .admin-page-toolbar{
+      position:sticky;
+      top:var(--admin-header-height, 84px);
+      z-index:24;
+      margin:0;
+      padding:0;
+      background:transparent;
+      border-bottom:0;
+      backdrop-filter:none;
+    }
+    .admin-page-toolbar .page-toolbar__pill{
+      text-decoration:none;
+      white-space:nowrap;
+    }
+    .admin-layout{ display:grid; grid-template-columns: 216px 1fr; gap:16px; }
+    .admin-layout > section{ min-width:0; }
     .sidebar{
       position:sticky;
       top:var(--admin-sidebar-top, 84px);
@@ -271,8 +364,13 @@ export function ensureBaseStyles() {
       align-self:start;
       z-index:22;
       margin-bottom:16px;
-      padding-bottom:12px;
-      background:var(--bg);
+      margin-top:16px;
+      padding:10px;
+      padding-bottom: 0;
+      border:1px solid var(--line);
+      border-radius:16px;
+      /*background:color-mix(in srgb, var(--bg) 72%, #020307 28%);*/
+      background: var(--panel);
       isolation:isolate;
     }
     .sidebar a{ display:block; padding:5px 10px; border-radius:12px; color:var(--muted); border:1px solid transparent; }
@@ -292,22 +390,23 @@ export function ensureBaseStyles() {
     .kpi .card{ box-shadow:none; background:var(--panel); }
     .kpi .meta{ padding:8px 12px 9px; }
     .kpi b{ font-size:22px; display:block; margin-top:2px; line-height:1.05; }
-    .dashboard-controls .filters{ background:var(--bg); }
+    .dashboard-controls .filters{ background:var(--panel); }
     .table-scroll-shell{
       position:relative;
+      width:100%;
+      max-width:100%;
       height:calc(100dvh - var(--admin-sidebar-top, 84px) - 32px);
       min-height:420px;
       overflow-y:auto;
       overflow-x:auto;
-      scrollbar-gutter:stable both-edges;
       border:1px solid var(--line);
       border-radius:14px;
-      background:var(--bg);
+      background:var(--panel);
     }
     .table-scroll-shell .admin-thumb-grid{
       min-height:100%;
       align-content:start;
-      padding:12px;
+      padding:5x;
       margin-top:0;
     }
     .table{ width:100%; min-width:100%; border-collapse: separate; border-spacing:0; overflow:visible; border-radius:0; border:0; }

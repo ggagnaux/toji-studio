@@ -1,8 +1,8 @@
     .series-pieces-grid .card{
       width: 100%;
-      min-width: 220px;
-      max-width: 300px;
-      justify-self: start;
+      min-width: 0;
+      max-width: none;
+      justify-self: stretch;
       box-shadow: none;
     }
 .series-pieces-grid .thumb{

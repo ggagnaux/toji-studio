@@ -8,7 +8,8 @@ import { initializeHomeSplash } from "./splash-runtime.js";
 	      active: "home",
 	      small: "home",
 	      ctaText: "Explore",
-	      ctaHref: "gallery.html"
+	      ctaHref: "gallery.html",
+	      showThemeControls: false
 	    });
     renderPublicFooter({
       rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`

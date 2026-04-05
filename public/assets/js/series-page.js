@@ -7,7 +7,8 @@
 	      active: "series",
 	      small: "series",
 	      ctaText: "Explore",
-	      ctaHref: "gallery.html"
+	      ctaHref: "gallery.html",
+	      showThemeControls: false
 	    });
     renderPublicFooter({
       rightHtml: `<a href="index.html">Home</a> &bull; <a href="gallery.html">Gallery</a> &bull; <a href="series.html">Series</a> &bull; <a href="about.html">About</a> &bull; <a href="contact.html">Contact</a> &bull; <a href="admin/index.html">Studio</a>`

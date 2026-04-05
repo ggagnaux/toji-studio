@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 
 import { Router } from "express";
 import multer from "multer";
@@ -28,7 +29,19 @@ import { publishArtworkToLinkedIn } from "../services/social/linkedin.js";
 
 export const adminRouter = Router();
 const bannerLogoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-const SITE_ROOT = path.resolve(process.cwd(), "..");
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
+function resolvePublicSiteRoot() {
+  const candidates = [
+    path.resolve(process.cwd(), "public"),
+    path.resolve(process.cwd(), ".."),
+    path.resolve(MODULE_DIR, "../../..")
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, "index.html"))) return candidate;
+  }
+  return candidates[0];
+}
+const SITE_ROOT = resolvePublicSiteRoot();
 const BANNER_LOGOS_DIR = path.join(SITE_ROOT, "assets", "img", "logos");
 fs.mkdirSync(BANNER_LOGOS_DIR, { recursive: true });
 

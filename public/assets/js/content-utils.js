@@ -74,13 +74,32 @@ function ensureLightboxStyles() {
       box-shadow: var(--shadow);
       overflow:hidden;
     }
-    .lb-top{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px;
-      padding:12px 12px;
-      border-bottom:1px solid var(--line);
-    }
-    .lb-title{ font-weight:650; }
+	    .lb-top{
+	      display:flex; align-items:center; justify-content:space-between;
+	      gap:10px;
+	      padding:12px 12px;
+	      border-bottom:1px solid var(--line);
+	    }
+	    .lb-title{
+	      font-weight:650;
+	      min-width:0;
+	    }
+	    .lb-counter{
+	      position:absolute;
+	      left:14px;
+	      bottom:14px;
+	      padding:6px 10px;
+	      border:1px solid color-mix(in srgb, var(--line) 78%, transparent);
+	      border-radius:999px;
+	      background:color-mix(in srgb, var(--panel) 82%, rgba(0,0,0,.18) 18%);
+	      color:var(--muted);
+	      font-size:19.5px;
+	      line-height:1.2;
+	      white-space:nowrap;
+	      z-index:3;
+	      pointer-events:none;
+	      backdrop-filter:blur(6px);
+	    }
     .lb-body{
       display:grid;
       grid-template-columns: 320px minmax(0, 1fr);
@@ -98,10 +117,72 @@ function ensureLightboxStyles() {
       grid-column: 2;
       grid-row: 1;
     }
-    .lb-media-frame{
-      position: relative;
-      width: 100%;
-      height: 100%;
+    .lb-media-nav{
+      position:absolute;
+      top:50%;
+      width:60px;
+      height:60px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid color-mix(in srgb, var(--accent-border) 72%, var(--line) 28%);
+      border-radius:10px;
+      background:linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--panel) 62%, rgba(0,0,0,.38) 38%),
+        color-mix(in srgb, var(--panel) 78%, rgba(0,0,0,.18) 22%)
+      );
+      color:var(--text);
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent),
+        0 12px 28px rgba(0,0,0,.28),
+        0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+      opacity:0;
+      // pointer-events:none;
+      pointer: hand;
+      z-index:4;
+      font-size:18px;
+      font-weight:700;
+      transition:opacity .18s ease, transform .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
+    }
+    .lb-media-nav--prev{
+      left:calc(var(--lb-media-pad) * .45);
+      transform:translate(-4px, -50%);
+    }
+    .lb-media-nav--next{
+      right:calc(var(--lb-media-pad) * .45);
+      transform:translate(4px, -50%);
+    }
+    .lb-media:hover .lb-media-nav,
+    .lb-media:focus-within .lb-media-nav{
+      opacity:.96;
+      pointer-events:auto;
+    }
+    .lb-media:hover .lb-media-nav--prev,
+    .lb-media:focus-within .lb-media-nav--prev{
+      transform:translate(0, -50%);
+    }
+    .lb-media:hover .lb-media-nav--next,
+    .lb-media:focus-within .lb-media-nav--next{
+      transform:translate(0, -50%);
+    }
+	    .lb-media-nav:hover,
+	    .lb-media-nav:focus-visible{
+	      background:linear-gradient(
+	        180deg,
+	        color-mix(in srgb, var(--panel) 42%, var(--accent) 58%),
+        color-mix(in srgb, var(--panel) 56%, var(--accent) 44%)
+      );
+      border-color:color-mix(in srgb, var(--accent-border) 88%, #ffffff 12%);
+      box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, #ffffff 14%, transparent),
+        0 14px 30px rgba(0,0,0,.34),
+	        0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+	    }
+	    .lb-media-frame{
+	      position: relative;
+	      width: 100%;
+	      height: 100%;
       min-height: calc(100vh - 90px);
       overflow: hidden;
     }
@@ -143,14 +224,16 @@ function ensureLightboxStyles() {
       opacity: .72;
       z-index: 1;
     }
-    .lb-meta{
-      padding:14px;
-      border-right:1px solid var(--line);
-      overflow:hidden;
-      min-width:0;
-      grid-column: 1;
-      grid-row: 1;
-    }
+	    .lb-meta{
+	      padding:14px;
+	      padding-bottom:52px;
+	      border-right:1px solid var(--line);
+	      overflow:hidden;
+	      min-width:0;
+	      grid-column: 1;
+	      grid-row: 1;
+	      position:relative;
+	    }
     .lb-meta .sub{ margin-top:8px; }
     .lb-tags{
       margin-top:10px;
@@ -206,12 +289,16 @@ function ensureLightboxStyles() {
           grid-column: auto;
           grid-row: auto;
 	      }
-	      .lb-media-frame{
-	        min-height: min(52vh, calc(100vh - 260px));
-	      }
-		      .lb-meta{
-	          grid-column: auto;
-	          grid-row: auto;
+		      .lb-media-frame{
+		        min-height: min(52vh, calc(100vh - 260px));
+		      }
+          .lb-media-nav{
+            width:42px;
+            height:42px;
+          }
+			      .lb-meta{
+		          grid-column: auto;
+		          grid-row: auto;
 		        border-left:0;
 		        border-top:1px solid var(--line);
 		        max-height:none;
@@ -226,21 +313,24 @@ export function createArtworkLightboxController() {
   ensureLightboxStyles();
 
   const backdrop = el("div", { class: "lb-backdrop", role: "dialog", "aria-modal": "true" });
-	  const title = el("div", { class: "lb-title" }, "");
-		  const closeBtn = el("button", { class: "btn", type: "button", "aria-label": "Close lightbox", title: "Close lightbox" }, "x");
+		  const title = el("div", { class: "lb-title" }, "");
+		  const counter = el("div", { class: "lb-counter", "aria-live": "polite" }, "");
+			  const closeBtn = el("button", { class: "btn", type: "button", "aria-label": "Close lightbox", title: "Close lightbox" }, "x");
 		  const prevBtn = el("button", { class: "btn", type: "button", "aria-label": "Previous artwork", title: "Previous artwork" }, "\u2190");
 		  const nextBtn = el("button", { class: "btn", type: "button", "aria-label": "Next artwork", title: "Next artwork" }, "\u2192");
 
-	  const top = el("div", { class: "lb-top" }, title, el("div", { class: "lb-actions" }, prevBtn, nextBtn, closeBtn));
-		  const mediaFrame = el("div", { class: "lb-media-frame" });
+			  const top = el("div", { class: "lb-top" }, title, el("div", { class: "lb-actions" }, closeBtn));
+			  const mediaFrame = el("div", { class: "lb-media-frame" });
 		  const metaTitle = el("div", { style: "font-weight:650" }, "");
 	  const metaSub = el("div", { class: "sub" }, "");
-	  const metaTagsLabel = el("div", { class: "lb-tags-label" }, "Tags");
-  const metaTagsValue = el("div", { class: "lb-tags-value" });
-  const metaTags = el("div", { class: "lb-tags" }, metaTagsLabel, metaTagsValue);
-  const metaDesc = el("div", { class: "sub", style: "font-size:15px; line-height:1.65" }, "");
-		  const meta = el("div", { class: "lb-meta" }, metaTitle, metaSub, metaTags, el("hr", { class: "sep" }), metaDesc);
-  const media = el("div", { class: "lb-media" }, mediaFrame);
+		  const metaTagsLabel = el("div", { class: "lb-tags-label" }, "Tags");
+	  const metaTagsValue = el("div", { class: "lb-tags-value" });
+	  const metaTags = el("div", { class: "lb-tags" }, metaTagsLabel, metaTagsValue);
+	  const metaDesc = el("div", { class: "sub", style: "font-size:15px; line-height:1.65" }, "");
+				  const meta = el("div", { class: "lb-meta" }, metaTitle, metaSub, metaTags, el("hr", { class: "sep" }), metaDesc, counter);
+			  prevBtn.className = "lb-media-nav lb-media-nav--prev";
+			  nextBtn.className = "lb-media-nav lb-media-nav--next";
+				  const media = el("div", { class: "lb-media" }, mediaFrame, prevBtn, nextBtn);
   const body = el("div", { class: "lb-body" }, media, meta);
 	  const panel = el("div", { class: "lb" }, top, body);
 
@@ -293,15 +383,16 @@ export function createArtworkLightboxController() {
 	    activeImg = nextImg;
 	  }
 
-	  function showCurrent(direction = 0) {
-	    if (!currentList.length || currentIndex < 0 || currentIndex >= currentList.length) return;
-	    const item = currentList[currentIndex];
-	    title.textContent = item.title || "Untitled";
-	    metaTitle.textContent = item.title || "Untitled";
+		  function showCurrent(direction = 0) {
+		    if (!currentList.length || currentIndex < 0 || currentIndex >= currentList.length) return;
+		    const item = currentList[currentIndex];
+		    title.textContent = item.title || "Untitled";
+		    counter.textContent = `Image ${currentIndex + 1} of ${currentList.length}`;
+		    metaTitle.textContent = item.title || "Untitled";
 
     const bits = [item.series || null, item.year || null, item.featured ? "Featured" : null]
       .filter(Boolean)
-      .join(" • ");
+      .join(" | ");
     metaSub.textContent = bits || "";
     const tags = Array.isArray(item.tags)
       ? item.tags.map((t) => String(t || "").trim()).filter(Boolean)
@@ -315,6 +406,9 @@ export function createArtworkLightboxController() {
 	    metaDesc.textContent = item.description || "";
 
 	    renderImage(item, direction);
+        const hasMultiple = currentList.length > 1;
+        prevBtn.style.display = hasMultiple ? "inline-flex" : "none";
+        nextBtn.style.display = hasMultiple ? "inline-flex" : "none";
 	    backdrop.style.display = "flex";
 	  }
 

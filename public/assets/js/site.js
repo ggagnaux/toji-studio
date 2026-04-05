@@ -19,12 +19,14 @@ export function initThemeSystem(){
   const getSystemTheme = () => (media?.matches ? "dark" : "light");
   const normalizeMode = (value) => {
     const mode = String(value || "").toLowerCase();
-    if (mode === "light" || mode === "dark") return mode;
-    return getSystemTheme();
+    if (mode === "light" || mode === "dark" || mode === "system") return mode;
+    return "system";
   };
+  const resolveTheme = (mode) => (normalizeMode(mode) === "system" ? getSystemTheme() : normalizeMode(mode));
 
   const applyTheme = (mode, animate = true) => {
-    const theme = normalizeMode(mode);
+    const themeMode = normalizeMode(mode);
+    const theme = resolveTheme(themeMode);
 
     if (animate) {
       root.classList.add("theme-animate");
@@ -32,11 +34,11 @@ export function initThemeSystem(){
     }
 
     root.dataset.theme = theme;
-    root.dataset.themeMode = theme;
-    syncUI(theme);
+    root.dataset.themeMode = themeMode;
+    syncUI(theme, themeMode);
   };
 
-  const syncUI = (theme) => {
+  const syncUI = (theme, themeMode = normalizeMode(localStorage.getItem(MODE_KEY))) => {
     const toggleBtn = document.querySelector("[data-theme-toggle]");
     if (toggleBtn) {
       toggleBtn.dataset.theme = theme;
@@ -51,8 +53,15 @@ export function initThemeSystem(){
 
     const label = document.querySelector("[data-theme-label]");
     if (label) {
-      label.textContent = theme[0].toUpperCase() + theme.slice(1);
+      label.textContent = themeMode[0].toUpperCase() + themeMode.slice(1);
     }
+
+    document.querySelectorAll("[data-theme-choice]").forEach((btn) => {
+      const choice = String(btn.getAttribute("data-theme-choice") || "").toLowerCase();
+      const active = choice === themeMode;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
   };
 
   const savedMode = normalizeMode(localStorage.getItem(MODE_KEY));
@@ -61,9 +70,16 @@ export function initThemeSystem(){
 
   document.addEventListener("click", (e) => {
     const btn = e.target.closest?.("[data-theme-toggle]");
-    if (!btn) return;
-    const currentTheme = root.dataset.theme || getSystemTheme();
-    const nextMode = currentTheme === "dark" ? "light" : "dark";
+    if (btn) {
+      const currentTheme = root.dataset.theme || getSystemTheme();
+      const nextMode = currentTheme === "dark" ? "light" : "dark";
+      localStorage.setItem(MODE_KEY, nextMode);
+      applyTheme(nextMode, true);
+      return;
+    }
+    const choiceBtn = e.target.closest?.("[data-theme-choice]");
+    if (!choiceBtn) return;
+    const nextMode = normalizeMode(choiceBtn.getAttribute("data-theme-choice"));
     localStorage.setItem(MODE_KEY, nextMode);
     applyTheme(nextMode, true);
   });
@@ -111,12 +127,8 @@ export function initStickyHero({
     root.style.setProperty("--sticky-hero-top", `${headerHeight}px`);
   };
 
-  const syncState = () => {
-    hero.classList.toggle(compactClass, (window.scrollY || 0) > compactThreshold);
-    syncOffsets();
-  };
-
-  syncState();
+  hero.classList.remove(compactClass);
+  syncOffsets();
   window.addEventListener("resize", syncOffsets);
-  window.addEventListener("scroll", syncState, { passive: true });
+  window.addEventListener("scroll", syncOffsets, { passive: true });
 }

@@ -136,6 +136,7 @@ function normalizeCycleSeconds(value){
 
 function normalizeBannerLogoAnimationStyle(value){
   const style = String(value || "").toLowerCase();
+  if (style === "circles") return "circles";
   if (style === "plot") return "plot";
   if (style === "radar") return "radar";
   if (style === "sphere") return "sphere";
@@ -1108,6 +1109,7 @@ window.addEventListener("keydown", (event) => {
     cycleSplashPreviewMode(1);
   }
 });
+
 
 
 

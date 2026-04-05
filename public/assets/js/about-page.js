@@ -6,7 +6,8 @@ renderPublicHeader({
   active: "about",
   small: "about",
   ctaText: "Inquire",
-  ctaHref: "contact.html"
+  ctaHref: "contact.html",
+  showThemeControls: false
 });
 
 renderPublicFooter({

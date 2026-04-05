@@ -16,6 +16,7 @@ export const SPLASH_MODE_CATALOG = Object.freeze([
   { id: "wireframesphere", label: "Wireframe sphere globe" },
   { id: "pixeltitle", label: "Pixel title drift" },
   { id: "pixelnoise", label: "Pixel noise shimmer" },
+  { id: "pixelsnake", label: "Pixel snake drift" },
   { id: "orbitalbeams", label: "Black Holes vs Bubbles" }
 ]);
 

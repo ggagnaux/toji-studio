@@ -8,7 +8,8 @@ renderPublicHeader({
   active: "contact",
   small: "contact",
   ctaText: "View Gallery",
-  ctaHref: "gallery.html"
+  ctaHref: "gallery.html",
+  showThemeControls: false
 });
 
 renderPublicFooter({

@@ -67,7 +67,8 @@ function ensureDataManagerStyles() {
     ".data-manager-filepick:hover{border-color:var(--accent-border);background:color-mix(in srgb, var(--accent) 8%, var(--panel));}",
     ".data-manager-filepick:focus-within{outline:2px solid color-mix(in srgb, var(--accent) 55%, transparent);outline-offset:2px;}",
     ".data-manager-filepick .btn{pointer-events:none;}",
-    ".data-manager-filepick__name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}"
+    ".data-manager-filepick__name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}",
+    "#exportSelectedBtn:disabled{opacity:.45;background:color-mix(in srgb, var(--panel) 90%, transparent);border-color:color-mix(in srgb, var(--line) 86%, transparent);color:var(--muted);cursor:not-allowed;box-shadow:none;}"
   ].join("");
   document.head.appendChild(style);
 }
@@ -122,8 +123,10 @@ function renderExportTables() {
   if (!exportTableList) return;
   exportTableList.innerHTML = "";
   const host = el("div", { class: "data-manager-list" });
+  const selectedCount = getSelectedExportTables().length;
 
   if (!state.tables.length) {
+    if (exportSelectedBtn) exportSelectedBtn.disabled = true;
     host.appendChild(el("div", { class: "sub" }, "Loading tables..."));
     exportTableList.appendChild(host);
     return;
@@ -176,7 +179,8 @@ function renderExportTables() {
   });
 
   exportTableList.appendChild(host);
-  exportSelectionSummary.textContent = getSelectedExportTables().length + " of " + state.tables.length + " table(s) selected";
+  exportSelectionSummary.textContent = selectedCount + " of " + state.tables.length + " table(s) selected";
+  if (exportSelectedBtn) exportSelectedBtn.disabled = selectedCount === 0;
 }
 
 function renderImportPreview() {
@@ -466,3 +470,5 @@ setActiveTab("export");
 renderExportTables();
 renderImportPreview();
 void loadTableMetadata();
+
+

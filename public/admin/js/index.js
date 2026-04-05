@@ -41,6 +41,7 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
   const sortHeaderButtons = Array.from(document.querySelectorAll("[data-sort-header]"));
   // Bulk selection
   const selected = new Set();
+  let openRowActionMenuId = "";
 
   const selectAll = document.getElementById("selectAll");
   const bulkBar = document.getElementById("bulkBar");
@@ -62,19 +63,6 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
   const bulkSeriesApplyBtn = document.getElementById("bulkSeriesApply");
   const bulkSeriesClearBtn = document.getElementById("bulkSeriesClear");
 
-
-
-
-  // Manual ordering
-  let manualOrderMode = false;
-  const toggleOrderBtn = document.getElementById("toggleOrder");
-  toggleOrderBtn.addEventListener("click", () => {
-    manualOrderMode = !manualOrderMode;
-    toggleOrderBtn.textContent = `Manual order: ${manualOrderMode ? "On" : "Off"}`;
-    render();
-  });
-
-  let dragId = null;
 
   const counts = () => {
     const pub = state.artworks.filter(a => a.status === "published").length;
@@ -109,7 +97,7 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
 
   function visibleItems(){
     const filtered = state.artworks.filter(matches);
-    if (viewMode === "rows" && !manualOrderMode) return sortForRows(filtered);
+    if (viewMode === "rows") return sortForRows(filtered);
     return sortArtworksManualFirst(filtered);
   }
 
@@ -124,7 +112,7 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
       const th = btn.closest("th");
       const icon = btn.querySelector(".admin-sort-icon");
       btn.classList.toggle("is-active", active);
-      if (icon) icon.textContent = active ? (rowSortDir === "asc" ? "↑" : "↓") : "";
+      if (icon) icon.textContent = active ? (rowSortDir === "asc" ? "\u2191" : "\u2193") : "";
       if (th) th.setAttribute("aria-sort", active ? (rowSortDir === "asc" ? "ascending" : "descending") : "none");
     });
   }
@@ -134,7 +122,20 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
     const visibleSelected = visible.filter(a => selected.has(a.id)).length;
 
     bulkCount.textContent = String(selected.size);
-    bulkBar.style.display = selected.size ? "inline-flex" : "none";
+    const hasSelection = selected.size > 0;
+    if (bulkBar) {
+      bulkBar.style.display = "inline-flex";
+      bulkBar.classList.toggle("is-disabled", !hasSelection);
+    }
+    if (bulkAction) {
+      bulkAction.disabled = !hasSelection;
+      if (!hasSelection && bulkAction.value) bulkAction.value = "";
+    }
+    if (bulkApplyBtn) bulkApplyBtn.disabled = !hasSelection;
+    if (!hasSelection) {
+      setTagBoxVisible(false);
+      setSeriesBoxVisible(false);
+    }
 
     if (selectAll) {
       const allVisibleSelected = visible.length > 0 && visibleSelected === visible.length;
@@ -661,6 +662,69 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
     render();
   }
 
+  function getArtworkPublicUrl(artwork){
+    return new URL(`../artwork.html?id=${encodeURIComponent(artwork?.id || "")}`, window.location.href).href;
+  }
+
+  async function copyTextToClipboard(text, successMessage){
+    try {
+      await navigator.clipboard.writeText(String(text || ""));
+      showToast(successMessage || "Copied to clipboard.", { tone: "success" });
+    } catch (error) {
+      showToast(`Copy failed: ${error?.message || error}`, { tone: "error", duration: 4200 });
+    }
+  }
+
+  function createDuplicateArtworkId(sourceId){
+    const base = String(sourceId || "artwork").replace(/[^a-z0-9_-]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "artwork";
+    const unique = typeof crypto?.randomUUID === "function"
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+    return `${base}-copy-${unique}`;
+  }
+
+  function createDuplicateArtworkTitle(sourceTitle){
+    const base = String(sourceTitle || "Untitled").trim() || "Untitled";
+    const existingTitles = new Set((state.artworks || []).map((artwork) => String(artwork?.title || "").trim().toLowerCase()));
+    if (!existingTitles.has(`${base} (copy)`.toLowerCase())) return `${base} (Copy)`;
+    let n = 2;
+    while (existingTitles.has(`${base} (copy ${n})`.toLowerCase())) n += 1;
+    return `${base} (Copy ${n})`;
+  }
+
+  function duplicateArtwork(id){
+    const artwork = findById(id);
+    if (!artwork) return;
+
+    const now = new Date().toISOString();
+    const copy = {
+      ...JSON.parse(JSON.stringify(artwork)),
+      id: createDuplicateArtworkId(artwork.id),
+      title: createDuplicateArtworkTitle(artwork.title),
+      status: "draft",
+      featured: false,
+      publishedAt: null,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    state.artworks.unshift(copy);
+    saveState(state);
+    openRowActionMenuId = "";
+    showToast("Duplicate created locally in Studio state.", { tone: "success" });
+    render();
+  }
+
+  function toggleRowActionMenu(id){
+    openRowActionMenuId = openRowActionMenuId === id ? "" : id;
+    render();
+  }
+
+  function closeRowActionMenu(){
+    if (!openRowActionMenuId) return;
+    openRowActionMenuId = "";
+    render();
+  }
 
   async function deleteArtwork(id){
     const a = findById(id);
@@ -691,37 +755,17 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
     }
   }
 
+  document.addEventListener("click", (event) => {
+    if (!openRowActionMenuId) return;
+    if (event.target.closest(".admin-artwork-actions")) return;
+    closeRowActionMenu();
+  });
 
-
-
-
-
-  function moveItem(draggedId, targetId){
-    if (draggedId === targetId) return;
-
-    const ordered = sortArtworksManualFirst(visibleItems());
-
-    const from = ordered.findIndex(x => x.id === draggedId);
-    const to = ordered.findIndex(x => x.id === targetId);
-    if (from < 0 || to < 0) return;
-
-    const [moved] = ordered.splice(from, 1);
-    ordered.splice(to, 0, moved);
-
-    let base = 1000;
-    const patches = [];
-    for (const a of ordered){
-      a.sortOrder = base;
-      base -= 10;
-      a.updatedAt = new Date().toISOString();
-      patches.push({ id: a.id, patch: { sortOrder: a.sortOrder } });
-    }
-
-    saveState(state);
-    render();
-
-    writeThroughBatch(patches);
-  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !openRowActionMenuId) return;
+    event.preventDefault();
+    closeRowActionMenu();
+  });
 
   function render(){
     counts();
@@ -731,68 +775,95 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
     const items = visibleItems();
 
     for (const a of items){
-      const tags = (a.tags||[]).slice(0,3).join(" · ") || "—";
+      const title = String(a.title || "Untitled");
+      const isSelected = selected.has(a.id);
+      const primaryStatus = a.status === "published" ? "draft" : "published";
+      const primaryStatusLabel = a.status === "published" ? "Move to Draft" : "Publish";
+      const hideStatusLabel = a.status === "hidden" ? "Move to Draft" : "Hide";
+      const metadataParts = [`ID ${a.id}`];
+      if (Array.isArray(a.tags) && a.tags.length) metadataParts.push(`${a.tags.length} tag${a.tags.length === 1 ? "" : "s"}`);
+      const menuOpen = openRowActionMenuId === a.id;
 
       const tr = el("tr", {
         "data-artwork-id": a.id,
-        class: selected.has(a.id) ? "selected-row" : "",
-        draggable: manualOrderMode ? "true" : null,
-        style: manualOrderMode ? "cursor:grab" : "",
-        ondragstart: () => { dragId = a.id; },
-        ondragover: (e) => { if (manualOrderMode) e.preventDefault(); },
-        ondrop: (e) => {
-          e.preventDefault();
-          if (manualOrderMode && dragId) moveItem(dragId, a.id);
-        },
+        class: `admin-artwork-row${isSelected ? " selected-row" : ""}`,
       },
         el("td", {},
           el("button", {
             type: "button",
-            class: `admin-row-select${selected.has(a.id) ? " is-selected" : ""}`,
-            "aria-label": `${selected.has(a.id) ? "Deselect" : "Select"} ${a.title || a.id}`,
-            "aria-pressed": selected.has(a.id) ? "true" : "false",
+            class: `admin-row-select${isSelected ? " is-selected" : ""}`,
+            "aria-label": `${isSelected ? "Deselect" : "Select"} ${title}`,
+            "aria-pressed": isSelected ? "true" : "false",
             onclick: (e) => {
               e.stopPropagation();
               if (selected.has(a.id)) selected.delete(a.id);
               else selected.add(a.id);
               render();
             }
-          }, selected.has(a.id) ? "\u2713" : "\u25cb")
+          }, isSelected ? "\u2713" : "\u25cb")
         ),
         el("td", {},
-          el("div", { style:"display:flex; gap:10px; align-items:center" },
+          el("div", { class:"admin-artwork-summary" },
             el("a", {
-              class: "thumbSm",
+              class: "admin-artwork-thumb",
               href: buildArtworkEditHref(a.id),
-              title: a.title || "Edit artwork",
-              "aria-label": `Edit ${a.title || a.id}`
+              title: title,
+              "aria-label": `Edit ${title}`
             },
-              el("img", { src: a.thumb || a.image, alt: a.title, loading:"lazy" })
+              el("img", { src: a.thumb || a.image, alt: title, loading:"lazy" })
             ),
-            el("div", {},
-              el("div", { style:"font-weight:650" }, a.title),
-              el("div", { class:"sub" }, a.featured ? "Featured" : "—")
+            el("div", { class:"admin-artwork-copy" },
+              el("div", { class:"admin-artwork-title-row" },
+                el("a", { class:"admin-artwork-link", href: buildArtworkEditHref(a.id) }, title),
+                a.featured ? el("span", { class:"admin-artwork-featured" }, "Featured") : null
+              ),
+              el("div", { class:"admin-artwork-meta" }, metadataParts.join(" | "))
             )
           )
         ),
-        el("td", {}, statusChip(a.status)),
-        el("td", {}, el("span", { class:"sub" }, tags)),
-        el("td", {}, el("span", { class:"sub" }, a.series || "—")),
-        el("td", {}, el("span", { class:"sub" }, a.year || "—")),
-        el("td", {},
-          el("div", { class:"row-actions" },
-            el("a", { class:"btn mini", href: buildArtworkEditHref(a.id) }, "Edit"),
-
+        el("td", { class:"admin-artwork-status", "data-label":"Status" }, statusChip(a.status)),
+        el("td", { class:"admin-artwork-series", "data-label":"Series" }, a.series || "-"),
+        el("td", { class:"admin-artwork-year", "data-label":"Year" }, a.year || "-"),
+        el("td", { class:"admin-artwork-actions", "data-label":"Actions" },
+          el("div", { class:"admin-artwork-action-row" },
+            el("a", { class:"admin-artwork-action-link", href: buildArtworkEditHref(a.id) }, "Edit"),
             el("button", {
-              class:"btn mini",
+              class:"admin-artwork-action-button",
               type:"button",
-              onclick:()=>toggleFeatured(a.id)
-            }, a.featured ? "Unfeature" : "Feature"),
-
-            el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"published"), type:"button" }, "Publish"),
-            el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"draft"), type:"button" }, "Draft"),
-            el("button", { class:"btn mini", onclick:()=>setStatus(a.id,"hidden"), type:"button" }, "Hide"),
-            el("button", { class:"btn mini danger", onclick:()=>deleteArtwork(a.id), type: "button" }, "Delete")
+              onclick:()=>setStatus(a.id, primaryStatus)
+            }, primaryStatusLabel),
+            el("button", {
+              class:"admin-artwork-overflow-trigger",
+              type:"button",
+              "aria-label": `More actions for ${title}`,
+              "aria-haspopup":"menu",
+              "aria-expanded": menuOpen ? "true" : "false",
+              onclick:(event)=>{
+                event.stopPropagation();
+                toggleRowActionMenu(a.id);
+              }
+            }, "\u22ef")
+          ),
+          el("div", {
+            class:"admin-artwork-overflow-menu",
+            role:"menu",
+            hidden: menuOpen ? null : "",
+            "aria-label": `More actions for ${title}`
+          },
+            el("button", { type:"button", role:"menuitem", onclick:()=>{ openRowActionMenuId = ""; toggleFeatured(a.id); } }, a.featured ? "Unfeature" : "Feature"),
+            el("button", { type:"button", role:"menuitem", onclick:()=>{ openRowActionMenuId = ""; setStatus(a.id, a.status === "hidden" ? "draft" : "hidden"); } }, hideStatusLabel),
+            el("button", { type:"button", role:"menuitem", onclick:()=>duplicateArtwork(a.id) }, "Duplicate"),
+            el("button", { type:"button", role:"menuitem", onclick:()=>{ openRowActionMenuId = ""; copyTextToClipboard(getArtworkPublicUrl(a), "Public link copied."); render(); } }, "Copy link"),
+            el("button", {
+              type:"button",
+              role:"menuitem",
+              onclick:()=>{
+                openRowActionMenuId = "";
+                window.open(getArtworkPublicUrl(a), "_blank", "noopener,noreferrer");
+                render();
+              }
+            }, "View public page"),
+            el("button", { class:"danger", type:"button", role:"menuitem", onclick:()=>{ openRowActionMenuId = ""; deleteArtwork(a.id); render(); } }, "Delete")
           )
         )
       );
@@ -833,7 +904,7 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
     if (!items.length){
       rows.appendChild(
         el("tr", {},
-          el("td", { colspan:"7" },
+          el("td", { colspan:"6" },
             el("div", { class:"sub", style:"padding:14px" }, "No items match your filter.")
           )
         )
@@ -865,12 +936,11 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
     if (thumbGrid) thumbGrid.style.display = thumbs ? "grid" : "none";
     if (thumbSelectAllToggle) thumbSelectAllToggle.style.display = thumbs ? "inline-flex" : "none";
     sortHeaderButtons.forEach((btn) => {
-      btn.disabled = thumbs || manualOrderMode;
+      btn.disabled = thumbs;
     });
 
     viewModeButtons.forEach((btn) => {
       const active = btn.getAttribute("data-view-mode") === viewMode;
-      btn.disabled = manualOrderMode;
       btn.classList.toggle("active", active);
     });
 
@@ -890,8 +960,8 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
   sortHeaderButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-sort-header") || "none";
-      if (viewMode !== "rows" || manualOrderMode || key === "none") return;
-      if (rowSortBy === key) rowSortDir = rowSortDir === "asc" ? "desc" : "asc";
+      if (viewMode !== "rows" || key === "none") return;
+      if (rowSortBy === key) rowSortDir = rowSortDir === "asc" ? "\u2191" : "\u2193";
       else {
         rowSortBy = key;
         rowSortDir = key === "year" ? "desc" : "asc";
@@ -920,4 +990,15 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
   });
 
   render();
+
+
+
+
+
+
+
+
+
+
+
 

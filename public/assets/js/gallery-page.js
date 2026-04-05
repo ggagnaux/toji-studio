@@ -6,7 +6,8 @@
 	      active: "gallery",
 	      small: "gallery",
 	      ctaText: "Inquire",
-	      ctaHref: "contact.html"
+	      ctaHref: "contact.html",
+	      showThemeControls: false
 	    });
     renderPublicFooter({
       rightHtml: `<a href="index.html">Home</a> &bull; <a href="gallery.html">Gallery</a> &bull; <a href="series.html">Series</a> &bull; <a href="contact.html">Contact</a> &bull; <a href="admin/index.html">Studio</a>`
@@ -50,8 +51,9 @@
     const grid = document.getElementById("galleryGrid");
     const tagPrefilterHost = document.getElementById("tagPrefilterChips");
     const chipHost = document.getElementById("tagChips");
-    const tagFilterSummary = document.getElementById("tagFilterSummary");
-    const qInput = document.getElementById("q");
+	    const tagFilterSummary = document.getElementById("tagFilterSummary");
+	    const galleryTagsShortcut = document.getElementById("galleryTagsShortcut");
+	    const qInput = document.getElementById("q");
     const qClear = document.getElementById("qClear");
     const allWorksWrap = document.getElementById("allWorksWrap");
     const allWorksFilters = allWorksWrap?.querySelector(".filters");
@@ -117,12 +119,12 @@
     function syncStickyOffsets() {
       const header = document.getElementById("siteHeader");
       const headerHeight = header?.getBoundingClientRect().height || 0;
-      const heroHeight = galleryHero?.getBoundingClientRect().height || 0;
       document.documentElement.style.setProperty("--gallery-hero-top", `${headerHeight}px`);
-      document.documentElement.style.setProperty("--gallery-tabs-top", `${headerHeight + heroHeight}px`);
+      document.documentElement.style.setProperty("--gallery-tabs-top", `${headerHeight}px`);
     }
     syncStickyOffsets();
     window.addEventListener("resize", syncStickyOffsets);
+    window.addEventListener("scroll", syncStickyOffsets, { passive: true });
 
     function getTabButton(targetId) {
       return galleryTabButtons.find((btn) => btn.getAttribute("data-tab-target") === targetId) || null;
@@ -215,29 +217,34 @@
       }, 420);
     }
 
-    galleryTabButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const targetId = btn.getAttribute("data-tab-target");
-        setActiveTab(targetId);
-      });
-    });
+	    galleryTabButtons.forEach((btn) => {
+	      btn.addEventListener("click", () => {
+	        const targetId = btn.getAttribute("data-tab-target");
+	        setActiveTab(targetId);
+	      });
+	    });
+	    galleryTagsShortcut?.addEventListener("click", () => {
+	      setActiveTab("allWorksWrap");
+	      if (!selectedLetters.size && tagPrefilterHost) {
+	        const firstEnabled = tagPrefilterHost.querySelector("button:not([disabled])");
+	        if (firstEnabled && typeof firstEnabled.focus === "function") firstEnabled.focus();
+	      } else if (chipHost && !chipHost.hidden) {
+	        const firstChip = chipHost.querySelector(".chip");
+	        if (firstChip && typeof firstChip.focus === "function") firstChip.focus();
+	      }
+	      scrollToTabsStable();
+	    });
 
     function syncBackToTopVisibility() {
       const show = window.scrollY > 8;
       backToTopBtn?.classList.toggle("is-visible", show);
     }
-    function syncGalleryHeroState() {
-      const compact = window.scrollY > 8;
-      galleryHero?.classList.toggle("is-scrolled", compact);
-      syncStickyOffsets();
-    }
     backToTopBtn?.addEventListener("click", () => {
       scrollToTopStable();
     });
     window.addEventListener("scroll", syncBackToTopVisibility, { passive: true });
-    window.addEventListener("scroll", syncGalleryHeroState, { passive: true });
     syncBackToTopVisibility();
-    syncGalleryHeroState();
+    syncStickyOffsets();
 
     function rerenderAllWorksPreserveScroll() {
       const activeEl = document.activeElement;

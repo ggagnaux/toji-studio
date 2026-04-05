@@ -25,6 +25,15 @@ export const db = new Database(path.join(STORAGE_DIR, "toji.sqlite"));
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 
+function isReadonlySqliteError(error) {
+  return String(error?.code || "").toUpperCase() === "SQLITE_READONLY";
+}
+
+function ignoreReadonlySqlite(error, context = "sqlite write") {
+  if (!isReadonlySqliteError(error)) throw error;
+  console.warn(`[db] Skipping ${context}; database is read-only.`);
+}
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS artworks (
   id TEXT PRIMARY KEY,
@@ -167,7 +176,12 @@ for (const platform of socialPlatforms) {
     const config = JSON.parse(platform.configJson || "{}");
     const iconLocation = String(config?.iconLocation || "").trim();
     if (!iconLocation) continue;
-    backfillPlatformIconStmt.run({ id: platform.id, iconLocation });
+    try {
+      backfillPlatformIconStmt.run({ id: platform.id, iconLocation });
+    } catch (error) {
+      ignoreReadonlySqlite(error, "social platform icon backfill");
+      break;
+    }
   } catch {}
 }
 
@@ -181,8 +195,13 @@ const syncSocialPlatformStmt = db.prepare(`
   WHERE id=@id
 `);
 for (const platform of ALLOWED_SOCIAL_PLATFORMS) {
-  seedSocialPlatformStmt.run(platform);
-  syncSocialPlatformStmt.run(platform);
+  try {
+    seedSocialPlatformStmt.run(platform);
+    syncSocialPlatformStmt.run(platform);
+  } catch (error) {
+    ignoreReadonlySqlite(error, "social platform seed");
+    break;
+  }
 }
 
 const allowedSocialPlatformIds = ALLOWED_SOCIAL_PLATFORMS.map((platform) => platform.id);
@@ -190,7 +209,11 @@ const deleteDisallowedSocialPlatformsStmt = db.prepare(`
   DELETE FROM social_platforms
   WHERE id NOT IN (${allowedSocialPlatformIds.map(() => "?").join(", ")})
 `);
-deleteDisallowedSocialPlatformsStmt.run(...allowedSocialPlatformIds);
+try {
+  deleteDisallowedSocialPlatformsStmt.run(...allowedSocialPlatformIds);
+} catch (error) {
+  ignoreReadonlySqlite(error, "social platform cleanup");
+}
 
 export function nowIso() {
   return new Date().toISOString();
@@ -233,6 +256,7 @@ export const DEFAULT_SPLASH_ALLOWED_MODES = Object.freeze([
   "wireframesphere",
   "pixeltitle",
   "pixelnoise",
+  "pixelsnake",
   "orbitalbeams"
 ]);
 export const DEFAULT_SPLASH_SETTINGS = Object.freeze({
@@ -377,3 +401,5 @@ export function setSplashSettings(value) {
   setSettingJson(SPLASH_SETTINGS_KEY, normalized);
   return normalized;
 }
+
+

@@ -1,10 +1,23 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Router } from "express";
 import { db, jsonArray, getContactSettings, getSplashSettings } from "../db.js";
 
 export const publicRouter = Router();
-const SITE_ROOT = path.resolve(process.cwd(), "..");
+const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
+function resolvePublicSiteRoot() {
+  const candidates = [
+    path.resolve(process.cwd(), "public"),
+    path.resolve(process.cwd(), ".."),
+    path.resolve(MODULE_DIR, "../../..")
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, "index.html"))) return candidate;
+  }
+  return candidates[0];
+}
+const SITE_ROOT = resolvePublicSiteRoot();
 const BANNER_LOGOS_DIR = path.join(SITE_ROOT, "assets", "img", "logos");
 
 function listBannerLogoEntries() {

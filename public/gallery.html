@@ -9,80 +9,82 @@
   <link rel="stylesheet" href="assets/css/gallery.css" />
 </head>
 
-<body class="home-animated">
-  <header id="siteHeader"></header>
+  <body class="home-animated">
+    <header id="siteHeader"></header>
 
-  <main class="container gallery-page">
-    <section class="hero gallery-hero" id="galleryHeroSection" style="padding-bottom:10px">
-      <h1>Gallery</h1>
-      <p>Browse featured images, Series or All published work. Filter by tag, search, and open any piece to view larger.</p>
-    </section>
+	    <main class="container gallery-page">
+	    <section class="gallery-tabs-nav" id="galleryTabsNav" aria-label="Gallery tabs">
+      <div class="gallery-tools-shell">
+        <div class="gallery-tabs-list" role="tablist" aria-label="Gallery sections">
+          <button class="chip gallery-tab is-active" id="galleryTab-featuredWrap" type="button" role="tab" aria-selected="true" aria-controls="featuredWrap" data-tab-target="featuredWrap">Featured</button>
+          <button class="chip gallery-tab" id="galleryTab-seriesWrap" type="button" role="tab" aria-selected="false" aria-controls="seriesWrap" data-tab-target="seriesWrap">Series</button>
+          <button class="chip gallery-tab" id="galleryTab-allWorksWrap" type="button" role="tab" aria-selected="false" aria-controls="allWorksWrap" data-tab-target="allWorksWrap">Archive</button>
+        </div>
+        <div class="gallery-tools-right">
+          <button id="galleryTagsShortcut" class="btn gallery-tools-pill" type="button">Tags</button>
+          <div class="search gallery-toolbar-search">
+            <input id="q" placeholder="Search work" />
+            <button id="qClear" class="icon-btn" type="button" aria-label="Clear search" style="display:none; width:28px; height:28px; padding:0;">x</button>
+          </div>
+          <div class="segmented page-toolbar__theme" role="group" aria-label="Theme mode">
+            <button type="button" data-theme-choice="system">System</button>
+            <button type="button" data-theme-choice="light">Light</button>
+            <button type="button" data-theme-choice="dark">Dark</button>
+          </div>
+	        </div>
+	      </div>
+	    </section>
 
-    <section aria-label="Back to top shortcut" class="gallery-jump-wrap" hidden>
-      <div class="gallery-jump-pills">
-        <span class="gallery-jump-label" aria-label="Jump menu" title="Jump menu" hidden>
+	    <section class="hero gallery-hero" id="galleryHeroSection" style="padding-bottom:10px">
+	      <h1>Gallery</h1>
+	      <p>Browse featured images, Series or All published work. Filter by tag, search, and open any piece to view larger.</p>
+	    </section>
+
+	    <section aria-label="Back to top shortcut" class="gallery-jump-wrap" hidden>
+	      <div class="gallery-jump-pills">
+	        <span class="gallery-jump-label" aria-label="Jump menu" title="Jump menu" hidden>
           <span aria-hidden="true">&#9776;</span>
         </span>
         <button id="jumpBackToTopBtn" class="chip gallery-jump-pill gallery-jump-pill--top" type="button" aria-label="Back to top">Top &uarr;</button>
       </div>
     </section>
 
-    <section class="gallery-tabs-nav" id="galleryTabsNav" aria-label="Gallery tabs">
-      <div class="gallery-tabs-list" role="tablist" aria-label="Gallery sections">
-        <button class="chip gallery-tab is-active" id="galleryTab-featuredWrap" type="button" role="tab" aria-selected="true" aria-controls="featuredWrap" data-tab-target="featuredWrap">Featured</button>
-        <button class="chip gallery-tab" id="galleryTab-seriesWrap" type="button" role="tab" aria-selected="false" aria-controls="seriesWrap" data-tab-target="seriesWrap">Series</button>
-        <button class="chip gallery-tab" id="galleryTab-allWorksWrap" type="button" role="tab" aria-selected="false" aria-controls="allWorksWrap" data-tab-target="allWorksWrap">All works</button>
-      </div>
-    </section>
+	    <!-- Featured section -->
+	    <section id="featuredWrap" class="gallery-section gallery-section-featured gallery-tab-panel" role="tabpanel" aria-labelledby="galleryTab-featuredWrap">
+	      <div class="section-title">
+	        <h2>Featured</h2>
+	        <span id="featuredCount">&mdash;</span>
+	      </div>
 
-    <!-- Featured section -->
-    <section id="featuredWrap" class="gallery-section gallery-section-featured gallery-tab-panel" role="tabpanel" aria-labelledby="galleryTab-featuredWrap">
-      <div class="gallery-tab-panel-inner">
-        <div class="section-title">
-        <h2>Featured</h2>
-        <span id="featuredCount">&mdash;</span>
-      </div>
+	      <section class="grid" id="featuredGrid" aria-label="Featured artworks"></section>
+	    </section>
 
-        <section class="grid" id="featuredGrid" aria-label="Featured artworks"></section>
-      </div>
-    </section>
+	    <section id="seriesWrap" class="gallery-section gallery-section-series gallery-tab-panel" role="tabpanel" aria-labelledby="galleryTab-seriesWrap" hidden>
+	      <div class="section-title">
+	        <h2>Series</h2>
+	        <span id="seriesCount">-</span>
+	      </div>
 
-    <section id="seriesWrap" class="gallery-section gallery-section-series gallery-tab-panel" role="tabpanel" aria-labelledby="galleryTab-seriesWrap" hidden>
-      <div class="gallery-tab-panel-inner">
-        <div class="section-title">
-        <h2>Series</h2>
-        <span id="seriesCount">-</span>
-      </div>
+	      <section class="grid" id="seriesGrid" aria-label="Series collection"></section>
+	    </section>
 
-        <section class="grid" id="seriesGrid" aria-label="Series collection"></section>
-      </div>
-    </section>
+	    <section id="allWorksWrap" class="gallery-section gallery-section-all gallery-tab-panel" role="tabpanel" aria-labelledby="galleryTab-allWorksWrap" hidden>
+	      <div class="section-title">
+	        <h2>All works</h2>
+	        <span id="allCount">&mdash;</span>
+	      </div>
 
-    <section id="allWorksWrap" class="gallery-section gallery-section-all gallery-tab-panel" role="tabpanel" aria-labelledby="galleryTab-allWorksWrap" hidden>
-      <div class="gallery-tab-panel-inner">
-        <div class="section-title">
-        <h2>All works</h2>
-        <span id="allCount">&mdash;</span>
-      </div>
+	      <section class="filters" aria-label="Gallery filters">
+	        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; width:100%">
+	          <span class="sub">Tag Filter:</span>
+	        </div>
+	        <div id="tagPrefilterChips" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; width:100%; margin-bottom:2px"></div>
+	        <div id="tagChips" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center" hidden></div>
+	        <div id="tagFilterSummary" class="sub" style="width:100%; margin-top:4px" hidden></div>
+	      </section>
 
-        <section class="filters" aria-label="Gallery filters">
-          <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; width:100%">
-            <span class="sub">Tag Filter:</span>
-          </div>
-          <div id="tagPrefilterChips" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; width:100%; margin-bottom:2px"></div>
-          <div id="tagChips" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center" hidden></div>
-          <div id="tagFilterSummary" class="sub" style="width:100%; margin-top:4px" hidden></div>
-
-          <div class="search" style="margin-left:auto">
-            <span>Search</span>
-            <input id="q" placeholder="title, tag, series" />
-            <button id="qClear" class="icon-btn" type="button" aria-label="Clear search" style="display:none; width:28px; height:28px; padding:0;">x</button>
-          </div>
-        </section>
-
-        <section class="grid" id="galleryGrid" aria-label="Gallery grid"></section>
-      </div>
-    </section>
+	      <section class="grid" id="galleryGrid" aria-label="Gallery grid"></section>
+	    </section>
   </main>
 
   <footer id="siteFooter"></footer>

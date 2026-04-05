@@ -11,6 +11,22 @@
   <header id="siteHeader"></header>
 
   <main class="container page-with-sticky-hero page-with-sticky-hero--about-contact">
+    <section class="page-toolbar page-toolbar--public" aria-label="About tools">
+      <div class="page-toolbar__shell">
+        <div class="page-toolbar__left">
+          <a class="page-toolbar__pill is-active" href="#aboutStatementPanel" aria-current="page">Statement</a>
+          <a class="page-toolbar__pill" href="#aboutFactsPanel">Quick Facts</a>
+          <a class="page-toolbar__pill" href="#aboutProcessPanel">Process</a>
+        </div>
+        <div class="page-toolbar__right">
+          <div class="segmented page-toolbar__theme" role="group" aria-label="Theme mode">
+            <button type="button" data-theme-choice="system">System</button>
+            <button type="button" data-theme-choice="light">Light</button>
+            <button type="button" data-theme-choice="dark">Dark</button>
+          </div>
+        </div>
+      </div>
+    </section>
     <section class="hero hero--sticky">
       <h1>About</h1>
       <p>
@@ -20,7 +36,7 @@
     </section>
 
     <section class="grid" aria-label="About content">
-	      <div class="card about-panel about-panel--statement" style="grid-column: span 7">
+		      <div id="aboutStatementPanel" class="card about-panel about-panel--statement page-toolbar-target" style="grid-column: span 7">
         <div class="meta about-artist-card">
           <div class="about-artist-card__content">
             <p class="title">Artist statement</p>
@@ -44,7 +60,7 @@
         </div>
       </div>
 
-	      <div class="card about-panel about-panel--facts" style="grid-column: span 5">
+		      <div id="aboutFactsPanel" class="card about-panel about-panel--facts page-toolbar-target" style="grid-column: span 5">
         <div class="meta">
           <p class="title">Quick facts</p>
           <div style="display:grid; gap:10px; margin-top:12px">
@@ -56,7 +72,7 @@
         </div>
       </div>
 
-      <div class="card" style="grid-column: span 12">
+	      <div id="aboutProcessPanel" class="card page-toolbar-target" style="grid-column: span 12">
         <div class="meta">
           <p class="title">Process</p>
           <p class="sub" style="font-size:15px; line-height:1.65; margin:10px 0 0">

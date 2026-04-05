@@ -44,6 +44,22 @@
       color: var(--text);
       border-color: var(--accent-border);
     }
+.dashboard-controls .search{
+  margin-left: auto;
+}
+.dashboard-bulk-bar{
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.dashboard-bulk-bar.is-disabled .sub,
+.dashboard-bulk-bar.is-disabled select,
+.dashboard-bulk-bar.is-disabled button{
+  opacity:.55;
+}
+.dashboard-bulk-bar.is-disabled .sub{
+  color:var(--muted);
+}
   </style>
 </head>
 <body>
@@ -58,43 +74,39 @@
 	    <div class="admin-layout">
 	      <aside class="sidebar" aria-label="Studio navigation"></aside>
 
-      <section>
-        <div class="dashboard-controls">
-          <div class="kpi">
-          <div class="card"><div class="meta"><div class="sub">Published</div><b id="kPub">&mdash;</b></div></div>
-          <div class="card"><div class="meta"><div class="sub">Drafts</div><b id="kDraft">&mdash;</b></div></div>
-          <div class="card"><div class="meta"><div class="sub">Hidden</div><b id="kHidden">&mdash;</b></div></div>
-        </div>
+	      <section>
+	        <div class="kpi">
+	          <div class="card"><div class="meta"><div class="sub">Published</div><b id="kPub">&mdash;</b></div></div>
+	          <div class="card"><div class="meta"><div class="sub">Drafts</div><b id="kDraft">&mdash;</b></div></div>
+	          <div class="card"><div class="meta"><div class="sub">Hidden</div><b id="kHidden">&mdash;</b></div></div>
+	        </div>
+	        <div class="dashboard-controls">
+	          <div class="filters" style="background-color: transparent;">
+              <span class="sub" style="white-space:nowrap;">Quick Filters:</span>
+              <div class="dashboard-filter-toggle" role="group" aria-label="Quick filters">
+              <button class="btn active" type="button" data-tab="all">All</button>
+              <button class="btn" type="button" data-tab="published">Published</button>
+              <button class="btn" type="button" data-tab="draft">Draft</button>
+              <button class="btn" type="button" data-tab="hidden">Hidden</button>
+              <button class="btn" type="button" data-tab="featured">Featured</button>
+            </div>
 
-          <div class="filters" style="margin-top:18px">
-          <span class="sub" style="white-space:nowrap;">Quick Filters:</span>
-          <div class="dashboard-filter-toggle" role="group" aria-label="Quick filters">
-            <button class="btn active" type="button" data-tab="all">All</button>
-            <button class="btn" type="button" data-tab="published">Published</button>
-            <button class="btn" type="button" data-tab="draft">Draft</button>
-            <button class="btn" type="button" data-tab="hidden">Hidden</button>
-            <button class="btn" type="button" data-tab="featured">Featured</button>
-          </div>
+            <div class="segmented" role="group" aria-label="Dashboard view mode">
+              <button type="button" data-view-mode="rows" class="active">Rows</button>
+              <button type="button" data-view-mode="thumbs">Thumbnails</button>
+            </div>
+            <button class="btn" id="thumbSelectAllToggle" type="button" style="display:none">Select all thumbs</button>
 
-          <div class="segmented" role="group" aria-label="Dashboard view mode">
-            <button type="button" data-view-mode="rows" class="active">Rows</button>
-            <button type="button" data-view-mode="thumbs">Thumbnails</button>
-          </div>
-          <button class="btn" id="thumbSelectAllToggle" type="button" style="display:none">Select all thumbs</button>
+	          <div class="search">
+	            <span>Search</span>
+	            <input id="q" placeholder="title, tag, series&hellip;" />
+	          </div>
 
-          <div class="search">
-            <span>Search</span>
-            <input id="q" placeholder="title, tag, series&hellip;" />
-          </div>
-
-
-          <button class="btn" id="toggleOrder" type="button">Manual order: Off</button>
-
-          <!-- Bulk actions -->
-          <div id="bulkBar" style="display:none; align-items:center; gap:10px; flex-wrap:wrap">
+	          <!-- Bulk actions -->
+          <div id="bulkBar" class="dashboard-bulk-bar" style="display:inline-flex">
             <span class="sub"><b id="bulkCount">0</b> selected</span>
 
-            <select id="bulkAction" aria-label="Bulk action" style="width:auto; min-width:220px">
+            <select id="bulkAction" aria-label="Bulk action" style="width:auto; min-width:220px" disabled>
               <option value="">Bulk action...</option>
               <option value="publish">Publish</option>
               <option value="draft">Set Draft</option>
@@ -107,7 +119,7 @@
               <option value="clear">Clear selection</option>
             </select>
 
-            <button class="btn" id="bulkApply" type="button">Apply</button>
+            <button class="btn" id="bulkApply" type="button" disabled>Apply</button>
 
 
             <!-- Bulk tag editor (shown only for tag actions) -->
@@ -151,7 +163,15 @@
         </div>
 
         <div class="table-scroll-shell" id="rowTableShell">
-        <table class="table" id="rowTable" aria-label="Artwork table">
+        <table class="table admin-artwork-table" id="rowTable" aria-label="Artwork table">
+          <colgroup>
+            <col style="width:56px">
+            <col>
+            <col style="width:140px">
+            <col style="width:220px">
+            <col style="width:88px">
+            <col style="width:180px">
+          </colgroup>
           <thead>
             <tr>
               <th style="width:52px">
@@ -163,16 +183,13 @@
               <th id="sortHeaderStatus" aria-sort="none">
                 <button class="admin-sort-header" type="button" data-sort-header="status">Status<span class="admin-sort-icon" aria-hidden="true"></span></button>
               </th>
-              <th id="sortHeaderTags" aria-sort="none">
-                <button class="admin-sort-header" type="button" data-sort-header="tags">Tags<span class="admin-sort-icon" aria-hidden="true"></span></button>
-              </th>
               <th id="sortHeaderSeries" aria-sort="none">
                 <button class="admin-sort-header" type="button" data-sort-header="series">Series<span class="admin-sort-icon" aria-hidden="true"></span></button>
               </th>
               <th id="sortHeaderYear" aria-sort="none">
                 <button class="admin-sort-header" type="button" data-sort-header="year">Year<span class="admin-sort-icon" aria-hidden="true"></span></button>
               </th>
-              <th><span class="admin-header-label">Actions</span></th>
+              <th><span class="admin-sort-header" style="cursor:default">Actions</span></th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>

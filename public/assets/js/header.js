@@ -13,6 +13,7 @@ export function renderPublicHeader({
   ctaText = "Explore",
   ctaHref = "gallery.html",
   brandLogoSrc = "",
+  showThemeControls = true,
   linkPrefix = "",
   studioHref = "admin/index.html",
   assetPrefix = "assets/",
@@ -25,12 +26,12 @@ export function renderPublicHeader({
   const toHref = (path) => `${normPrefix}${path}`;
   const toAsset = (path) => `${normAssetPrefix}${path}`;
   const resolveActiveNav = () => {
+    const path = String(window.location.pathname || "").toLowerCase();
+    if (path.includes("/admin/")) return "studio";
     const explicit = String(active || "").trim().toLowerCase();
     if (explicit && ["home", "gallery", "series", "about", "contact", "studio"].includes(explicit)) {
       return explicit;
     }
-    const path = String(window.location.pathname || "").toLowerCase();
-    if (path.includes("/admin/")) return "studio";
     if (path.endsWith("/gallery.html")) return "gallery";
     if (path.endsWith("/series.html")) return "series";
     if (path.endsWith("/about.html")) return "about";
@@ -79,11 +80,12 @@ export function renderPublicHeader({
         <a href="${toHref(studioHref)}" data-nav="studio">Studio</a>
       </nav>
 
-      <div class="theme-controls">
-        <button class="theme-pill-toggle" type="button" data-theme-toggle aria-label="Toggle theme"></button>
-      </div>
-    </div>
-  `;
+	      ${showThemeControls ? `
+	      <div class="theme-controls">
+	        <button class="theme-pill-toggle" type="button" data-theme-toggle aria-label="Toggle theme"></button>
+	      </div>` : ""}
+	    </div>
+	  `;
 
   const brandLink = headerHost.querySelector(".brand");
   if (brandLink) {
@@ -107,18 +109,10 @@ export function renderPublicHeader({
     const navLinksHost = headerHost.querySelector(".navlinks");
     if (!navContainer || !navLinksHost) return;
 
-    let indicator = navContainer.querySelector(".nav-active-indicator");
-    if (!indicator) {
-      indicator = document.createElement("span");
-      indicator.className = "nav-active-indicator";
-      indicator.setAttribute("aria-hidden", "true");
-      navContainer.appendChild(indicator);
-    }
+    const indicator = navContainer.querySelector(".nav-active-indicator");
+    if (indicator) indicator.remove();
 
-    if (window.matchMedia("(max-width: 760px)").matches) {
-      indicator.style.display = "none";
-      return;
-    }
+    if (window.matchMedia("(max-width: 760px)").matches) return;
 
     let activeLink = navLinksHost.querySelector("a.active, a[aria-current='page']");
     if (!activeLink) {
@@ -135,23 +129,11 @@ export function renderPublicHeader({
         activeLink = navLinksHost.querySelector("a[data-nav='studio']");
       }
     }
-    if (!activeLink) {
-      indicator.style.display = "none";
-      return;
-    }
+    if (!activeLink) return;
 
     if (!activeLink.classList.contains("active")) activeLink.classList.add("active");
     if (activeLink.getAttribute("aria-current") !== "page") activeLink.setAttribute("aria-current", "page");
 
-    const navRect = navContainer.getBoundingClientRect();
-    const linkRect = activeLink.getBoundingClientRect();
-    const inset = 10;
-    const width = Math.max(24, linkRect.width - inset * 2);
-    const left = linkRect.left - navRect.left + inset;
-
-    indicator.style.display = "block";
-    indicator.style.width = `${width}px`;
-    indicator.style.left = `${left}px`;
   };
 
   const navRoot = headerHost.querySelector(".nav");
@@ -636,7 +618,12 @@ function mountBannerRadarLogo(headerHost) {
       return;
     }
     if (!window.p5 || !canvasHost.isConnected) return;
-
+    const readThemeInk = () => {
+      const raw = getComputedStyle(document.body).color || "";
+      const m = raw.match(/(\d+)\D+(\d+)\D+(\d+)/);
+      if (!m) return [255, 84, 84];
+      return [Number(m[1]), Number(m[2]), Number(m[3])];
+    };
     new window.p5((p) => {
       let cw = 0;
       let ch = 0;
@@ -954,4 +941,5 @@ function mountBannerWireframeSphereLogo(headerHost) {
   }
   run();
 }
+
 

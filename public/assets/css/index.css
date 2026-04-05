@@ -4,8 +4,24 @@
       padding: 14px;
       margin-top: 18px;
     }
-    .gallery-section-featured{ background: color-mix(in srgb, var(--panel) 86%, var(--accent) 14%); }
-    .gallery-section-series{ background: color-mix(in srgb, var(--panel) 88%, var(--alternateaccent) 12%); }
+    #featuredSection{
+      background: color-mix(in srgb, var(--panel) 84%, #8a5bff 16%);
+      border-color: color-mix(in srgb, #8a5bff 26%, var(--line));
+    }
+    #homeSeriesSection{
+      background: color-mix(in srgb, var(--panel) 86%, #2e8f7f 14%);
+      border-color: color-mix(in srgb, #2e8f7f 24%, var(--line));
+    }
+    #latestSection{
+      background: color-mix(in srgb, var(--panel) 88%, #b9772f 12%);
+      border-color: color-mix(in srgb, #b9772f 22%, var(--line));
+    }
+    #featuredSection .section-title,
+    #homeSeriesSection .section-title,
+    #latestSection .section-title{
+      margin-top: 2px;
+      padding-top: 0;
+    }
 
     #latestGrid{
       gap: 12px;

@@ -11,6 +11,22 @@
   <header id="siteHeader"></header>
 
   <main class="container page-with-sticky-hero page-with-sticky-hero--about-contact">
+    <section class="page-toolbar page-toolbar--public" aria-label="Contact tools">
+      <div class="page-toolbar__shell">
+        <div class="page-toolbar__left">
+          <a class="page-toolbar__pill is-active" href="#contactFormPanel" aria-current="page">Get In Touch</a>
+          <a class="page-toolbar__pill" href="#contactEmailPanel">Email</a>
+          <a class="page-toolbar__pill" href="#contactLinksPanel">Links</a>
+        </div>
+        <div class="page-toolbar__right">
+          <div class="segmented page-toolbar__theme" role="group" aria-label="Theme mode">
+            <button type="button" data-theme-choice="system">System</button>
+            <button type="button" data-theme-choice="light">Light</button>
+            <button type="button" data-theme-choice="dark">Dark</button>
+          </div>
+        </div>
+      </div>
+    </section>
     <section class="hero hero--sticky">
       <h1>Contact</h1>
       <!-- <p>
@@ -25,7 +41,7 @@
 
     <section class="grid" aria-label="Contact content">
       <!-- Left: form -->
-	      <div class="card contact-panel contact-panel--form" style="grid-column: span 7">
+		      <div id="contactFormPanel" class="card contact-panel contact-panel--form page-toolbar-target" style="grid-column: span 7">
         <div class="meta">
           <p class="title">Inquiry form</p>
 
@@ -78,7 +94,7 @@
       </div>
 
       <!-- Right: direct contact + socials -->
-	      <div class="card contact-panel contact-panel--direct" style="grid-column: span 5">
+		      <div id="contactEmailPanel" class="card contact-panel contact-panel--direct page-toolbar-target" style="grid-column: span 5">
         <div class="meta">
           <p class="title">Direct</p>
 
@@ -107,14 +123,14 @@
 
           <hr style="border:0; border-top:1px solid var(--line); margin:16px 0" />
 
-          <p class="title">Social</p>
+	          <p id="contactLinksPanel" class="title page-toolbar-target">Social</p>
           <p class="sub" style="margin:10px 0 0">Other places you can find me.</p>
           <div id="socialLinks" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px"></div>
         </div>
       </div>
 
       <!-- Optional note -->
-      <div class="card" style="grid-column: span 12">
+	      <div class="card page-toolbar-target" style="grid-column: span 12">
         <div class="meta">
           <p class="title">What helps</p>
           <p class="sub" style="font-size:15px; line-height:1.65; margin:10px 0 0">

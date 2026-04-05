@@ -47,7 +47,7 @@ export async function initializeHomeSplash(options = {}) {
       let splashLogoIconCanvasHost = null;
       let splashForegroundCleanup = null;
       const SPLASH_ANIMATION_ENABLED_KEY = "toji_splash_animation_enabled_v1";
-      const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "random" | "nodes" | "flock" | "circles" | "matrix" | "life" | "plot" | "bounce" | "turningcircles" | "asteroids" | "tempest" | "missilecommand" | "radar" | "mountains" | "serpentinesphere" | "wireframesphere" | "pixeltitle" | "pixelnoise" | "orbitalbeams"
+      const SPLASH_ANIMATION_MODE_KEY = "toji_splash_animation_mode_v1"; // "random" | "nodes" | "flock" | "circles" | "matrix" | "life" | "plot" | "bounce" | "turningcircles" | "asteroids" | "tempest" | "missilecommand" | "radar" | "mountains" | "serpentinesphere" | "wireframesphere" | "pixeltitle" | "pixelnoise" | "pixelsnake" | "orbitalbeams"
       const SPLASH_RANDOM_CYCLE_ENABLED_KEY = "toji_splash_random_cycle_enabled_v1";
       const SPLASH_RANDOM_CYCLE_SECONDS_KEY = "toji_splash_random_cycle_seconds_v1";
       const SPLASH_ALLOWED_MODES_KEY = "toji_splash_allowed_modes_v1";
@@ -2376,6 +2376,7 @@ export async function initializeHomeSplash(options = {}) {
             else if (splashMode === "wireframesphere") {}
             else if (splashMode === "pixeltitle") {}
             else if (splashMode === "pixelnoise") {}
+            else if (splashMode === "pixelsnake") {}
             else if (splashMode === "orbitalbeams") seedOrbitalBeams();
             else if (splashMode === "radar") seedRadarScreen();
             else if (splashMode === "turningcircles") seedTurningCircles();
@@ -2399,6 +2400,7 @@ export async function initializeHomeSplash(options = {}) {
             else if (splashMode === "wireframesphere") {}
             else if (splashMode === "pixeltitle") {}
             else if (splashMode === "pixelnoise") {}
+            else if (splashMode === "pixelsnake") {}
             else if (splashMode === "orbitalbeams") seedOrbitalBeams();
             else if (splashMode === "radar") seedRadarScreen();
             else if (splashMode === "turningcircles") seedTurningCircles();
@@ -2788,6 +2790,174 @@ export async function initializeHomeSplash(options = {}) {
                     state.expiresAt[idx] = 0;
                   }
                   state.alpha[idx] = p.lerp(state.alpha[idx] || 0, state.targetAlpha[idx] || 0, 0.12);
+                  p.noFill();
+                  if (state.alpha[idx] > 2) p.stroke(state.hues[idx], state.sats[idx], state.brights[idx], state.alpha[idx]);
+                  else p.stroke(0, 0, 8, 135);
+                  p.strokeWeight(Math.max(1, tile * 0.12));
+                  p.rect(col * cell, row * cell, tile, tile, 1);
+                }
+              }
+              p.colorMode(p.RGB, 255, 255, 255, 255);
+              return;
+            }
+
+            if (splashMode === "pixelsnake") {
+              const viewportBasis = Math.min(p.width, p.height);
+              const cell = Math.max(14, Math.min(28, Math.round(viewportBasis / 38)));
+              const gap = Math.max(3, Math.min(8, Math.round(cell * 0.25)));
+              const tile = Math.max(1, cell - gap);
+              const cols = Math.ceil(p.width / cell);
+              const rows = Math.ceil(p.height / cell);
+              const total = cols * rows;
+              const now = p.millis();
+              if (!p.__pixelSnakeState || p.__pixelSnakeState.cols !== cols || p.__pixelSnakeState.rows !== rows) {
+                const startCol = Math.max(0, Math.floor(cols * 0.5));
+                const startRow = Math.max(0, Math.floor(rows * 0.5));
+                const startIdx = (startRow * cols) + startCol;
+                const maxLength = Math.max(8, Math.min(24, Math.round(Math.min(cols, rows) * 0.28)));
+                p.__pixelSnakeState = {
+                  cols,
+                  rows,
+                  alpha: Array.from({ length: total }, () => 0),
+                  hues: Array.from({ length: total }, () => p.random(0, 360)),
+                  sats: Array.from({ length: total }, () => p.random(60, 95)),
+                  brights: Array.from({ length: total }, () => p.random(78, 100)),
+                  snake: [startIdx],
+                  direction: { dc: 1, dr: 0 },
+                  maxLength,
+                  nextStepAt: now + 90,
+                  stepDelay: p.random(50, 105),
+                  baseHue: p.random(0, 360),
+                  explosions: [],
+                  nextExplosionAt: now + p.random(2200, 5200)
+                };
+              }
+              const state = p.__pixelSnakeState;
+              if (state.alpha.length !== total) {
+                state.alpha = Array.from({ length: total }, () => 0);
+                state.hues = Array.from({ length: total }, () => p.random(0, 360));
+                state.sats = Array.from({ length: total }, () => p.random(60, 95));
+                state.brights = Array.from({ length: total }, () => p.random(78, 100));
+                const startCol = Math.max(0, Math.floor(cols * 0.5));
+                const startRow = Math.max(0, Math.floor(rows * 0.5));
+                state.snake = [(startRow * cols) + startCol];
+                state.explosions = [];
+                state.nextExplosionAt = now + p.random(2200, 5200);
+              }
+              state.cols = cols;
+              state.rows = rows;
+              state.maxLength = Math.max(8, Math.min(24, Math.round(Math.min(cols, rows) * 0.28)));
+
+              if (now >= state.nextStepAt) {
+                const headIdx = state.snake[0] || 0;
+                const headCol = headIdx % cols;
+                const headRow = Math.floor(headIdx / cols);
+                const choices = [
+                  { dc: 1, dr: 0 },
+                  { dc: -1, dr: 0 },
+                  { dc: 0, dr: 1 },
+                  { dc: 0, dr: -1 }
+                ];
+                const oppositeDc = -(state.direction?.dc || 0);
+                const oppositeDr = -(state.direction?.dr || 0);
+                const occupied = new Set(state.snake);
+                const validMoves = choices
+                  .map((dir) => {
+                    const nextCol = headCol + dir.dc;
+                    const nextRow = headRow + dir.dr;
+                    if (nextCol < 0 || nextCol >= cols || nextRow < 0 || nextRow >= rows) return null;
+                    const idx = (nextRow * cols) + nextCol;
+                    return { ...dir, idx };
+                  })
+                  .filter(Boolean)
+                  .filter((dir) => !(dir.dc === oppositeDc && dir.dr === oppositeDr))
+                  .filter((dir) => !occupied.has(dir.idx));
+                const fallbackMoves = choices
+                  .map((dir) => {
+                    const nextCol = headCol + dir.dc;
+                    const nextRow = headRow + dir.dr;
+                    if (nextCol < 0 || nextCol >= cols || nextRow < 0 || nextRow >= rows) return null;
+                    return { ...dir, idx: (nextRow * cols) + nextCol };
+                  })
+                  .filter(Boolean);
+                const forwardMoves = validMoves.filter((dir) => dir.dc === state.direction.dc && dir.dr === state.direction.dr);
+                const movePool = forwardMoves.length && p.random() < 0.58
+                  ? forwardMoves
+                  : (validMoves.length ? validMoves : fallbackMoves);
+                const chosen = movePool[Math.floor(p.random(movePool.length))] || {
+                  dc: 1,
+                  dr: 0,
+                  idx: headIdx
+                };
+                state.direction = { dc: chosen.dc, dr: chosen.dr };
+                state.baseHue = (state.baseHue + p.random(-18, 26) + 360) % 360;
+                state.snake.unshift(chosen.idx);
+                while (state.snake.length > state.maxLength) state.snake.pop();
+                state.snake.forEach((idx, segmentIndex) => {
+                  const strength = 1 - (segmentIndex / Math.max(1, state.snake.length - 1));
+                  state.alpha[idx] = Math.max(state.alpha[idx] || 0, 120 + (strength * 135));
+                  state.hues[idx] = (state.baseHue + (segmentIndex * 5.5) + p.random(-6, 6) + 360) % 360;
+                  state.sats[idx] = 72 + (strength * 24);
+                  state.brights[idx] = 84 + (strength * 16);
+                });
+                state.stepDelay = p.random(50, 105);
+                state.nextStepAt = now + state.stepDelay;
+              }
+
+              if (now >= (state.nextExplosionAt || 0)) {
+                const sourceIdx = state.snake[Math.floor(p.random(Math.max(1, state.snake.length)))] || state.snake[0] || 0;
+                const sourceCol = sourceIdx % cols;
+                const sourceRow = Math.floor(sourceIdx / cols);
+                const rayCount = 16;
+                const maxSteps = Math.max(4, Math.round(Math.min(cols, rows) * 0.24));
+                const rays = [];
+                for (let i = 0; i < rayCount; i += 1) {
+                  const angle = (Math.PI * 2 * i) / rayCount;
+                  rays.push({
+                    x: sourceCol,
+                    y: sourceRow,
+                    dx: Math.cos(angle),
+                    dy: Math.sin(angle),
+                    progress: 0,
+                    maxSteps,
+                    speed: p.random(0.42, 0.78)
+                  });
+                }
+                state.explosions.push({
+                  rays,
+                  hue: (state.baseHue + p.random(-24, 24) + 360) % 360
+                });
+                state.nextExplosionAt = now + p.random(2600, 6200);
+              }
+
+              p.colorMode(p.HSB, 360, 100, 100, 255);
+              p.background(4, 0, 2, 255);
+              for (let burstIndex = state.explosions.length - 1; burstIndex >= 0; burstIndex -= 1) {
+                const burst = state.explosions[burstIndex];
+                let activeRays = 0;
+                burst.rays.forEach((ray, rayIndex) => {
+                  if (ray.progress >= ray.maxSteps) return;
+                  ray.progress += ray.speed;
+                  const px = Math.round(ray.x + (ray.dx * ray.progress));
+                  const py = Math.round(ray.y + (ray.dy * ray.progress));
+                  if (px < 0 || px >= cols || py < 0 || py >= rows) {
+                    ray.progress = ray.maxSteps;
+                    return;
+                  }
+                  const idx = (py * cols) + px;
+                  const glow = 1 - Math.min(1, ray.progress / Math.max(1, ray.maxSteps));
+                  state.alpha[idx] = Math.max(state.alpha[idx] || 0, 132 + (glow * 96));
+                  state.hues[idx] = (burst.hue + (rayIndex * 4.5) + p.random(-4, 4) + 360) % 360;
+                  state.sats[idx] = 76 + (glow * 18);
+                  state.brights[idx] = 86 + (glow * 14);
+                  activeRays += 1;
+                });
+                if (!activeRays) state.explosions.splice(burstIndex, 1);
+              }
+              for (let row = 0; row < rows; row += 1) {
+                for (let col = 0; col < cols; col += 1) {
+                  const idx = row * cols + col;
+                  state.alpha[idx] = (state.alpha[idx] || 0) * 0.935;
                   p.noFill();
                   if (state.alpha[idx] > 2) p.stroke(state.hues[idx], state.sats[idx], state.brights[idx], state.alpha[idx]);
                   else p.stroke(0, 0, 8, 135);

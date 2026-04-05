@@ -80,6 +80,17 @@ setYearFooter();
     else state.artworks.unshift(item);
   }
 
+  function resolveArtworkThumb(item) {
+    const raw = String(
+      item?.thumb ||
+      item?.image ||
+      item?.artworkThumb ||
+      item?.artworkImage ||
+      ""
+    ).trim();
+    return raw || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 44'><rect width='56' height='44' rx='10' fill='%23272638'/><path d='M11 31l10-10 8 8 6-6 10 8' fill='none' stroke='%237f7a9a' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'/><circle cx='20' cy='16' r='4' fill='%237f7a9a'/></svg>";
+  }
+
   function getAllTags() {
     const source = Array.isArray(state.artworks) ? state.artworks : [];
     const out = new Set();
@@ -234,7 +245,7 @@ setYearFooter();
 
       list.appendChild(
         el("a", { class:"card", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"box-shadow:none; display:flex; align-items:center; gap:12px; padding:10px;" },
-          el("div", { class:"thumbSm" }, el("img", { src:a.thumb, alt:a.title, loading:"lazy" })),
+          el("div", { class:"thumbSm" }, el("img", { src: resolveArtworkThumb(a), alt:a.title, loading:"lazy" })),
           el("div", { class:"meta" },
             el("p", { class:"title" }, a.title || "Untitled"),
             el("p", { class:"sub" }, `ID: ${a.id} - Open to edit ->`)
@@ -252,6 +263,7 @@ setYearFooter();
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${getApiBase()}${path}`);
+      xhr.withCredentials = true;
       const token = getAdminToken();
       if (token && token !== "__session__") xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       xhr.responseType = "json";
@@ -285,6 +297,7 @@ setYearFooter();
       );
       refreshed.forEach((item) => mergeUploadedArtwork(item));
       saveState(state);
+      renderNew();
     } catch (err) {
       console.warn("Failed to refresh uploaded artworks from backend", err);
     }
@@ -365,3 +378,4 @@ setYearFooter();
   renderTagPills();
   renderNew();
 })();
+

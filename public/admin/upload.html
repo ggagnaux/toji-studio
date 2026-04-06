@@ -115,7 +115,17 @@
 	                  <button class="btn status-toggle-option" type="button" data-status-pill="hidden" aria-pressed="false">Hidden</button>
 	                </div>
 	                <input id="statusSelect" type="hidden" value="draft" />
-	              </div>
+              </div>
+
+              <div class="upload-readiness" id="uploadReadiness" aria-live="polite">
+                <div class="upload-readiness__head">
+                  <p class="title">Publish readiness</p>
+                  <span class="upload-readiness__score" id="uploadReadinessScore">0 / 5 ready</span>
+                </div>
+                <p class="sub" id="uploadReadinessSummary">New uploads start incomplete and should be finished in Edit before publishing.</p>
+                <div class="upload-readiness__list" id="uploadReadinessList"></div>
+                <p class="upload-readiness__note" id="uploadReadinessNote">New uploads are forced to Draft until required metadata is filled in.</p>
+              </div>
             </div>
           </div>
 
@@ -154,3 +164,4 @@
   <script type="module" src="./js/upload.js"></script>
 </body>
 </html>
+

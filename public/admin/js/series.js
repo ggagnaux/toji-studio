@@ -450,6 +450,165 @@
             width:100%;
           }
         }
+        .series-manager-page .series-row{
+          justify-content:flex-start;
+          text-align:left;
+          padding:12px;
+          border-radius:14px;
+          width:100%;
+          min-width:0;
+        }
+        .series-manager-page .series-row__main{
+          display:flex;
+          gap:12px;
+          align-items:center;
+          width:100%;
+        }
+        .series-manager-page .series-row__cover{
+          width:48px;
+          height:48px;
+          border-radius:10px;
+          border:1px solid var(--line);
+          object-fit:cover;
+          flex:0 0 auto;
+        }
+        .series-manager-page .series-row__body{
+          display:grid;
+          gap:6px;
+          min-width:0;
+          flex:1 1 auto;
+        }
+        .series-manager-page .series-row__title{
+          font-weight:650;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+        }
+        .series-manager-page .series-row__meta{
+          display:flex;
+          flex-wrap:wrap;
+          gap:6px;
+        }
+        .series-manager-page .series-row__actions{
+          display:flex;
+          gap:8px;
+          align-items:center;
+          margin-left:auto;
+          flex:0 0 auto;
+        }
+        .series-manager-page .series-signal{
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          gap:6px;
+          min-height:26px;
+          padding:5px 9px;
+          border-radius:999px;
+          border:1px solid color-mix(in srgb, var(--line) 84%, transparent);
+          background:color-mix(in srgb, var(--surface) 86%, transparent);
+          color:var(--muted);
+          font-size:12px;
+          font-weight:650;
+          line-height:1;
+          letter-spacing:.01em;
+        }
+        .series-manager-page .series-signal--ok{
+          border-color:color-mix(in srgb, #4db6ac 58%, var(--line));
+          background:color-mix(in srgb, #4db6ac 12%, var(--panel));
+          color:color-mix(in srgb, #9ce7dc 34%, var(--text));
+        }
+        .series-manager-page .series-signal--warn{
+          border-color:color-mix(in srgb, #e0aa3c 62%, var(--line));
+          background:color-mix(in srgb, #e0aa3c 15%, var(--panel));
+          color:color-mix(in srgb, #ffd891 45%, var(--text));
+        }
+        .series-manager-page .series-signal--danger{
+          border-color:color-mix(in srgb, #d15353 62%, var(--line));
+          background:color-mix(in srgb, #d15353 14%, var(--panel));
+          color:color-mix(in srgb, #ffc4c4 40%, var(--text));
+        }
+        .series-manager-page .series-signal--accent{
+          border-color:color-mix(in srgb, var(--accent) 60%, var(--line));
+          background:color-mix(in srgb, var(--accent) 14%, var(--panel));
+          color:color-mix(in srgb, white 24%, var(--text));
+        }
+        .series-manager-page .series-preview-card{
+          display:grid;
+          grid-template-columns:minmax(160px, 220px) minmax(0, 1fr);
+          gap:16px;
+          padding:14px;
+          border:1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+          border-radius:18px;
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, var(--panel)), color-mix(in srgb, var(--panel) 94%, var(--bg)));
+          margin-top:12px;
+        }
+        .series-manager-page .series-preview-card__media{
+          aspect-ratio:1 / 1;
+          border-radius:14px;
+          overflow:hidden;
+          border:1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+          background:color-mix(in srgb, var(--bg) 78%, var(--panel));
+        }
+        .series-manager-page .series-preview-card__media img{
+          width:100%;
+          height:100%;
+          object-fit:cover;
+          display:block;
+        }
+        .series-manager-page .series-preview-card__empty{
+          width:100%;
+          height:100%;
+          display:grid;
+          place-items:center;
+          text-align:center;
+          padding:18px;
+          color:var(--muted);
+          font-size:13px;
+          line-height:1.45;
+        }
+        .series-manager-page .series-preview-card__body{
+          display:grid;
+          gap:10px;
+          align-content:start;
+          min-width:0;
+        }
+        .series-manager-page .series-preview-card__top{
+          display:flex;
+          justify-content:space-between;
+          align-items:flex-start;
+          gap:10px;
+          flex-wrap:wrap;
+        }
+        .series-manager-page .series-preview-card__title{
+          margin:0;
+          font-size:24px;
+          line-height:1.05;
+        }
+        .series-manager-page .series-preview-card__summary{
+          margin:0;
+          color:var(--text);
+          line-height:1.6;
+        }
+        .series-manager-page .series-preview-card__signals{
+          display:flex;
+          flex-wrap:wrap;
+          gap:8px;
+        }
+        .series-manager-page .series-preview-card__actions{
+          display:flex;
+          gap:8px;
+          flex-wrap:wrap;
+          align-items:center;
+        }
+        .series-manager-page .series-preview-note{
+          margin:0;
+        }
+        @media (max-width: 900px){
+          .series-manager-page .series-preview-card{
+            grid-template-columns:minmax(0, 1fr);
+          }
+        }
       `;
       document.head.appendChild(style);
     }
@@ -547,6 +706,113 @@
         .sort((a,b) => (Number(a.sortOrder||0) - Number(b.sortOrder||0)) || String(a.name||"").localeCompare(String(b.name||"")));
     }
 
+    function getSeriesPublicHref(slug){
+      return `../series.html?s=${encodeURIComponent(slug || "")}`;
+    }
+
+    function getSeriesVisibilityLabel(seriesRow){
+      if (!seriesRow?.isPublic) return "Hidden from public series";
+      const publicRows = seriesArray().filter((row) => !!row.isPublic);
+      const index = publicRows.findIndex((row) => row.slug === seriesRow.slug);
+      return index >= 0 ? `Public order #${index + 1}` : "Public series";
+    }
+
+    function getSeriesArtworkStats(seriesRow){
+      const items = (state.artworks || []).filter((artwork) => artworkBelongsToSeries(artwork, seriesRow));
+      const published = items.filter((artwork) => String(artwork?.status || "").toLowerCase() === "published");
+      return {
+        total: items.length,
+        published: published.length,
+        draft: Math.max(0, items.length - published.length)
+      };
+    }
+
+    function resolveSeriesCover(seriesRow){
+      const selectedId = String(seriesRow?.coverArtworkId || "").trim();
+      const included = orderedSeriesArtworkItems(seriesRow);
+      const all = seriesArtworkItems(seriesRow);
+      const findArtwork = (id) => (state.artworks || []).find((artwork) => String(artwork?.id || "") === String(id || ""));
+      const normalizeCover = (artwork) => {
+        if (!artwork) return null;
+        return {
+          src: artwork.thumb || artwork.image || normalizeCoverThumbPath(seriesRow?.coverThumb),
+          label: artwork.title || artwork.label || "Untitled",
+          id: String(artwork.id || ""),
+          status: String(artwork.status || "").toLowerCase()
+        };
+      };
+
+      if (selectedId) {
+        const selectedArtwork = normalizeCover(findArtwork(selectedId) || included.find((item) => String(item.id) === selectedId) || all.find((item) => String(item.id) === selectedId));
+        if (selectedArtwork?.src) {
+          return {
+            mode: "selected",
+            src: selectedArtwork.src,
+            label: selectedArtwork.label,
+            note: selectedArtwork.status === "published"
+              ? "Public cover uses the selected artwork."
+              : "Selected cover is not published yet."
+          };
+        }
+      }
+
+      const fallbackArtwork = normalizeCover(
+        (state.artworks || []).find((artwork) => artworkBelongsToSeries(artwork, seriesRow) && String(artwork?.status || "").toLowerCase() === "published") ||
+        (state.artworks || []).find((artwork) => artworkBelongsToSeries(artwork, seriesRow)) ||
+        included[0] ||
+        all[0]
+      );
+
+      if (fallbackArtwork?.src) {
+        return {
+          mode: "fallback",
+          src: fallbackArtwork.src,
+          label: fallbackArtwork.label,
+          note: "Public cover falls back to the first available series artwork."
+        };
+      }
+
+      return {
+        mode: "empty",
+        src: "",
+        label: "",
+        note: "No cover preview yet. Add artwork to this series or pick a cover manually."
+      };
+    }
+
+    function getSeriesEditorialSignals(seriesRow){
+      const stats = getSeriesArtworkStats(seriesRow);
+      const hasDescription = !!String(seriesRow?.description || "").trim();
+      const cover = resolveSeriesCover(seriesRow);
+      const visibilityTone = seriesRow?.isPublic ? "ok" : "warn";
+      return {
+        stats,
+        cover,
+        hasDescription,
+        descriptionSignal: hasDescription
+          ? { label: "Description ready", tone: "ok" }
+          : { label: "Missing description", tone: "danger" },
+        coverSignal: cover.mode === "selected"
+          ? { label: "Manual cover", tone: "ok" }
+          : cover.mode === "fallback"
+            ? { label: "Auto cover preview", tone: "warn" }
+            : { label: "No cover preview", tone: "danger" },
+        visibilitySignal: {
+          label: getSeriesVisibilityLabel(seriesRow),
+          tone: visibilityTone
+        },
+        artworkSignal: {
+          label: stats.published > 0
+            ? `${stats.published} public piece${stats.published === 1 ? "" : "s"}`
+            : (stats.total > 0 ? `${stats.total} assigned, none public` : "No artwork assigned"),
+          tone: stats.published > 0 ? "accent" : (stats.total > 0 ? "warn" : "danger")
+        }
+      };
+    }
+
+    function buildSeriesSignal(signal){
+      return el("span", { class:`series-signal series-signal--${signal?.tone || "accent"}` }, signal?.label || "");
+    }
     function queueSeriesOrderSync(){
       clearTimeout(orderSyncTimer);
       orderSyncTimer = setTimeout(() => syncSeriesOrderBackend(), 400);
@@ -737,6 +1003,7 @@
       for (const s of rows){
         const isActive = s.slug === activeSlug;
         const isSelected = selectedSlugs.has(s.slug);
+        const editorial = getSeriesEditorialSignals(s);
         const selectPill = el("button", {
           type: "button",
           "aria-label": `${isSelected ? "Deselect" : "Select"} series ${s.name || s.slug}`,
@@ -784,22 +1051,37 @@
           });
         });
 
+        const previewLink = el("a", {
+          class:"btn mini",
+          href:getSeriesPublicHref(s.slug),
+          target:"_blank",
+          rel:"noopener noreferrer",
+          title:"Open public series page preview",
+          style:"flex:0 0 auto;"
+        }, "Preview");
+        previewLink.addEventListener("click", (e) => e.stopPropagation());
+
         const btn = el("button", {
-          class:"btn",
+          class:"btn series-row",
           type:"button",
-          style: `
-            justify-content:flex-start; text-align:left; padding:12px; border-radius:14px; width:100%; min-width:0;
-            ${isActive ? "border-color: var(--accent-border); background: var(--accent-soft);" : ""}
-          `
+          style: isActive ? "border-color: var(--accent-border); background: var(--accent-soft);" : ""
         },
-          el("div", { style:"display:flex; gap:12px; align-items:center; width:100%" },
+          el("div", { class:"series-row__main" },
             selectPill,
-            s.coverThumb ? el("img", { src:s.coverThumb, style:"width:48px;height:48px;border-radius:10px;object-fit:cover;border:1px solid var(--line)" }) : null,
-            el("div", { style:"display:grid; gap:4px; min-width:0; flex:1 1 auto" },
-              el("div", { style:"font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" }, s.name || s.slug),
-              el("div", { class:"sub" }, `${s.isPublic ? "Public" : "Hidden"}`)
+            editorial.cover.src ? el("img", { class:"series-row__cover", src:editorial.cover.src, alt:"" }) : null,
+            el("div", { class:"series-row__body" },
+              el("div", { class:"series-row__title" }, s.name || s.slug),
+              el("div", { class:"series-row__meta" },
+                buildSeriesSignal(editorial.visibilitySignal),
+                buildSeriesSignal(editorial.descriptionSignal),
+                buildSeriesSignal(editorial.coverSignal),
+                buildSeriesSignal(editorial.artworkSignal)
+              )
             ),
-            reorderPill
+            el("div", { class:"series-row__actions" },
+              previewLink,
+              reorderPill
+            )
           )
         );
 
@@ -989,6 +1271,8 @@
         editor.appendChild(el("div", { class:"sub" }, "Series not found."));
         return;
       }
+      const editorial = getSeriesEditorialSignals(s);
+      const publicHref = getSeriesPublicHref(s.slug);
 
       document.querySelectorAll(".series-cover-modal[data-series-cover-portal='1']").forEach((node) => node.remove());
       editor.innerHTML = "";
@@ -996,6 +1280,50 @@
         el("div", { style:"display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap" },
           el("p", { class:"title", style:"margin:0" }, `Edit: ${s.name}`),
           el("span", { class:"sub" }, `slug: ${s.slug}`)
+        )
+      );
+      editor.appendChild(
+        el("section", { class:"series-preview-card", "aria-label":"Public preview summary" },
+          el("div", { class:"series-preview-card__media" },
+            editorial.cover.src
+              ? el("img", { src:editorial.cover.src, alt:`${s.name} public cover preview` })
+              : el("div", { class:"series-preview-card__empty" }, "No public cover preview yet")
+          ),
+          el("div", { class:"series-preview-card__body" },
+            el("div", { class:"series-preview-card__top" },
+              el("div", {},
+                el("p", { class:"sub", style:"margin:0" }, "Public page preview"),
+                el("h2", { class:"series-preview-card__title" }, s.name || s.slug)
+              ),
+              buildSeriesSignal(editorial.visibilitySignal)
+            ),
+            el("p", { class:"series-preview-card__summary" },
+              editorial.hasDescription
+                ? String(s.description || "").trim()
+                : "Description missing. Add a short curatorial summary so the public series page feels intentional."
+            ),
+            el("div", { class:"series-preview-card__signals" },
+              buildSeriesSignal(editorial.descriptionSignal),
+              buildSeriesSignal(editorial.coverSignal),
+              buildSeriesSignal(editorial.artworkSignal),
+              editorial.stats.draft > 0
+                ? buildSeriesSignal({ label: `${editorial.stats.draft} draft piece${editorial.stats.draft === 1 ? "" : "s"}`, tone: "warn" })
+                : null
+            ),
+            el("p", { class:"sub series-preview-note" }, editorial.cover.note),
+            el("div", { class:"series-preview-card__actions" },
+              el("a", {
+                class:"btn primary",
+                href:publicHref,
+                target:"_blank",
+                rel:"noopener noreferrer"
+              }, "Open public preview"),
+              el("a", {
+                class:"btn",
+                href:publicHref
+              }, "Open in this tab")
+            )
+          )
         )
       );
 
@@ -1704,6 +2032,8 @@ This will also clear its series assignment from any existing artwork.
     }
     renderList();
   
+
+
 
 
 

@@ -9,6 +9,7 @@
     } from "../admin.js";
     import { AI_FEATURES_ENABLED_KEY, initEditTabController, isAiFeaturesEnabled, syncAiButtons } from "./edit-controller.js";
     import { initUploadFilterControllers } from "./upload-controller.js";
+import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork-readiness.js";
 
     ensureBaseStyles();
     setYearFooter();
@@ -339,6 +340,104 @@
         .status-toggle__pill[data-status-value="hidden"].is-active{
           background:color-mix(in srgb, #8f5565 24%, var(--panel));
         }
+        .status-toggle__pill:disabled{
+          opacity:.45;
+          cursor:not-allowed;
+          transform:none;
+        }
+        .status-toggle__pill:disabled:hover{
+          color:var(--muted);
+          background:transparent;
+          transform:none;
+        }
+        .edit-publish-readiness{
+          display:grid;
+          gap:10px;
+          padding:12px;
+          margin-top:12px;
+          border:1px solid color-mix(in srgb, var(--line) 84%, transparent);
+          border-radius:14px;
+          background:color-mix(in srgb, var(--panel) 96%, transparent);
+        }
+        .edit-publish-readiness__head{
+          display:flex;
+          gap:10px;
+          align-items:center;
+          justify-content:space-between;
+          flex-wrap:wrap;
+        }
+        .edit-publish-readiness__head .title{
+          margin:0;
+        }
+        .edit-publish-readiness__score{
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          min-width:92px;
+          padding:6px 10px;
+          border-radius:999px;
+          border:1px solid color-mix(in srgb, var(--line) 86%, transparent);
+          background:color-mix(in srgb, var(--panel) 90%, transparent);
+          font-size:12px;
+          font-weight:700;
+          letter-spacing:.04em;
+          text-transform:uppercase;
+        }
+        .edit-publish-readiness__list{
+          display:grid;
+          gap:8px;
+        }
+        .edit-publish-readiness__item{
+          display:flex;
+          align-items:center;
+          gap:10px;
+          min-height:38px;
+          padding:8px 10px;
+          border:1px solid color-mix(in srgb, var(--line) 78%, transparent);
+          border-radius:12px;
+          background:color-mix(in srgb, var(--panel) 92%, transparent);
+        }
+        .edit-publish-readiness__item.is-complete{
+          border-color:color-mix(in srgb, #2f9e63 52%, var(--line));
+          background:color-mix(in srgb, #2f9e63 10%, var(--panel));
+        }
+        .edit-publish-readiness__item.is-incomplete{
+          border-color:color-mix(in srgb, #c18a2d 50%, var(--line));
+          background:color-mix(in srgb, #c18a2d 11%, var(--panel));
+        }
+        .edit-publish-readiness__icon{
+          width:22px;
+          height:22px;
+          border-radius:999px;
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          font-size:12px;
+          font-weight:800;
+          flex:0 0 auto;
+        }
+        .edit-publish-readiness__item.is-complete .edit-publish-readiness__icon{
+          background:color-mix(in srgb, #2f9e63 22%, var(--panel));
+          color:color-mix(in srgb, #b9f0cf 88%, white);
+        }
+        .edit-publish-readiness__item.is-incomplete .edit-publish-readiness__icon{
+          background:color-mix(in srgb, #c18a2d 18%, var(--panel));
+          color:color-mix(in srgb, #ffd98c 92%, white);
+        }
+        .edit-publish-readiness__body{
+          display:grid;
+          gap:2px;
+        }
+        .edit-publish-readiness__label{
+          font-weight:700;
+        }
+        .edit-publish-readiness__detail,
+        .edit-publish-readiness__hint{
+          color:var(--muted);
+          font-size:12px;
+          line-height:1.4;
+          margin:0;
+        }
         .btn-ai[data-tooltip]:hover::after,
         .btn-ai[data-tooltip]:focus-visible::after{
           content: attr(data-tooltip);
@@ -402,6 +501,11 @@
     // Status + autosave wiring
     // -----------------------
     const status = el("span", { class:"sub", id:"status", "aria-live":"polite" }, "");
+    let publishStatusButton = null;
+    let editReadinessScore = null;
+    let editReadinessSummary = null;
+    let editReadinessList = null;
+    let editReadinessHint = null;
 
     function setStatusText(msg, ms=10000, tone="info"){
       if (!msg) return;
@@ -413,7 +517,8 @@
       a.updatedAt = new Date().toISOString();
       saveState(state);
       h1.textContent = a.title || "Untitled";
-      sub.textContent = `ID: ${a.id} \u2022 Status: ${a.status}`;
+      sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
+      renderPublishReadiness();
       if (!quiet) setStatusText("Saved locally.");
     }
 
@@ -624,9 +729,46 @@
       saveTimer = setTimeout(() => flushBackendSave(false), 700);
     }
 
+    function renderPublishReadiness(){
+      const audit = getArtworkPublishReadiness(a);
+      if (editReadinessScore) editReadinessScore.textContent = `${audit.completed} / ${audit.total} ready`;
+      if (editReadinessSummary) editReadinessSummary.textContent = summarizeReadinessMissing(audit.missing, { completeLabel: "Ready to publish" });
+      if (editReadinessHint) editReadinessHint.textContent = audit.isComplete
+        ? "All required publish metadata is present."
+        : "Complete the missing fields before switching this piece to Published.";
+      if (editReadinessList) {
+        editReadinessList.innerHTML = "";
+        audit.checks.forEach((check) => {
+          editReadinessList.appendChild(
+            el("div", { class: `edit-publish-readiness__item ${check.complete ? "is-complete" : "is-incomplete"}` },
+              el("span", { class: "edit-publish-readiness__icon", "aria-hidden":"true" }, check.complete ? "OK" : "!"),
+              el("div", { class: "edit-publish-readiness__body" },
+                el("span", { class: "edit-publish-readiness__label" }, check.label),
+                el("span", { class: "edit-publish-readiness__detail" }, check.complete ? "Ready for publish" : "Needs completion")
+              )
+            )
+          );
+        });
+      }
+      if (publishStatusButton) {
+        const disablePublish = !audit.isComplete && a.status !== "published";
+        publishStatusButton.disabled = disablePublish;
+        publishStatusButton.setAttribute("aria-disabled", disablePublish ? "true" : "false");
+        publishStatusButton.title = disablePublish ? `Complete ${audit.missing.join(", ")} before publishing.` : "Publish artwork";
+      }
+      return audit;
+    }
+
     function setStatus(next){
+      const audit = getArtworkPublishReadiness(a);
+      if (next === "published" && a.status !== "published" && !audit.isComplete) {
+        setStatusText(`Complete ${audit.missing.join(", ")} before publishing.`, 10000, "warn");
+        renderPublishReadiness();
+        return;
+      }
       a.status = next;
       if (next === "published" && !a.publishedAt) a.publishedAt = new Date().toISOString();
+      if (next !== "published") a.publishedAt = a.publishedAt || null;
       localSave(true);
       flushBackendSave(true);
       sub.textContent = `ID: ${a.id} \u2022 Status: ${a.status}`;
@@ -1724,6 +1866,7 @@
                 syncStatusButtons();
               }
             }, row.label);
+            if (row.value === "published") publishStatusButton = btn;
             toggle.appendChild(btn);
           }
           syncStatusButtons();
@@ -1734,6 +1877,15 @@
         })(),
 
 
+        el("div", { class:"edit-publish-readiness", id:"editPublishReadiness", "aria-live":"polite" },
+          el("div", { class:"edit-publish-readiness__head" },
+            el("p", { class:"title" }, "Publish readiness"),
+            el("span", { class:"edit-publish-readiness__score", id:"editReadinessScore" }, "0 / 5 ready")
+          ),
+          el("p", { class:"sub", id:"editReadinessSummary" }, "Checking required metadata..."),
+          el("div", { class:"edit-publish-readiness__list", id:"editReadinessList" }),
+          el("p", { class:"edit-publish-readiness__hint", id:"editReadinessHint" }, "")
+        ),
         el("hr", { class:"sep" }),
 
         el("p", { class:"title" }, "Media tools"),
@@ -1868,6 +2020,11 @@
 
     root.appendChild(left);
     root.appendChild(right);
+    editReadinessScore = document.getElementById("editReadinessScore");
+    editReadinessSummary = document.getElementById("editReadinessSummary");
+    editReadinessList = document.getElementById("editReadinessList");
+    editReadinessHint = document.getElementById("editReadinessHint");
+    renderPublishReadiness();
     loadSocialPanel();
 
     function updatePreviewAlt(){
@@ -2072,6 +2229,11 @@
     // No auto-write on load.
     // Saves occur only after explicit user edits/actions.
   
+
+
+
+
+
 
 
 

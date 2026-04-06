@@ -27,13 +27,13 @@
 	        </div>
 	        <div class="dashboard-controls">
 	          <div class="filters" style="margin-top:18px">
-            <div class="field" style="width:auto; min-width:220px; margin-top:0">
-              <div class="sub">Platform</div>
-              <select id="queuePlatform">
-                <option value="bluesky">Bluesky</option>
-                <option value="linkedin">LinkedIn</option>
-              </select>
-            </div>
+	            <div class="field smm-floating-field" id="queuePlatformField" style="width:auto; min-width:220px; margin-top:0">
+	              <select id="queuePlatform" aria-labelledby="queuePlatformLabel">
+	                <option value="bluesky">Bluesky</option>
+	                <option value="linkedin">LinkedIn</option>
+	              </select>
+	              <label class="smm-floating-label" id="queuePlatformLabel" for="queuePlatform">Platform</label>
+	            </div>
 
             <div class="chip active" data-status-filter="all">All</div>
             <div class="chip" data-status-filter="queued">Queued</div>
@@ -47,15 +47,15 @@
               <input id="queueSearch" placeholder="title, artwork id, external id..." />
             </div>
 
-            <div class="field" style="width:auto; min-width:220px; margin-top:0">
-              <div class="sub">Sort</div>
-              <select id="queueSort">
-                <option value="updated_desc">Recently updated</option>
-                <option value="posted_desc">Recently posted</option>
-                <option value="status_priority">Queue priority</option>
-                <option value="title_asc">Artwork title</option>
-              </select>
-            </div>
+	            <div class="field smm-floating-field" id="queueSortField" style="width:auto; min-width:220px; margin-top:0">
+	              <select id="queueSort" aria-labelledby="queueSortLabel">
+	                <option value="updated_desc">Recently updated</option>
+	                <option value="posted_desc">Recently posted</option>
+	                <option value="status_priority">Queue priority</option>
+	                <option value="title_asc">Artwork title</option>
+	              </select>
+	              <label class="smm-floating-label" id="queueSortLabel" for="queueSort">Sort</label>
+	            </div>
           </div>
         </div>
 

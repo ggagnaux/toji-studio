@@ -3,8 +3,9 @@ export function qs(name) {
 }
 
 export function el(tag, attrs = {}, ...children) {
+  const safeAttrs = attrs && typeof attrs === "object" ? attrs : {};
   const node = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
+  for (const [k, v] of Object.entries(safeAttrs)) {
     if (k === "class") node.className = v;
     else if (k === "style") node.setAttribute("style", v);
     else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2), v);
@@ -17,6 +18,41 @@ export function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+
+export const PUBLIC_TAXONOMY = Object.freeze([
+  "Digital Art",
+  "Photography",
+  "Studies / Experiments"
+]);
+
+const TAXONOMY_KEYWORDS = Object.freeze({
+  photography: [
+    "photo", "photography", "photograph", "portrait", "product", "glassware", "bottle", "bottles", "liquid", "liquids", "still life", "macro", "studio shot", "editorial"
+  ],
+  studies: [
+    "study", "studies", "experiment", "experiments", "sketch", "sketches", "test", "tests", "concept", "process", "draft", "wip", "exploration"
+  ]
+});
+
+export function deriveArtworkCategory(artwork) {
+  const haystack = [
+    artwork?.title,
+    artwork?.series,
+    artwork?.description,
+    ...(Array.isArray(artwork?.tags) ? artwork.tags : [])
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (TAXONOMY_KEYWORDS.photography.some((token) => haystack.includes(token))) {
+    return "Photography";
+  }
+  if (TAXONOMY_KEYWORDS.studies.some((token) => haystack.includes(token))) {
+    return "Studies / Experiments";
+  }
+  return "Digital Art";
+}
 export function slugifySeries(name) {
   return String(name || "")
     .trim()
@@ -82,6 +118,10 @@ function ensureLightboxStyles() {
 	    }
 	    .lb-title{
 	      font-weight:650;
+	      color:var(--muted);
+	      font-size:14px;
+	      letter-spacing:.08em;
+	      text-transform:uppercase;
 	      min-width:0;
 	    }
 	    .lb-counter{
@@ -117,7 +157,7 @@ function ensureLightboxStyles() {
       grid-column: 2;
       grid-row: 1;
     }
-    .lb-media-nav{
+	    .lb-media-nav{
       position:absolute;
       top:50%;
       width:60px;
@@ -133,16 +173,15 @@ function ensureLightboxStyles() {
         color-mix(in srgb, var(--panel) 78%, rgba(0,0,0,.18) 22%)
       );
       color:var(--text);
-      box-shadow:
-        inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent),
-        0 12px 28px rgba(0,0,0,.28),
-        0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
-      opacity:0;
-      // pointer-events:none;
-      pointer: hand;
-      z-index:4;
-      font-size:18px;
-      font-weight:700;
+	      box-shadow:
+	        inset 0 0 0 1px color-mix(in srgb, #ffffff 10%, transparent),
+	        0 12px 28px rgba(0,0,0,.28),
+	        0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+	      opacity:0;
+	      pointer-events:none;
+	      z-index:4;
+	      font-size:18px;
+	      font-weight:700;
       transition:opacity .18s ease, transform .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
     }
     .lb-media-nav--prev{
@@ -234,12 +273,56 @@ function ensureLightboxStyles() {
 	      grid-row: 1;
 	      position:relative;
 	    }
-    .lb-meta .sub{ margin-top:8px; }
-    .lb-tags{
-      margin-top:10px;
-      display:grid;
-      gap:6px;
-    }
+	    .lb-meta .sub{ margin-top:8px; }
+	    .lb-kicker{
+	      margin:0;
+	      color:color-mix(in srgb, var(--accent) 62%, var(--muted));
+	      font-size:13px;
+	      font-weight:650;
+	      letter-spacing:.1em;
+	      line-height:1.1;
+	      text-transform:uppercase;
+	    }
+	    .lb-meta-title{
+	      margin:8px 0 0;
+	      font-size:clamp(24px, 3vw, 30px);
+	      line-height:1.08;
+	      letter-spacing:-.02em;
+	      font-weight:700;
+	    }
+	    .lb-meta-facts{
+	      display:flex;
+	      gap:8px;
+	      flex-wrap:wrap;
+	      margin-top:12px;
+	    }
+	    .lb-meta-pill{
+	      display:inline-flex;
+	      align-items:center;
+	      min-height:30px;
+	      padding:5px 10px;
+	      border-radius:999px;
+	      border:1px solid var(--chip-border);
+	      background:var(--chip-bg);
+	      color:var(--text);
+	      font-size:13px;
+	      line-height:1.2;
+	      font-weight:600;
+	    }
+	    .lb-meta-desc{
+	      margin-top:14px;
+	      font-size:15px;
+	      line-height:1.7;
+	      color:color-mix(in srgb, var(--muted) 82%, var(--text) 18%);
+	    }
+	    .lb-divider{
+	      margin:14px 0 12px;
+	    }
+	    .lb-tags{
+	      margin-top:10px;
+	      display:grid;
+	      gap:6px;
+	    }
     .lb-tags-label{
       font-weight:600;
       font-size:13px;
@@ -266,8 +349,16 @@ function ensureLightboxStyles() {
       border-style:dashed;
       color:var(--muted);
     }
-	    .lb-actions{ display:flex; gap:8px; flex-wrap:wrap; }
-	    .lb-actions .btn{ padding:8px 10px; font-size:13px; }
+	    .lb-actions{
+	      display:flex;
+	      gap:8px;
+	      flex-wrap:wrap;
+	      margin-top:14px;
+	    }
+	    .lb-actions .btn{
+	      padding:8px 10px;
+	      font-size:13px;
+	    }
 		    .lb-actions .btn{
 		      transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease, box-shadow .18s ease, color .18s ease;
 		    }
@@ -276,10 +367,26 @@ function ensureLightboxStyles() {
 			      color: var(--text);
 			      background: color-mix(in srgb, var(--panel) 62%, var(--accent) 38%);
 			      border-color: color-mix(in srgb, var(--accent-border) 88%, #ffffff 12%);
-			      box-shadow: 0 10px 24px rgba(0,0,0,.28);
-			      transform: translate(2px, 0);
-			    }
-			    @media (max-width: 920px){
+		      box-shadow: 0 10px 24px rgba(0,0,0,.28);
+		      transform: translate(2px, 0);
+		    }
+	    .lb-sequence{
+	      display:flex;
+	      gap:8px;
+	      flex-wrap:wrap;
+	      margin-top:12px;
+	      align-items:center;
+	    }
+	    .lb-sequence .btn{
+	      min-height:34px;
+	      font-size:13px;
+	      padding:7px 10px;
+	    }
+	    .lb-sequence .btn[disabled]{
+	      opacity:.45;
+	      cursor:not-allowed;
+	    }
+		    @media (max-width: 920px){
 	      .lb{
 	        overflow:auto;
 	      }
@@ -312,25 +419,36 @@ function ensureLightboxStyles() {
 export function createArtworkLightboxController() {
   ensureLightboxStyles();
 
-  const backdrop = el("div", { class: "lb-backdrop", role: "dialog", "aria-modal": "true" });
-		  const title = el("div", { class: "lb-title" }, "");
-		  const counter = el("div", { class: "lb-counter", "aria-live": "polite" }, "");
-			  const closeBtn = el("button", { class: "btn", type: "button", "aria-label": "Close lightbox", title: "Close lightbox" }, "x");
-		  const prevBtn = el("button", { class: "btn", type: "button", "aria-label": "Previous artwork", title: "Previous artwork" }, "\u2190");
-		  const nextBtn = el("button", { class: "btn", type: "button", "aria-label": "Next artwork", title: "Next artwork" }, "\u2192");
+	  const backdrop = el("div", { class: "lb-backdrop", role: "dialog", "aria-modal": "true" });
+			  const title = el("div", { class: "lb-title" }, "");
+			  const counter = el("div", { class: "lb-counter", "aria-live": "polite" }, "");
+				  const closeBtn = el("button", { class: "btn", type: "button", "aria-label": "Close lightbox", title: "Close lightbox" }, "x");
+			  const prevBtn = el("button", { class: "btn", type: "button", "aria-label": "Previous artwork", title: "Previous artwork" }, "\u2190");
+			  const nextBtn = el("button", { class: "btn", type: "button", "aria-label": "Next artwork", title: "Next artwork" }, "\u2192");
 
-			  const top = el("div", { class: "lb-top" }, title, el("div", { class: "lb-actions" }, closeBtn));
-			  const mediaFrame = el("div", { class: "lb-media-frame" });
-		  const metaTitle = el("div", { style: "font-weight:650" }, "");
-	  const metaSub = el("div", { class: "sub" }, "");
-		  const metaTagsLabel = el("div", { class: "lb-tags-label" }, "Tags");
-	  const metaTagsValue = el("div", { class: "lb-tags-value" });
-	  const metaTags = el("div", { class: "lb-tags" }, metaTagsLabel, metaTagsValue);
-	  const metaDesc = el("div", { class: "sub", style: "font-size:15px; line-height:1.65" }, "");
-				  const meta = el("div", { class: "lb-meta" }, metaTitle, metaSub, metaTags, el("hr", { class: "sep" }), metaDesc, counter);
-			  prevBtn.className = "lb-media-nav lb-media-nav--prev";
-			  nextBtn.className = "lb-media-nav lb-media-nav--next";
-				  const media = el("div", { class: "lb-media" }, mediaFrame, prevBtn, nextBtn);
+				  const top = el("div", { class: "lb-top" }, title, el("div", { class: "lb-actions" }, closeBtn));
+				  const mediaFrame = el("div", { class: "lb-media-frame" });
+			  const metaKicker = el("div", { class: "lb-kicker" }, "");
+			  const metaTitle = el("div", { class: "lb-meta-title" }, "");
+		  const metaSub = el("div", { class: "sub" }, "");
+		  const metaFacts = el("div", { class: "lb-meta-facts" });
+			  const metaTagsLabel = el("div", { class: "lb-tags-label" }, "Tags");
+		  const metaTagsValue = el("div", { class: "lb-tags-value" });
+		  const metaTags = el("div", { class: "lb-tags" }, metaTagsLabel, metaTagsValue);
+		  const metaDesc = el("div", { class: "lb-meta-desc" }, "");
+		  const openPageBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "Open artwork page");
+		  const copyLinkBtn = el("button", { class: "btn", type: "button" }, "Copy link");
+		  const inquireBtn = el("a", { class: "btn primary", href: "contact.html" }, "Inquire about this piece");
+		  const seriesBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "View series");
+		  const imageBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "Open image file");
+		  const actions = el("div", { class: "lb-actions" }, openPageBtn, copyLinkBtn, inquireBtn, seriesBtn, imageBtn);
+		  const prevTextBtn = el("button", { class: "btn", type: "button" }, "Previous image");
+		  const nextTextBtn = el("button", { class: "btn", type: "button" }, "Next image");
+		  const sequence = el("div", { class: "lb-sequence" }, prevTextBtn, nextTextBtn);
+					  const meta = el("div", { class: "lb-meta" }, metaKicker, metaTitle, metaSub, metaFacts, actions, metaTags, el("hr", { class: "sep lb-divider" }), metaDesc, sequence, counter);
+				  prevBtn.className = "lb-media-nav lb-media-nav--prev";
+				  nextBtn.className = "lb-media-nav lb-media-nav--next";
+					  const media = el("div", { class: "lb-media" }, mediaFrame, prevBtn, nextBtn);
   const body = el("div", { class: "lb-body" }, media, meta);
 	  const panel = el("div", { class: "lb" }, top, body);
 
@@ -341,7 +459,8 @@ export function createArtworkLightboxController() {
 		  let lastActive = null;
 		  let activeImg = null;
 		  let animationToken = 0;
-	  function renderImage(item, direction = 0) {
+		  let currentShareUrl = "";
+		  function renderImage(item, direction = 0) {
 	    const nextImg = el("img", {
 	      alt: item.alt || item.title || "Artwork",
 	      src: item.image || item.thumb || ""
@@ -383,34 +502,65 @@ export function createArtworkLightboxController() {
 	    activeImg = nextImg;
 	  }
 
-		  function showCurrent(direction = 0) {
-		    if (!currentList.length || currentIndex < 0 || currentIndex >= currentList.length) return;
-		    const item = currentList[currentIndex];
-		    title.textContent = item.title || "Untitled";
-		    counter.textContent = `Image ${currentIndex + 1} of ${currentList.length}`;
-		    metaTitle.textContent = item.title || "Untitled";
-
-    const bits = [item.series || null, item.year || null, item.featured ? "Featured" : null]
-      .filter(Boolean)
-      .join(" | ");
-    metaSub.textContent = bits || "";
-    const tags = Array.isArray(item.tags)
-      ? item.tags.map((t) => String(t || "").trim()).filter(Boolean)
-      : [];
+			  function showCurrent(direction = 0) {
+			    if (!currentList.length || currentIndex < 0 || currentIndex >= currentList.length) return;
+			    const item = currentList[currentIndex];
+			    const category = deriveArtworkCategory(item);
+			    const artworkUrl = new URL(`artwork.html?id=${encodeURIComponent(item.id)}`, location.href);
+			    const imageUrl = item.image || item.thumb || "";
+			    title.textContent = item.series || category;
+			    counter.textContent = `Image ${currentIndex + 1} of ${currentList.length}`;
+			    metaKicker.textContent = category;
+			    metaTitle.textContent = item.title || "Untitled";
+			    metaSub.textContent = item.series ? `Part of ${item.series}` : "Standalone published work";
+			    metaFacts.innerHTML = "";
+			    [
+			      item.year ? `Year ${item.year}` : null,
+			      item.featured ? "Featured" : null,
+			      Array.isArray(item.tags) && item.tags.length ? `${item.tags.length} tag${item.tags.length === 1 ? "" : "s"}` : null
+			    ].filter(Boolean).forEach((fact) => {
+			      metaFacts.appendChild(el("span", { class: "lb-meta-pill" }, fact));
+			    });
+	    const tags = Array.isArray(item.tags)
+	      ? item.tags.map((t) => String(t || "").trim()).filter(Boolean)
+	      : [];
     metaTagsValue.innerHTML = "";
     if (tags.length) {
       tags.forEach((tag) => metaTagsValue.appendChild(el("span", { class: "lb-tag" }, tag)));
-	    } else {
-	      metaTagsValue.appendChild(el("span", { class: "lb-tag lb-tag-empty" }, "None"));
-	    }
-	    metaDesc.textContent = item.description || "";
+		    } else {
+		      metaTagsValue.appendChild(el("span", { class: "lb-tag lb-tag-empty" }, "None"));
+		    }
+		    metaDesc.textContent = item.description || "No description has been published for this piece yet.";
+			    currentShareUrl = artworkUrl.href;
+			    openPageBtn.href = artworkUrl.href;
+			    inquireBtn.href =
+			      `contact.html?topic=${encodeURIComponent("Licensing / inquiry")}` +
+			      `&title=${encodeURIComponent(item.title || "")}` +
+			      `&id=${encodeURIComponent(item.id || "")}` +
+			      `&url=${encodeURIComponent(artworkUrl.href)}`;
+			    if (item.series) {
+			      seriesBtn.hidden = false;
+			      seriesBtn.href = new URL(`series.html?s=${encodeURIComponent(slugifySeries(item.series))}`, location.href).href;
+			    } else {
+			      seriesBtn.hidden = true;
+			      seriesBtn.removeAttribute("href");
+			    }
+			    if (imageUrl) {
+			      imageBtn.hidden = false;
+			      imageBtn.href = new URL(imageUrl, location.href).href;
+			    } else {
+			      imageBtn.hidden = true;
+			      imageBtn.removeAttribute("href");
+			    }
 
-	    renderImage(item, direction);
-        const hasMultiple = currentList.length > 1;
-        prevBtn.style.display = hasMultiple ? "inline-flex" : "none";
-        nextBtn.style.display = hasMultiple ? "inline-flex" : "none";
-	    backdrop.style.display = "flex";
-	  }
+		    renderImage(item, direction);
+	        const hasMultiple = currentList.length > 1;
+	        prevBtn.style.display = hasMultiple ? "inline-flex" : "none";
+	        nextBtn.style.display = hasMultiple ? "inline-flex" : "none";
+	        prevTextBtn.disabled = !hasMultiple;
+	        nextTextBtn.disabled = !hasMultiple;
+		    backdrop.style.display = "flex";
+		  }
 
 		  function open(list, idx = 0) {
 	    if (!Array.isArray(list) || !list.length) return;
@@ -444,7 +594,24 @@ export function createArtworkLightboxController() {
 		  closeBtn.addEventListener("click", close);
 		  nextBtn.addEventListener("click", next);
 		  prevBtn.addEventListener("click", prev);
-	  let wheelLock = false;
+		  nextTextBtn.addEventListener("click", next);
+		  prevTextBtn.addEventListener("click", prev);
+		  copyLinkBtn.addEventListener("click", async () => {
+		    if (!currentShareUrl) return;
+		    try {
+		      await navigator.clipboard.writeText(currentShareUrl);
+		      copyLinkBtn.textContent = "Copied!";
+		      window.setTimeout(() => {
+		        copyLinkBtn.textContent = "Copy link";
+		      }, 900);
+		    } catch {
+		      copyLinkBtn.textContent = "Copy failed";
+		      window.setTimeout(() => {
+		        copyLinkBtn.textContent = "Copy link";
+		      }, 900);
+		    }
+		  });
+		  let wheelLock = false;
 	  panel.addEventListener("wheel", (e) => {
 	    if (backdrop.style.display !== "flex") return;
 	    if (wheelLock) {
@@ -471,6 +638,9 @@ export function createArtworkLightboxController() {
 
 		  return { host: backdrop, open, close, next, prev };
 	}
+
+
+
 
 
 

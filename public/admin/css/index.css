@@ -348,6 +348,84 @@
   overflow:hidden;
   text-overflow:ellipsis;
 }
+.admin-artwork-completeness{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+.admin-artwork-status-stack{
+  display:grid;
+  gap:6px;
+  justify-items:start;
+}
+.admin-completeness-pill{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:0 9px;
+  border-radius:999px;
+  border:1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  background:color-mix(in srgb, var(--surface) 84%, transparent);
+  color:var(--text);
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.03em;
+  line-height:1.2;
+  white-space:nowrap;
+}
+.admin-completeness-pill.is-complete{
+  border-color:color-mix(in srgb, #67d889 52%, var(--line));
+  background:color-mix(in srgb, #67d889 16%, var(--surface));
+  color:#d8ffe2;
+}
+.admin-completeness-pill.is-incomplete{
+  border-color:color-mix(in srgb, #f0b35e 52%, var(--line));
+  background:color-mix(in srgb, #f0b35e 14%, var(--surface));
+  color:#ffe6bf;
+}
+[data-theme="light"] .admin-completeness-pill.is-complete{
+  color:#155b29;
+}
+[data-theme="light"] .admin-completeness-pill.is-incomplete{
+  color:#7f4e10;
+}
+.admin-completeness-pill--compact{
+  min-height:22px;
+  font-size:10px;
+  padding:0 8px;
+}
+.admin-completeness-note{
+  min-width:0;
+  color:var(--muted);
+  font-size:12px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.admin-thumb-meta{
+  display:grid;
+  gap:8px;
+  padding:10px 12px 12px;
+}
+.admin-thumb-title{
+  color:var(--text);
+  font-size:14px;
+  font-weight:700;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.admin-thumb-completeness{
+  display:grid;
+  gap:6px;
+}
+.admin-thumb-note{
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.35;
+}
 .admin-artwork-status .chip{
   display:inline-flex;
   align-items:center;
@@ -555,6 +633,9 @@
   .admin-artwork-title-row{
     flex-wrap:wrap;
   }
+  .admin-artwork-completeness{
+    flex-wrap:wrap;
+  }
   .admin-artwork-action-row{
     flex-wrap:wrap;
     row-gap:6px;
@@ -572,6 +653,8 @@
     min-width:min(100%, 220px);
   }
 }
+
+
 
 
 

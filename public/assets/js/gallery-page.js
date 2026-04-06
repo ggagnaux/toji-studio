@@ -1,6 +1,6 @@
-﻿import { renderPublicHeader } from "./header.js";
+import { renderPublicHeader } from "./header.js";
     import { renderPublicFooter } from "./footer.js";
-    import { el, slugifySeries, sortGallery, createArtworkLightboxController } from "./content-utils.js";
+    import { el, slugifySeries, sortGallery, createArtworkLightboxController, deriveArtworkCategory, PUBLIC_TAXONOMY } from "./content-utils.js";
 
 	    renderPublicHeader({
 	      active: "gallery",
@@ -49,19 +49,23 @@
     const seriesCount = document.getElementById("seriesCount");
 
     const grid = document.getElementById("galleryGrid");
+    const categoryChipHost = document.getElementById("categoryChips");
     const tagPrefilterHost = document.getElementById("tagPrefilterChips");
     const chipHost = document.getElementById("tagChips");
 	    const tagFilterSummary = document.getElementById("tagFilterSummary");
 	    const galleryTagsShortcut = document.getElementById("galleryTagsShortcut");
 	    const qInput = document.getElementById("q");
-    const qClear = document.getElementById("qClear");
-    const allWorksWrap = document.getElementById("allWorksWrap");
-    const allWorksFilters = allWorksWrap?.querySelector(".filters");
-    const galleryTabsNav = document.getElementById("galleryTabsNav");
+	    const qClear = document.getElementById("qClear");
+	    const allWorksWrap = document.getElementById("allWorksWrap");
+	    const allWorksFilters = allWorksWrap?.querySelector(".filters");
+	    const allWorksStateBar = document.getElementById("allWorksStateBar");
+	    const galleryTabsNav = document.getElementById("galleryTabsNav");
     const galleryTabButtons = Array.from(document.querySelectorAll("[data-tab-target]"));
     const backToTopBtn = document.getElementById("backToTopBtn");
 
-    const allCount = document.getElementById("allCount");
+	    const allCount = document.getElementById("allCount");
+	    const INITIAL_ALL_WORKS_COUNT = 48;
+	    const ALL_WORKS_INCREMENT = 36;
 
     const state = await loadGalleryState();
     const allItems = sortGallery((state.artworks || []).filter(a => a.status === "published"));
@@ -99,17 +103,19 @@
       });
     }
 
-    const selectedTags = new Set();
-    let q = "";
-    let activeTabId = "featuredWrap";
+	    const selectedTags = new Set();
+	    let q = "";
+	    let selectedCategory = "all";
+	    let activeTabId = "featuredWrap";
+	    let allWorksVisibleCount = INITIAL_ALL_WORKS_COUNT;
 
-    function syncTagFilterVisibility() {
+	    function syncTagFilterVisibility() {
       const visible = selectedLetters.size > 0;
       if (chipHost) chipHost.hidden = !visible;
       if (tagFilterSummary) tagFilterSummary.hidden = !visible;
     }
 
-    function refreshSearchClear(){
+	    function refreshSearchClear(){
       if (!qClear || !qInput) return;
       qClear.style.display = qInput.value.trim() ? "inline-flex" : "none";
     }
@@ -246,7 +252,7 @@
     syncBackToTopVisibility();
     syncStickyOffsets();
 
-    function rerenderAllWorksPreserveScroll() {
+	    function rerenderAllWorksPreserveScroll() {
       const activeEl = document.activeElement;
       const anchor =
         (activeEl instanceof HTMLElement && allWorksWrap?.contains(activeEl) ? activeEl : null) ||
@@ -258,7 +264,11 @@
       const nextTop = anchor.getBoundingClientRect().top;
       const delta = nextTop - prevTop;
       if (Math.abs(delta) > 1) window.scrollBy({ top: delta, left: 0, behavior: "auto" });
-    }
+	    }
+
+	    function resetAllWorksWindow() {
+	      allWorksVisibleCount = INITIAL_ALL_WORKS_COUNT;
+	    }
 
     // ---- Render chips ----
     const tags = uniqTags(allItems);
@@ -308,14 +318,15 @@
           },
           letter
         );
-        btn.addEventListener("click", () => {
-          if (!enabled) return;
-          if (selectedLetters.has(letter)) selectedLetters.delete(letter);
-          else selectedLetters.add(letter);
-          if (!selectedLetters.size) selectedTags.clear();
-          syncTagFilterVisibility();
-          renderTagPrefilters();
-          renderChips();
+	        btn.addEventListener("click", () => {
+	          if (!enabled) return;
+	          if (selectedLetters.has(letter)) selectedLetters.delete(letter);
+	          else selectedLetters.add(letter);
+	          if (!selectedLetters.size) selectedTags.clear();
+	          resetAllWorksWindow();
+	          syncTagFilterVisibility();
+	          renderTagPrefilters();
+	          renderChips();
           renderAll();
         });
         tagPrefilterHost.appendChild(btn);
@@ -327,14 +338,16 @@
       return selectedTags.has(tag);
     }
 
-    function toggleTagFilter(tag) {
-      if (tag === "all") {
-        selectedTags.clear();
-        return;
-      }
-      if (selectedTags.has(tag)) selectedTags.delete(tag);
-      else selectedTags.add(tag);
-    }
+	    function toggleTagFilter(tag) {
+	      if (tag === "all") {
+	        selectedTags.clear();
+	        resetAllWorksWindow();
+	        return;
+	      }
+	      if (selectedTags.has(tag)) selectedTags.delete(tag);
+	      else selectedTags.add(tag);
+	      resetAllWorksWindow();
+	    }
 
     function renderChips() {
       syncTagFilterVisibility();
@@ -380,11 +393,21 @@
       const hasSearchFilter = !!q;
       tagFilterSummary.innerHTML = "";
 
-      if (!selectedLetterList.length && !selectedTagList.length && !hasSearchFilter) {
+      if (!selectedLetterList.length && !selectedTagList.length && !hasSearchFilter && selectedCategory === "all") {
         tagFilterSummary.textContent = "No filtering";
         return;
       }
 
+      if (selectedCategory !== "all") {
+        tagFilterSummary.appendChild(
+          el("div", { class: "tag-filter-summary-line" },
+            el("span", {}, "Showing category: "),
+            el("span", { class: "tag-filter-summary-pills" },
+              el("span", { class: "chip tag-filter-summary-pill" }, PUBLIC_TAXONOMY.find((category) => category.toLowerCase() === selectedCategory) || selectedCategory)
+            )
+          )
+        );
+      }
       if (hasSearchFilter) {
         tagFilterSummary.appendChild(
           el("div", { class: "tag-filter-summary-line" },
@@ -420,7 +443,7 @@
           )
         );
       }
-      if (selectedLetterList.length || selectedTagList.length || hasSearchFilter) {
+      if (selectedLetterList.length || selectedTagList.length || hasSearchFilter || selectedCategory !== "all") {
         tagFilterSummary.appendChild(
           el("div", { class: "tag-filter-summary-actions" },
             el("button", { id: "tagFiltersClearBtn", class: "btn", type: "button" }, "Clear filters")
@@ -432,11 +455,35 @@
       }
     }
 
-    function clearTagFilters() {
-      selectedLetters.clear();
-      selectedTags.clear();
-      q = "";
-      if (qInput) qInput.value = "";
+	    function renderCategoryChips() {
+      if (!categoryChipHost) return;
+      categoryChipHost.innerHTML = "";
+      const categories = ["all", ...PUBLIC_TAXONOMY];
+      categories.forEach((category) => {
+        const active = selectedCategory === String(category).toLowerCase();
+        const chip = el("button", {
+          class: `chip${active ? " active" : ""}`,
+          type: "button",
+          "aria-pressed": active ? "true" : "false"
+        }, category === "all" ? "All categories" : category);
+	        chip.addEventListener("click", () => {
+	          selectedCategory = String(category).toLowerCase();
+	          resetAllWorksWindow();
+	          renderCategoryChips();
+	          rerenderAllWorksPreserveScroll();
+	        });
+        categoryChipHost.appendChild(chip);
+      });
+    }
+
+	    function clearTagFilters() {
+	      selectedLetters.clear();
+	      selectedTags.clear();
+	      q = "";
+	      selectedCategory = "all";
+	      resetAllWorksWindow();
+	      if (qInput) qInput.value = "";
+      renderCategoryChips();
       syncTagFilterVisibility();
       renderTagPrefilters();
       renderChips();
@@ -444,14 +491,77 @@
       refreshSearchClear();
     }
 
-    // ---- Filtering ----
-    function matchesAllWorks(a) {
+	    // ---- Filtering ----
+	    function matchesAllWorks(a) {
       const artworkTags = new Set((a.tags || []).map(x => String(x).toLowerCase()));
+      const categoryOk = selectedCategory === "all" || deriveArtworkCategory(a).toLowerCase() === selectedCategory;
       const tagOk = selectedTags.size === 0 || Array.from(selectedTags).every(tag => artworkTags.has(tag));
       const text = `${a.title || ""} ${(a.tags || []).join(" ")} ${a.series || ""} ${a.year || ""}`.toLowerCase();
       const qOk = !q || text.includes(q);
-      return tagOk && qOk;
-    }
+	      return categoryOk && tagOk && qOk;
+	    }
+
+	    function renderAllWorksStateBar(items) {
+	      if (!allWorksStateBar) return;
+	      const filteredCount = items.length;
+	      const totalCount = allItems.length;
+	      const shownCount = Math.min(filteredCount, allWorksVisibleCount);
+	      const selectedLetterList = prefilterTokens.filter((token) => selectedLetters.has(token));
+	      const activeFilterLabels = [];
+	      if (selectedCategory !== "all") {
+	        activeFilterLabels.push(`Category: ${PUBLIC_TAXONOMY.find((category) => category.toLowerCase() === selectedCategory) || selectedCategory}`);
+	      }
+	      if (q) activeFilterLabels.push(`Search: "${q}"`);
+	      if (selectedLetterList.length) activeFilterLabels.push(`Tag initials: ${selectedLetterList.join(", ")}`);
+	      if (selectedTags.size) activeFilterLabels.push(...Array.from(selectedTags).map((tag) => `Tag: ${tag}`));
+	      const hasFilters = activeFilterLabels.length > 0;
+
+	      allWorksStateBar.hidden = false;
+	      allWorksStateBar.innerHTML = "";
+
+	      const summaryTitle = hasFilters
+	        ? `Showing ${shownCount} of ${filteredCount} matching works`
+	        : `Showing ${shownCount} of ${totalCount} published works`;
+	      const eyebrow = hasFilters ? "Archive filters active" : "Archive browsing";
+
+	      const top = el("div", { class: "all-works-state-bar__top" },
+	        el("div", { class: "all-works-state-bar__summary" },
+	          el("p", { class: "all-works-state-bar__eyebrow" }, eyebrow),
+	          el("p", { class: "all-works-state-bar__title" }, summaryTitle)
+	        ),
+	        el("div", { class: "all-works-state-bar__actions" },
+	          hasFilters ? el("button", { class: "btn", type: "button" }, "Clear filters") : null,
+	          filteredCount > shownCount ? el("button", { class: "btn", type: "button" }, `Load ${Math.min(ALL_WORKS_INCREMENT, filteredCount - shownCount)} more`) : null,
+	          filteredCount > shownCount ? el("button", { class: "btn", type: "button" }, "Show all") : null
+	        )
+	      );
+	      allWorksStateBar.appendChild(top);
+
+	      const actionButtons = top.querySelectorAll(".all-works-state-bar__actions .btn");
+	      if (hasFilters) {
+	        actionButtons[0]?.addEventListener("click", () => clearTagFilters());
+	      }
+	      if (filteredCount > shownCount) {
+	        const loadMoreBtn = hasFilters ? actionButtons[1] : actionButtons[0];
+	        const showAllBtn = hasFilters ? actionButtons[2] : actionButtons[1];
+	        loadMoreBtn?.addEventListener("click", () => {
+	          allWorksVisibleCount = Math.min(filteredCount, allWorksVisibleCount + ALL_WORKS_INCREMENT);
+	          rerenderAllWorksPreserveScroll();
+	        });
+	        showAllBtn?.addEventListener("click", () => {
+	          allWorksVisibleCount = filteredCount;
+	          rerenderAllWorksPreserveScroll();
+	        });
+	      }
+
+	      if (hasFilters) {
+	        allWorksStateBar.appendChild(
+	          el("div", { class: "all-works-state-bar__filters" },
+	            ...activeFilterLabels.map((label) => el("span", { class: "all-works-state-chip" }, label))
+	          )
+	        );
+	      }
+	    }
 
     // ---- Lightbox ----
     const lightbox = createArtworkLightboxController();
@@ -476,6 +586,7 @@
 
       items.forEach((a, idx) => {
         const metaBits = [
+          deriveArtworkCategory(a),
           a.series ? a.series : null,
           a.year ? a.year : null,
           a.featured ? "Featured" : null
@@ -547,7 +658,9 @@
           const sortOrderRaw = Number(meta?.sortOrder);
           const sortOrder = Number.isFinite(sortOrderRaw) ? sortOrderRaw : Number.MAX_SAFE_INTEGER;
           const isPublic = meta?.isPublic == null ? true : !!meta.isPublic;
-          return { name, slug, cover, description, items: orderedItems.length ? orderedItems : sortGallery(items), sortOrder, isPublic, imageOrder: seriesMeta.imageOrder || [] };
+          const finalItems = orderedItems.length ? orderedItems : sortGallery(items);
+          const category = finalItems.length ? deriveArtworkCategory(finalItems[0]) : "Digital Art";
+          return { name, slug, cover, description, items: finalItems, sortOrder, isPublic, imageOrder: seriesMeta.imageOrder || [], category };
         })
         .filter((s) => s.isPublic)
         .sort((a, b) => {
@@ -586,7 +699,7 @@
               ),
               el("div", { class: "meta" },
                 el("p", { class: "title" }, s.name),
-                el("p", { class: "sub" }, `${s.items.length} piece${s.items.length === 1 ? "" : "s"}`)
+                el("p", { class: "sub" }, `${s.category} | ${s.items.length} piece${s.items.length === 1 ? "" : "s"}`)
               )
             )
           )
@@ -601,8 +714,9 @@
       allCount.textContent = `${items.length} piece${items.length === 1 ? "" : "s"}`;
 
       grid.innerHTML = "";
-      if (!items.length) {
-        grid.appendChild(
+	      if (!items.length) {
+	        renderAllWorksStateBar(items);
+	        grid.appendChild(
           el("div", { class: "card", style: "grid-column: 1 / -1; max-width:none; width:100%" },
             el("div", { class: "meta" },
               el("p", { class: "title" }, "No matches"),
@@ -611,23 +725,28 @@
           )
         );
         return;
-      }
+	      }
 
-      renderCards(grid, items);
-    }
+	      renderAllWorksStateBar(items);
+	      renderCards(grid, items.slice(0, allWorksVisibleCount));
+	    }
 
-    qInput.addEventListener("input", (e) => {
-      q = e.target.value.trim().toLowerCase();
-      renderTagPrefilters();
-      renderChips();
+	    qInput.addEventListener("input", (e) => {
+	      q = e.target.value.trim().toLowerCase();
+	      resetAllWorksWindow();
+	      renderTagPrefilters();
+	      renderChips();
       rerenderAllWorksPreserveScroll();
       syncStickyOffsets();
       refreshSearchClear();
     });
 
-    qClear?.addEventListener("click", () => {
-      qInput.value = "";
-      q = "";
+	    qClear?.addEventListener("click", () => {
+	      qInput.value = "";
+	      q = "";
+	      selectedCategory = "all";
+	      resetAllWorksWindow();
+	      renderCategoryChips();
       renderTagPrefilters();
       renderChips();
       rerenderAllWorksPreserveScroll();
@@ -635,6 +754,7 @@
       refreshSearchClear();
       qInput.focus();
     });
+    renderCategoryChips();
     syncTagFilterVisibility();
     renderTagPrefilters();
     renderChips();
@@ -644,5 +764,7 @@
     ensureActiveTab();
     syncStickyOffsets();
     refreshSearchClear();
+
+
 
 

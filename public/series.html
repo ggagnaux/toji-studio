@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -27,34 +27,27 @@
         </div>
       </div>
     </section>
-    <section class="hero hero--sticky" style="padding-bottom:10px">
+    <section class="hero hero--sticky series-hero" style="padding-bottom:10px">
       <h1>Series</h1>
-      <p>Browse collections.</p>
-      <!-- <p>Browse collections. Each series includes its own description and ordered pieces.</p> -->
+      <p>Browse curated collections with their own pacing, context, and anchor works. Each series is arranged as a landing page rather than a simple bucket of images.</p>
     </section>
 
     <section class="grid" aria-label="Series layout">
-      <!-- Left: series list -->
-		      <div id="seriesListPanel" class="card series-panel series-panel--list page-toolbar-target" style="grid-column: span 5">
+      <div id="seriesListPanel" class="card series-panel series-panel--list page-toolbar-target" style="grid-column: span 5">
         <div class="meta">
           <div style="display:flex; align-items:end; justify-content:space-between; gap:10px">
             <p class="title" style="margin:0">All series</p>
             <span class="sub" id="seriesCount">&mdash;</span>
           </div>
 
-          <div id="seriesList" style="display:grid; gap:10px; margin-top:14px"></div>
-
-          <!-- <div class="sub" style="margin-top:14px">
-            Tip: publish + assign series in Studio to populate this page.
-          </div> -->
+          <div id="seriesList" class="series-list"></div>
         </div>
       </div>
 
-      <!-- Right: series detail -->
-		      <div id="seriesDetailPanel" class="card series-panel series-panel--detail page-toolbar-target" style="grid-column: span 7; min-width:0">
+      <div id="seriesDetailPanel" class="card series-panel series-panel--detail page-toolbar-target" style="grid-column: span 7; min-width:0">
         <div class="meta" id="detail">
           <p class="title" style="margin:0">Pick a series</p>
-          <p class="sub" style="margin-top:8px">Select a series on the left to view its pieces.</p>
+          <p class="sub" style="margin-top:8px">Select a series on the left to view its summary, highlighted works, and full piece order.</p>
         </div>
       </div>
     </section>
@@ -65,8 +58,3 @@
   <script type="module" src="./assets/js/series-page.js"></script>
 </body>
 </html>
-
-
-
-
-

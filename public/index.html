@@ -29,40 +29,40 @@
   <header id="siteHeader"></header>
 
   <main class="container page-with-sticky-hero">
-	    <section class="page-toolbar page-toolbar--public" aria-label="Home tools">
-	      <div class="page-toolbar__shell">
-	        <div class="page-toolbar__left">
-	          <a class="page-toolbar__pill" href="gallery.html">Explore</a>
-	        </div>
-	        <div class="page-toolbar__right">
-	          <div class="segmented page-toolbar__theme" role="group" aria-label="Theme mode">
-	            <button type="button" data-theme-choice="system">System</button>
-	            <button type="button" data-theme-choice="light">Light</button>
+    <section class="page-toolbar page-toolbar--public" aria-label="Home tools">
+      <div class="page-toolbar__shell">
+        <div class="page-toolbar__left">
+          <a class="page-toolbar__pill" href="gallery.html">Explore</a>
+        </div>
+        <div class="page-toolbar__right">
+          <div class="segmented page-toolbar__theme" role="group" aria-label="Theme mode">
+            <button type="button" data-theme-choice="system">System</button>
+            <button type="button" data-theme-choice="light">Light</button>
             <button type="button" data-theme-choice="dark">Dark</button>
           </div>
         </div>
       </div>
     </section>
     <section class="hero hero--sticky" id="homeHeroSection">
-      <h1>Toji Studios</h1>
-      <p>Abstract, cosmic-leaning digital artwork—geometry, atmosphere, and controlled chaos.</p>
-      <!-- <div class="cta">
-        <a class="btn primary" href="gallery.html">Explore the Gallery</a>
-        <a class="btn" href="contact.html">Inquire</a>
-      </div> -->
+      <p class="hero-kicker">Digital art and photography by Greg Gagnaux</p>
+      <h1>Exhibition-focused work shaped by atmosphere, geometry, and controlled chaos.</h1>
+      <p>Explore curated series, featured selections, and recent pieces from Toji Studios, built to be browsed, revisited, and shared.</p>
+      <div class="cta">
+        <a class="btn primary" href="gallery.html">Explore Gallery</a>
+        <a class="btn" href="series.html">View Series</a>
+      </div>
     </section>
 
     <section id="featuredSlideshowSection" class="page-toolbar-target" style="display:none">
       <div id="featuredSlideshow" class="home-slideshow" aria-label="Featured slideshow"></div>
     </section>
 
-    <!-- Featured strip -->
     <section id="featuredSection" class="gallery-section gallery-section-featured page-toolbar-target" style="display:none">
       <div class="section-title">
         <h2>Featured</h2>
-        <span id="featuredHint">—</span>
+        <span id="featuredHint">&mdash;</span>
       </div>
-
+      <p class="home-section-intro">A curated selection chosen to introduce the range, mood, and visual language of the work.</p>
       <div id="featuredStrip" aria-label="Featured artworks"></div>
     </section>
 
@@ -74,7 +74,6 @@
       <section class="grid" id="homeSeriesGrid" aria-label="Series collection"></section>
     </section>
 
-    <!-- Latest works -->
     <section id="latestSection" class="gallery-section gallery-section-all page-toolbar-target" style="display:none">
       <div class="section-title">
         <h2>Latest</h2>
@@ -83,12 +82,6 @@
 
       <section class="grid" id="latestGrid" aria-label="Latest artworks"></section>
     </section>
-
-
-    <!-- <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:18px">
-      <a class="btn primary" href="gallery.html">View all works</a>
-      <a class="btn" href="contact.html">Licensing / commissions</a>
-    </div> -->
   </main>
 
   <footer id="siteFooter"></footer>

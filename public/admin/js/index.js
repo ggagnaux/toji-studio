@@ -62,6 +62,56 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
   const bulkSeriesInput = document.getElementById("bulkSeriesInput");
   const bulkSeriesApplyBtn = document.getElementById("bulkSeriesApply");
   const bulkSeriesClearBtn = document.getElementById("bulkSeriesClear");
+  const REQUIRED_METADATA_RULES = Object.freeze([
+    Object.freeze({
+      key: "title",
+      label: "Title",
+      test: (artwork) => {
+        const value = String(artwork?.title || "").trim();
+        return !!value && !/^untitled\b/i.test(value);
+      }
+    }),
+    Object.freeze({
+      key: "description",
+      label: "Description",
+      test: (artwork) => !!String(artwork?.description || "").trim()
+    }),
+    Object.freeze({
+      key: "alt",
+      label: "Alt text",
+      test: (artwork) => !!String(artwork?.alt || "").trim()
+    }),
+    Object.freeze({
+      key: "tags",
+      label: "Tags",
+      test: (artwork) => Array.isArray(artwork?.tags) && artwork.tags.some((tag) => String(tag || "").trim())
+    }),
+    Object.freeze({
+      key: "series",
+      label: "Series",
+      test: (artwork) => !!String(artwork?.series || "").trim()
+    })
+  ]);
+
+  function getArtworkMetadataAudit(artwork){
+    const missing = REQUIRED_METADATA_RULES
+      .filter((rule) => !rule.test(artwork))
+      .map((rule) => rule.label);
+    const completed = REQUIRED_METADATA_RULES.length - missing.length;
+    return {
+      completed,
+      total: REQUIRED_METADATA_RULES.length,
+      missing,
+      isComplete: missing.length === 0
+    };
+  }
+
+  function summarizeMissingFields(missing){
+    if (!missing.length) return "Ready to publish";
+    const preview = missing.slice(0, 2).join(", ");
+    if (missing.length <= 2) return `Missing: ${preview}`;
+    return `Missing: ${preview} +${missing.length - 2}`;
+  }
 
 
   const counts = () => {
@@ -776,6 +826,7 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
 
     for (const a of items){
       const title = String(a.title || "Untitled");
+      const audit = getArtworkMetadataAudit(a);
       const isSelected = selected.has(a.id);
       const primaryStatus = a.status === "published" ? "draft" : "published";
       const primaryStatusLabel = a.status === "published" ? "Move to Draft" : "Publish";
@@ -817,11 +868,29 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
                 el("a", { class:"admin-artwork-link", href: buildArtworkEditHref(a.id) }, title),
                 a.featured ? el("span", { class:"admin-artwork-featured" }, "Featured") : null
               ),
-              el("div", { class:"admin-artwork-meta" }, metadataParts.join(" | "))
+              el("div", { class:"admin-artwork-meta" }, metadataParts.join(" | ")),
+              el("div", { class:"admin-artwork-completeness" },
+                el("span", {
+                  class:`admin-completeness-pill${audit.isComplete ? " is-complete" : " is-incomplete"}`,
+                  title: audit.isComplete ? "All required metadata fields are present." : `Missing: ${audit.missing.join(", ")}`
+                }, `${audit.completed}/${audit.total} ready`),
+                el("span", {
+                  class:"admin-completeness-note",
+                  title: audit.isComplete ? "Ready to publish" : `Missing: ${audit.missing.join(", ")}`
+                }, summarizeMissingFields(audit.missing))
+              )
             )
           )
         ),
-        el("td", { class:"admin-artwork-status", "data-label":"Status" }, statusChip(a.status)),
+        el("td", { class:"admin-artwork-status", "data-label":"Status" },
+          el("div", { class:"admin-artwork-status-stack" },
+            statusChip(a.status),
+            el("span", {
+              class:`admin-completeness-pill admin-completeness-pill--compact${audit.isComplete ? " is-complete" : " is-incomplete"}`,
+              title: audit.isComplete ? "All required metadata fields are present." : `Missing: ${audit.missing.join(", ")}`
+            }, audit.isComplete ? "Complete" : `${audit.missing.length} missing`)
+          )
+        ),
         el("td", { class:"admin-artwork-series", "data-label":"Series" }, a.series || "-"),
         el("td", { class:"admin-artwork-year", "data-label":"Year" }, a.year || "-"),
         el("td", { class:"admin-artwork-actions", "data-label":"Actions" },
@@ -894,6 +963,20 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
             title: a.title || "Untitled"
           },
             el("img", { src: a.thumb || a.image, alt: a.title || "Artwork thumbnail", loading: "lazy" })
+          )
+          ,
+          el("div", { class:"admin-thumb-meta" },
+            el("div", { class:"admin-thumb-title", title }, title),
+            el("div", { class:"admin-thumb-completeness" },
+              el("span", {
+                class:`admin-completeness-pill admin-completeness-pill--compact${audit.isComplete ? " is-complete" : " is-incomplete"}`,
+                title: audit.isComplete ? "All required metadata fields are present." : `Missing: ${audit.missing.join(", ")}`
+              }, audit.isComplete ? "Complete" : `${audit.missing.length} missing`),
+              el("span", {
+                class:"admin-thumb-note",
+                title: audit.isComplete ? "Ready to publish" : `Missing: ${audit.missing.join(", ")}`
+              }, summarizeMissingFields(audit.missing))
+            )
           )
         );
 
@@ -990,6 +1073,8 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
   });
 
   render();
+
+
 
 
 

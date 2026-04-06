@@ -25,7 +25,7 @@
   --bg:#1d1d1d;
   --panel:#28283c;
   --text:#e7ebf0;
-  --muted:#a1a8b3;
+  --muted:#b8c0ca;
   --selectedmenu:#e5cf0d;
   --selecteditem:#dce7ff;
   --line:rgba(255,255,255,.12);
@@ -46,7 +46,7 @@
   --bg:#f6f7f9;
   --panel:#ffffff;
   --text:#1f232b;
-  --muted:#66707d;
+  --muted:#566170;
   --selectedmenu:#4064c9;
   --selecteditem:#2f4ea8;
   --line:rgba(21,28,38,.14);
@@ -66,10 +66,10 @@
 html,body{margin:0;padding:0}
 body{
   font-family: "Gemunu Libre", "Oswald", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size:large;
+  font-size:19px;
   background:var(--bg);
   color:var(--text);
-  line-height:1.45;
+  line-height:1.58;
   min-height:100dvh;
   display:flex;
   flex-direction:column;
@@ -252,13 +252,21 @@ img{max-width:100%;display:block}
 main.container{
   box-sizing:border-box;
   padding-top: var(--page-container-padding-top, 2px);
-  background: color-mix(in srgb, var(--bg) 72%, #020307 28%);
-  border-left:1px solid color-mix(in srgb, var(--line) 86%, transparent);
-  border-right:1px solid color-mix(in srgb, var(--line) 86%, transparent);
-  border-bottom:1px solid color-mix(in srgb, var(--line) 86%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--panel) 18%, transparent),
+      color-mix(in srgb, var(--panel) 8%, transparent)
+    );
+  border:0;
 }
 [data-theme="light"] main.container{
-  background: color-mix(in srgb, var(--panel) 84%, var(--bg) 16%);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--panel) 72%, transparent),
+      color-mix(in srgb, var(--panel) 54%, transparent)
+    );
 }
 .page-with-sticky-hero{
   --page-container-padding-top: 0px;
@@ -338,8 +346,8 @@ main.container{
   border:1px solid color-mix(in srgb, var(--line) 82%, transparent);
   background:color-mix(in srgb, var(--panel) 86%, #090b10 14%);
   color:var(--text);
-  font-size:14px;
-  font-weight:600;
+  font-size:15px;
+  font-weight:650;
   transition:border-color .18s ease, background .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 .page-toolbar__pill:hover,
@@ -374,7 +382,7 @@ main.container{
 .page-toolbar__theme button{
   min-height:36px;
   padding:7px 16px;
-  font-size:14px;
+  font-size:15px;
   border-radius:13px;
   border:0;
   background:transparent;
@@ -547,8 +555,8 @@ main.container{
   border-radius:12px;
   border:1px solid transparent;
   position:relative;
-  font-size:15px;
-  font-weight:500;
+  font-size:16px;
+  font-weight:550;
 }
 .navlinks a::before{
   content:"";
@@ -661,12 +669,15 @@ html.nav-compact .brand-logo-canvas--icon{
 
 .btn{
   display:inline-flex; align-items:center; justify-content:center;
-  padding:7px 11px;
+  padding:8px 12px;
   border:1px solid var(--line);
   border-radius:8px;
   background:transparent;
   color:var(--text);
   cursor:pointer;
+  font-size:16px;
+  font-weight:600;
+  line-height:1.2;
 }
 .btn:hover{border-color:var(--hover-line)}
 .btn.primary{
@@ -712,8 +723,13 @@ html.nav-compact .brand-logo-canvas--icon{
   margin:0 0 10px;
   letter-spacing:-.8px;
 }
-.hero p{color:var(--muted); font-size:20px; max-width:170ch}
+.hero p{color:color-mix(in srgb, var(--muted) 88%, var(--text) 12%); font-size:22px; line-height:1.58; max-width:170ch}
 .hero .cta{display:flex; gap:12px; margin-top:18px; flex-wrap:wrap}
+.sep{
+  border:0;
+  border-top:1px solid var(--line);
+  margin:8px 0;
+}
 @media (max-width: 720px){
   .hero--sticky{
     padding-right: 8px;
@@ -724,11 +740,11 @@ html.nav-compact .brand-logo-canvas--icon{
 .section-title{
   display:flex; align-items:end; justify-content:space-between;
   gap:12px;
-  margin:10px 0 14px;
-  padding-top: 10px;
+  margin:10px 0 16px;
+  padding-top: 4px;
 }
-.section-title h2{margin:0; font-size:18px; letter-spacing:.2px}
-.section-title span{color:var(--muted); font-size:14px}
+.section-title h2{margin:0; font-size:19px; letter-spacing:.2px}
+.section-title span{color:color-mix(in srgb, var(--muted) 86%, var(--text) 14%); font-size:15px; line-height:1.35}
 
 .grid{
   display:grid;
@@ -737,22 +753,23 @@ html.nav-compact .brand-logo-canvas--icon{
   min-width:0;
 }
 .card{
-  border:1px solid var(--line);
+  border:1px solid color-mix(in srgb, var(--line) 52%, transparent);
   border-radius:var(--radius);
   overflow:hidden;
-  box-shadow: var(--shadow);
-  transition: transform .18s ease, border-color .18s ease;
+  box-shadow: 0 6px 18px rgba(0,0,0,.12);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
   min-width:0;
 }
 .card:hover{
-  transform: translateY(-3px);
-  border-color: var(--hover-line);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--hover-line) 78%, transparent);
+  box-shadow: 0 12px 24px rgba(0,0,0,.16);
 }
 .card .meta{
   padding:12px 12px 14px;
 }
-.card .title{font-weight:600; margin:0 0 4px}
-.card .sub{color:var(--muted); font-size:16px}
+.card .title{font-weight:650; font-size:19px; margin:0 0 6px; line-height:1.2}
+.card .sub{color:color-mix(in srgb, var(--muted) 88%, var(--text) 12%); font-size:17px; line-height:1.55}
 
 .thumb{
   aspect-ratio: 4/3;
@@ -783,6 +800,9 @@ html.nav-compact .brand-logo-canvas--icon{
   color:var(--text);
   cursor:pointer;
   user-select:none;
+  font-size:15px;
+  font-weight:550;
+  line-height:1.2;
 }
 .chip.active{
   border-color: var(--accent-border);
@@ -803,6 +823,7 @@ html.nav-compact .brand-logo-canvas--icon{
   border:none; outline:none;
   background:transparent;
   color:var(--text);
+  font-size:16px;
   width:min(320px, 55vw);
 }
 
@@ -821,6 +842,9 @@ html.nav-compact .brand-logo-canvas--icon{
   color:var(--muted);
   padding:6px 10px;
   cursor:pointer;
+  font-size:16px;
+  font-weight:600;
+  line-height:1.2;
   font-size:12px;
   border-radius:999px;
   font-weight:500;
@@ -863,6 +887,9 @@ html.nav-compact .brand-logo-canvas--icon{
   background: color-mix(in srgb, var(--panel) 92%, transparent);
   color:var(--text);
   cursor:pointer;
+  font-size:16px;
+  font-weight:600;
+  line-height:1.2;
   transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease, transform .12s ease;
 }
 .icon-btn:hover{
@@ -880,6 +907,9 @@ html.nav-compact .brand-logo-canvas--icon{
   border-radius:999px;
   background:color-mix(in srgb, var(--panel) 92%, transparent);
   cursor:pointer;
+  font-size:16px;
+  font-weight:600;
+  line-height:1.2;
   transition:border-color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .12s ease;
 }
 .theme-pill-toggle:hover{
@@ -1018,47 +1048,13 @@ input, textarea, select{
   }
   .nav.nav-open .navlinks{display:flex}
   .navlinks a{
-    padding:10px 12px;
-    border-radius:10px;
-    border:1px solid transparent;
-  }
-  .navlinks a::before{
-    left:12px;
-    right:12px;
-    bottom:6px;
-  }
-  .search{width:100%; margin-left:0}
-  .theme-controls{
-    gap:6px;
-    flex-wrap:wrap;
-    justify-content:flex-end;
-  }
-  .nav > .btn{display:none}
-  .page-toolbar{
-    padding:0 0 12px;
-  }
-  .page-toolbar__shell{
-    padding:0 4px;
-    gap:12px;
-  }
-  .page-toolbar__left,
-  .page-toolbar__right{
-    width:100%;
-  }
-  .page-toolbar__right{
-    margin-left:0;
-    justify-content:flex-start;
-  }
-  .page-toolbar__pill{
-    flex:0 0 auto;
-  }
-  .page-toolbar__theme{
-    width:auto;
-    max-width:100%;
-  }
-  .page-toolbar__theme button{
-    flex:0 0 auto;
-  }
+  color:color-mix(in srgb, var(--muted) 84%, var(--text) 16%);
+  padding:6px 11px 10px;
+  border-radius:12px;
+  border:1px solid transparent;
+  position:relative;
+  font-size:16px;
+  font-weight:550;
 }
 
 
@@ -1181,11 +1177,11 @@ textarea::placeholder{
 
 /* Keep your search pill looking like a pill */
 .search input{
-  width:auto;
-  border:none;
+  border:none; outline:none;
   background:transparent;
-  padding:0;
-  box-shadow:none;
+  color:var(--text);
+  font-size:16px;
+  width:min(320px, 55vw);
 }
 .search input:focus,
 .search input:focus-visible{
@@ -1220,6 +1216,8 @@ textarea::placeholder{
 .table tbody tr{
   border-bottom: 1px solid var(--line);
 }
+
+
 
 
 

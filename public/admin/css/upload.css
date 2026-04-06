@@ -146,7 +146,148 @@
       color: var(--text);
     }
 
-    @media (max-width: 980px){
+        .status-toggle-option:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      background:transparent;
+      color:var(--muted);
+    }
+    .status-toggle-option:disabled:hover{
+      transform:none;
+      box-shadow:none;
+      background:transparent;
+    }
+    .upload-readiness{
+      display:grid;
+      gap:10px;
+      padding:12px;
+      border:1px solid color-mix(in srgb, var(--line) 88%, transparent);
+      border-radius:14px;
+      background:color-mix(in srgb, var(--panel) 95%, var(--accent-soft) 5%);
+    }
+    .upload-readiness__head{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .upload-readiness__head .title{
+      margin:0;
+    }
+    .upload-readiness__score{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:92px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid color-mix(in srgb, var(--line) 85%, transparent);
+      background:color-mix(in srgb, var(--panel) 86%, transparent);
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+    }
+    .upload-readiness__list{
+      display:grid;
+      gap:8px;
+    }
+    .upload-readiness__item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-height:38px;
+      padding:8px 10px;
+      border:1px solid color-mix(in srgb, var(--line) 78%, transparent);
+      border-radius:12px;
+      background:color-mix(in srgb, var(--panel) 92%, transparent);
+    }
+    .upload-readiness__item.is-complete{
+      border-color:color-mix(in srgb, #2f9e63 50%, var(--line));
+      background:color-mix(in srgb, #2f9e63 10%, var(--panel));
+    }
+    .upload-readiness__item.is-incomplete{
+      border-color:color-mix(in srgb, #c18a2d 48%, var(--line));
+      background:color-mix(in srgb, #c18a2d 10%, var(--panel));
+    }
+    .upload-readiness__icon{
+      width:22px;
+      height:22px;
+      border-radius:999px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      font-weight:800;
+      flex:0 0 auto;
+    }
+    .upload-readiness__item.is-complete .upload-readiness__icon{
+      background:color-mix(in srgb, #2f9e63 22%, var(--panel));
+      color:color-mix(in srgb, #b9f0cf 88%, white);
+    }
+    .upload-readiness__item.is-incomplete .upload-readiness__icon{
+      background:color-mix(in srgb, #c18a2d 18%, var(--panel));
+      color:color-mix(in srgb, #ffd98c 92%, white);
+    }
+    .upload-readiness__body{
+      display:grid;
+      gap:2px;
+      min-width:0;
+    }
+    .upload-readiness__label{
+      font-weight:700;
+    }
+    .upload-readiness__detail,
+    .upload-readiness__note{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.4;
+      margin:0;
+    }
+    .upload-new-card{
+      display:grid;
+      grid-template-columns:56px minmax(0, 1fr);
+      gap:12px;
+      align-items:center;
+      text-decoration:none;
+    }
+    .upload-new-card .meta{
+      min-width:0;
+      display:grid;
+      gap:6px;
+    }
+    .upload-new-card__title-row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .upload-new-card__title{
+      min-width:0;
+      font-weight:700;
+    }
+    .upload-new-card__pill{
+      display:inline-flex;
+      align-items:center;
+      border-radius:999px;
+      padding:4px 8px;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+      border:1px solid color-mix(in srgb, var(--line) 84%, transparent);
+      background:color-mix(in srgb, var(--panel) 90%, transparent);
+    }
+    .upload-new-card__pill.is-complete{
+      border-color:color-mix(in srgb, #2f9e63 52%, var(--line));
+      background:color-mix(in srgb, #2f9e63 12%, var(--panel));
+    }
+    .upload-new-card__pill.is-incomplete{
+      border-color:color-mix(in srgb, #c18a2d 52%, var(--line));
+      background:color-mix(in srgb, #c18a2d 12%, var(--panel));
+    }
+    
       .upload-primary-card,
       .upload-secondary-card{
         grid-column: 1 / -1 !important;
@@ -155,3 +296,4 @@
         order: 2;
       }
     }
+

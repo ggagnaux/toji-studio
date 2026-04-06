@@ -1,3 +1,36 @@
+.contact-form .contact-floating-field input,
+.contact-form .contact-floating-field textarea{
+  min-height:58px;
+  padding:32px 12px 10px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:transparent;
+  color:var(--text);
+  font:inherit;
+  font-size:14px;
+  line-height:1.45;
+}
+
+.contact-form .contact-floating-field textarea{
+  min-height:96px;
+  padding-top:38px;
+}
+
+.contact-form .contact-floating-field input:focus,
+.contact-form .contact-floating-field textarea:focus{
+  outline:none;
+  border-color:var(--accent-border);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.contact-form .contact-floating-field__label{
+  font-size:15px;
+}
+
+.contact-form .contact-floating-field.has-value .contact-floating-field__label,
+.contact-form .contact-floating-field:focus-within .contact-floating-field__label{
+  font-size:14px;
+}
 .contact-form{
   margin-top:14px;
   display:grid;
@@ -19,9 +52,33 @@
   border-radius:14px;
 }
 
+.contact-panel__intro{
+  margin:8px 0 0;
+  color:var(--muted);
+  font-size:18px;
+  line-height:1.5;
+}
+
+.contact-direct-grid{
+  display:grid;
+  gap:14px;
+  margin-top:14px;
+}
+
+.contact-detail-note{
+  margin-top:6px;
+}
+
+.contact-help-copy{
+  font-size:15px;
+  line-height:1.65;
+  margin:10px 0 0;
+}
+
 @media (max-width: 760px){
   .contact-panel--form,
   .contact-panel--direct{
     grid-column: 1 / -1 !important;
   }
 }
+

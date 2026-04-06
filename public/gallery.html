@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html>
 
 <head>
@@ -12,7 +12,7 @@
   <body class="home-animated">
     <header id="siteHeader"></header>
 
-	    <main class="container gallery-page">
+		    <main class="container page-with-sticky-hero gallery-page">
 	    <section class="gallery-tabs-nav" id="galleryTabsNav" aria-label="Gallery tabs">
       <div class="gallery-tools-shell">
         <div class="gallery-tabs-list" role="tablist" aria-label="Gallery sections">
@@ -35,7 +35,7 @@
 	      </div>
 	    </section>
 
-	    <section class="hero gallery-hero" id="galleryHeroSection" style="padding-bottom:10px">
+		    <section class="hero hero--sticky gallery-hero" id="galleryHeroSection" style="padding-bottom:10px">
 	      <h1>Gallery</h1>
 	      <p>Browse featured images, Series or All published work. Filter by tag, search, and open any piece to view larger.</p>
 	    </section>
@@ -74,17 +74,22 @@
 	        <span id="allCount">&mdash;</span>
 	      </div>
 
-	      <section class="filters" aria-label="Gallery filters">
+		      <section class="filters" aria-label="Gallery filters">
+	        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; width:100%">
+	          <span class="sub">Category:</span>
+	        </div>
+	        <div id="categoryChips" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; width:100%; margin-bottom:4px"></div>
 	        <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; width:100%">
 	          <span class="sub">Tag Filter:</span>
 	        </div>
 	        <div id="tagPrefilterChips" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; width:100%; margin-bottom:2px"></div>
-	        <div id="tagChips" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center" hidden></div>
-	        <div id="tagFilterSummary" class="sub" style="width:100%; margin-top:4px" hidden></div>
-	      </section>
+		        <div id="tagChips" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center" hidden></div>
+		        <div id="tagFilterSummary" class="sub" style="width:100%; margin-top:4px" hidden></div>
+		      </section>
+		      <section id="allWorksStateBar" class="all-works-state-bar" aria-live="polite"></section>
 
-	      <section class="grid" id="galleryGrid" aria-label="Gallery grid"></section>
-	    </section>
+		      <section class="grid" id="galleryGrid" aria-label="Gallery grid"></section>
+		    </section>
   </main>
 
   <footer id="siteFooter"></footer>
@@ -94,6 +99,8 @@
 </body>
 
 </html>
+
+
 
 
 

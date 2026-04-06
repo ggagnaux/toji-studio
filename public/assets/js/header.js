@@ -71,14 +71,13 @@ export function renderPublicHeader({
         <span aria-hidden="true">&#9776;</span>
       </button>
 
-      <nav class="navlinks" id="sitePrimaryNav" aria-label="Primary">
-        <a href="${toHref("index.html")}" data-nav="home">Home</a>
-        <a href="${toHref("gallery.html")}" data-nav="gallery">Gallery</a>
-        <a href="${toHref("series.html")}" data-nav="series">Series</a>
-        <a href="${toHref("about.html")}" data-nav="about">About</a>
-        <a href="${toHref("contact.html")}" data-nav="contact">Contact</a>
-        <a href="${toHref(studioHref)}" data-nav="studio">Studio</a>
-      </nav>
+	      <nav class="navlinks" id="sitePrimaryNav" aria-label="Primary">
+	        <a href="${toHref("index.html")}" data-nav="home">Home</a>
+	        <a href="${toHref("gallery.html")}" data-nav="gallery">Gallery</a>
+	        <a href="${toHref("series.html")}" data-nav="series">Series</a>
+	        <a href="${toHref("about.html")}" data-nav="about">About</a>
+	        <a href="${toHref("contact.html")}" data-nav="contact">Contact</a>
+	      </nav>
 
 	      ${showThemeControls ? `
 	      <div class="theme-controls">

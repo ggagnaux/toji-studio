@@ -15,6 +15,7 @@ import {
   requireUploadAdminSession
 } from "./upload-controller.js";
 import { bindFloatingField, syncFloatingFieldState } from "../../assets/js/floating-fields.js";
+import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork-readiness.js";
 
 ensureBaseStyles();
 setYearFooter();
@@ -38,9 +39,14 @@ setYearFooter();
   const seriesField = document.getElementById("seriesField");
   const yearField = document.getElementById("yearField");
   const newTagField = document.getElementById("newTagField");
+  const uploadReadinessScore = document.getElementById("uploadReadinessScore");
+  const uploadReadinessSummary = document.getElementById("uploadReadinessSummary");
+  const uploadReadinessList = document.getElementById("uploadReadinessList");
+  const uploadReadinessNote = document.getElementById("uploadReadinessNote");
   const selectedBatchTags = new Set();
   const selectedTagFilters = new Set();
   const newIds = [];
+  const publishedStatusBtn = statusPills.find((btn) => String(btn?.getAttribute?.("data-status-pill") || "").toLowerCase() === "published");
 
   function getApiBase() {
     return API_BASE;
@@ -121,6 +127,49 @@ setYearFooter();
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }
 
+  function buildBatchArtworkPreview() {
+    return {
+      title: "",
+      description: "",
+      alt: "",
+      tags: Array.from(selectedBatchTags),
+      series: document.getElementById("series")?.value?.trim() || "",
+      year: document.getElementById("year")?.value?.trim() || "",
+      status: "draft"
+    };
+  }
+
+  function renderUploadReadiness() {
+    const audit = getArtworkPublishReadiness(buildBatchArtworkPreview());
+    if (uploadReadinessScore) uploadReadinessScore.textContent = `${audit.completed} / ${audit.total} ready`;
+    if (uploadReadinessSummary) {
+      uploadReadinessSummary.textContent = summarizeReadinessMissing(audit.missing, { completeLabel: "Ready to publish" });
+    }
+    if (uploadReadinessNote) {
+      uploadReadinessNote.textContent = "New uploads are forced to Draft until required metadata is filled in on the Edit page.";
+    }
+    if (uploadReadinessList) {
+      uploadReadinessList.innerHTML = "";
+      audit.checks.forEach((check) => {
+        uploadReadinessList.appendChild(
+          el("div", { class: `upload-readiness__item ${check.complete ? "is-complete" : "is-incomplete"}` },
+            el("span", { class: "upload-readiness__icon", "aria-hidden": "true" }, check.complete ? "OK" : "!"),
+            el("div", { class: "upload-readiness__body" },
+              el("span", { class: "upload-readiness__label" }, check.label),
+              el("span", { class: "upload-readiness__detail" }, check.complete ? "Ready for publish" : "Needs completion in Edit")
+            )
+          )
+        );
+      });
+    }
+    if (publishedStatusBtn) {
+      publishedStatusBtn.disabled = true;
+      publishedStatusBtn.setAttribute("aria-disabled", "true");
+      publishedStatusBtn.title = "New uploads start as Draft. Complete metadata in Edit before publishing.";
+    }
+    if (statusSelect?.value === "published") statusSelect.value = "draft";
+  }
+
   function syncFloatingField(field, control) {
     if (!field || !control) return;
     field.classList.toggle("has-value", !!String(control.value || "").trim());
@@ -179,6 +228,7 @@ setYearFooter();
         if (selectedBatchTags.has(tag)) selectedBatchTags.delete(tag);
         else selectedBatchTags.add(tag);
         renderTagPills();
+        renderUploadReadiness();
       });
 
       host.appendChild(btn);
@@ -193,6 +243,7 @@ setYearFooter();
     for (const t of tags) selectedBatchTags.add(t);
     input.value = "";
     renderTagPills();
+    renderUploadReadiness();
   }
 
   function renderSeriesOptions(){
@@ -221,6 +272,8 @@ setYearFooter();
   });
 
   document.getElementById("addTagBtn").addEventListener("click", addTagsFromInput);
+  document.getElementById("series")?.addEventListener("change", renderUploadReadiness);
+  document.getElementById("year")?.addEventListener("input", renderUploadReadiness);
   document.getElementById("newTagInput").addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
@@ -240,15 +293,19 @@ setYearFooter();
     for (const id of newIds){
       const a = state.artworks.find(x => x.id === id);
       if (!a) continue;
-
       rendered++;
+      const audit = getArtworkPublishReadiness(a);
 
       list.appendChild(
-        el("a", { class:"card", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"box-shadow:none; display:flex; align-items:center; gap:12px; padding:10px;" },
+        el("a", { class:"card upload-new-card", href:`edit.html?id=${encodeURIComponent(a.id)}`, style:"box-shadow:none; padding:10px;" },
           el("div", { class:"thumbSm" }, el("img", { src: resolveArtworkThumb(a), alt:a.title, loading:"lazy" })),
           el("div", { class:"meta" },
-            el("p", { class:"title" }, a.title || "Untitled"),
-            el("p", { class:"sub" }, `ID: ${a.id} - Open to edit ->`)
+            el("div", { class:"upload-new-card__title-row" },
+              el("p", { class:"title upload-new-card__title" }, a.title || "Untitled"),
+              el("span", { class:`upload-new-card__pill ${audit.isComplete ? "is-complete" : "is-incomplete"}` }, audit.isComplete ? "Ready" : `${audit.missing.length} missing`)
+            ),
+            el("p", { class:"sub" }, `ID: ${a.id} | ${summarizeReadinessMissing(audit.missing, { completeLabel: "Ready to publish" })}`),
+            el("p", { class:"sub" }, audit.isComplete ? "Open to review or publish ->" : "Open to finish metadata ->")
           )
         )
       );
@@ -376,6 +433,14 @@ setYearFooter();
 
   renderSeriesOptions();
   renderTagPills();
+  renderUploadReadiness();
   renderNew();
 })();
+
+
+
+
+
+
+
 

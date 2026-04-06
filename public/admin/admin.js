@@ -386,10 +386,20 @@ export function ensureBaseStyles() {
       box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 38%, transparent);
       animation: adminLogoutPulse 1s ease-in-out infinite;
     }
-    .kpi{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; }
-    .kpi .card{ box-shadow:none; background:var(--panel); }
-    .kpi .meta{ padding:8px 12px 9px; }
-    .kpi b{ font-size:22px; display:block; margin-top:2px; line-height:1.05; }
+	    .kpi{ display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; align-items:start; }
+	    .kpi .card{
+	      box-shadow:none;
+	      background:var(--panel);
+	      min-height:84px;
+	    }
+	    .kpi .meta{
+	      padding:8px 12px 9px;
+	      min-height:84px;
+	      display:flex;
+	      flex-direction:column;
+	      justify-content:center;
+	    }
+	    .kpi b{ font-size:22px; display:block; margin-top:2px; line-height:1.05; }
     .dashboard-controls .filters{ background:var(--panel); }
     .table-scroll-shell{
       position:relative;

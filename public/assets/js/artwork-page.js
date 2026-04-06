@@ -1,7 +1,7 @@
-﻿import { renderPublicHeader } from "./header.js";
+import { renderPublicHeader } from "./header.js";
     import { renderPublicFooter } from "./footer.js";
     import { initStickyHero } from "./site.js";
-    import { qs, el, sortBySortOrderAndDate } from "./content-utils.js";
+    import { qs, el, sortBySortOrderAndDate, deriveArtworkCategory } from "./content-utils.js";
 
     // Header/footers
 	    renderPublicHeader({
@@ -79,10 +79,12 @@
     // Title/meta
     document.title = `${art.title || "Artwork"} \u2014 Toji Studios`;
     h1.textContent = art.title || "Artwork";
-    sub.textContent = [art.series || null, art.year || null].filter(Boolean).join(" \u2022 ") || "Published work";
+    const category = deriveArtworkCategory(art);
+    sub.textContent = [category, art.series || null, art.year || null].filter(Boolean).join(" \u2022 ") || "Published work";
 
     titleEl.textContent = art.title || "Untitled";
     metaLine.textContent = [
+      `Category: ${category}`,
       art.series ? `Series: ${art.series}` : null,
       art.year ? `Year: ${art.year}` : null,
       art.featured ? "Featured" : null
@@ -176,6 +178,8 @@
       mq1.onchange = apply;
       mq2.onchange = apply;
     }
+
+
 
 
 

@@ -1,4 +1,5 @@
 import { ensureBaseStyles, setYearFooter, showToast, apiFetch, API_BASE } from "../admin.js";
+import { bindFloatingField, syncFloatingFieldState } from "../../assets/js/floating-fields.js";
 
 ensureBaseStyles();
 setYearFooter();
@@ -7,7 +8,9 @@ const queueList = document.getElementById("queueList");
 const queueSummary = document.getElementById("queueSummary");
 const queueSearch = document.getElementById("queueSearch");
 const queueSort = document.getElementById("queueSort");
+const queueSortField = document.getElementById("queueSortField");
 const queuePlatform = document.getElementById("queuePlatform");
+const queuePlatformField = document.getElementById("queuePlatformField");
 const refreshQueueBtn = document.getElementById("refreshQueueBtn");
 const kQueued = document.getElementById("kQueued");
 const kFailed = document.getElementById("kFailed");
@@ -48,7 +51,10 @@ function syncPlatformUi() {
   if (queuePageTitle) queuePageTitle.textContent = `${meta.name} Queue`;
   if (queuePageIntro) queuePageIntro.textContent = meta.intro;
   if (queueCardTitle) queueCardTitle.textContent = `${meta.name} post queue`;
-  if (queuePlatform) queuePlatform.value = String(state.platformId || "bluesky");
+  if (queuePlatform) {
+    queuePlatform.value = String(state.platformId || "bluesky");
+    syncFloatingFieldState(queuePlatformField, queuePlatform);
+  }
 }
 
 function ensureQueueStyles() {
@@ -59,6 +65,14 @@ function ensureQueueStyles() {
     .social-queue-grid{
       display:grid;
       gap:12px;
+    }
+    .dashboard-controls .filters{
+      min-height:58px;
+      align-items:flex-start;
+      overflow-anchor:none;
+    }
+    .dashboard-controls .filters .chip{
+      align-self:center;
     }
     .social-queue-card{
       border:1px solid var(--line);
@@ -160,6 +174,8 @@ function ensureQueueStyles() {
   document.head.appendChild(style);
 }
 ensureQueueStyles();
+bindFloatingField(queuePlatformField, queuePlatform);
+bindFloatingField(queueSortField, queueSort);
 
 function fmtDate(value) {
   const text = String(value || "").trim();

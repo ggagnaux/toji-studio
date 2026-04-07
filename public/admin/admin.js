@@ -643,6 +643,33 @@ export function ensureBaseStyles() {
       .kpi{ grid-template-columns: 1fr; }
     }
   `;
+  style.textContent += `
+    /* Phase A: tighter admin shell overrides */
+    .admin-layout{ gap:14px; }
+    .sidebar{
+      border-radius:14px;
+      padding:12px;
+      background: color-mix(in srgb, var(--panel) 98%, transparent);
+      box-shadow:none;
+    }
+    .dashboard-controls{
+      margin-bottom:14px;
+      margin-top:14px;
+      padding:8px 10px 0;
+      border-radius:14px;
+      background: color-mix(in srgb, var(--panel) 98%, transparent);
+      box-shadow:none;
+    }
+    .sidebar a{
+      padding:4px 8px;
+      border-radius:10px;
+      font-size:13px;
+    }
+    .sidebar a.active{
+      background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+      border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+    }
+  `;
   document.head.appendChild(style);
   initAdminNavMenu();
   initAdminSidebarControls();

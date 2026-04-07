@@ -662,3 +662,67 @@
 
 
 
+
+/* Phase A: admin surface flattening */
+.admin-thumb-card{
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  box-shadow: none;
+}
+
+.admin-thumb-card.selected{
+  transform: none;
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--line));
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+}
+
+#rowTableShell{
+  background: color-mix(in srgb, var(--panel) 98%, transparent);
+  box-shadow: none;
+}
+
+#rowTableShell::-webkit-scrollbar-thumb{
+  background: color-mix(in srgb, var(--line) 92%, transparent);
+}
+
+.admin-artwork-table .admin-artwork-row,
+.table tbody tr{
+  background: color-mix(in srgb, var(--panel) 98%, transparent);
+}
+
+.table tbody tr:hover,
+.admin-artwork-table .admin-artwork-row:hover{
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+}
+
+/* Phase B: dashboard utility consistency */
+.dashboard-filter-toggle{
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+}
+
+.dashboard-filter-toggle [data-tab]{
+  min-height: 30px;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.dashboard-bulk-bar select,
+.dashboard-bulk-bar input{
+  min-height: 34px;
+  border-radius: 10px;
+}
+
+.admin-sort-header{
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-artwork-actions .btn,
+.row-actions .btn{
+  min-height: 30px;
+}

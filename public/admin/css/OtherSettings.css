@@ -568,3 +568,46 @@
 
 
 
+
+/* Phase A: other settings admin cleanup */
+.other-settings-tabbtn.is-active{
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  box-shadow: none;
+}
+
+.other-settings-tabcontent,
+.other-settings-modal__dialog{
+  background: color-mix(in srgb, var(--panel) 97%, transparent);
+  box-shadow: none;
+}
+
+.banner-logo-border-color-field input[type="color"]{
+  box-shadow: none;
+  background: var(--panel);
+}
+
+/* Phase B: other settings utility consistency */
+.other-settings-tabbar{
+  gap: 6px;
+}
+
+.other-settings-tabbtn{
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.other-settings-chip-actions .btn,
+.other-settings-modal__controls .btn{
+  min-height: 30px;
+}
+
+.other-settings-floating-field input,
+.other-settings-floating-field select{
+  min-height: 44px;
+  border-radius: 10px;
+}

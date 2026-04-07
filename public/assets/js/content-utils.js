@@ -125,18 +125,18 @@ function ensureLightboxStyles() {
 	      min-width:0;
 	    }
 	    .lb-counter{
-	      position:absolute;
-	      left:14px;
-	      bottom:14px;
+	      display:inline-flex;
+	      align-items:center;
+	      justify-content:center;
+	      min-height:34px;
 	      padding:6px 10px;
 	      border:1px solid color-mix(in srgb, var(--line) 78%, transparent);
 	      border-radius:999px;
 	      background:color-mix(in srgb, var(--panel) 82%, rgba(0,0,0,.18) 18%);
 	      color:var(--muted);
-	      font-size:19.5px;
+	      font-size:13px;
 	      line-height:1.2;
 	      white-space:nowrap;
-	      z-index:3;
 	      pointer-events:none;
 	      backdrop-filter:blur(6px);
 	    }
@@ -265,13 +265,14 @@ function ensureLightboxStyles() {
     }
 	    .lb-meta{
 	      padding:14px;
-	      padding-bottom:52px;
 	      border-right:1px solid var(--line);
 	      overflow:hidden;
 	      min-width:0;
 	      grid-column: 1;
 	      grid-row: 1;
 	      position:relative;
+	      display:flex;
+	      flex-direction:column;
 	    }
 	    .lb-meta .sub{ margin-top:8px; }
 	    .lb-kicker{
@@ -371,16 +372,24 @@ function ensureLightboxStyles() {
 		      transform: translate(2px, 0);
 		    }
 	    .lb-sequence{
-	      display:flex;
+	      display:grid;
+	      grid-template-columns: 1fr auto 1fr;
 	      gap:8px;
-	      flex-wrap:wrap;
-	      margin-top:12px;
+	      margin-top:auto;
+	      padding-top:14px;
 	      align-items:center;
+	      width:100%;
 	    }
 	    .lb-sequence .btn{
 	      min-height:34px;
 	      font-size:13px;
 	      padding:7px 10px;
+	    }
+	    .lb-sequence .btn:first-child{
+	      justify-self:start;
+	    }
+	    .lb-sequence .btn:last-child{
+	      justify-self:end;
 	    }
 	    .lb-sequence .btn[disabled]{
 	      opacity:.45;
@@ -442,10 +451,10 @@ export function createArtworkLightboxController() {
 		  const seriesBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "View series");
 		  const imageBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "Open image file");
 		  const actions = el("div", { class: "lb-actions" }, openPageBtn, copyLinkBtn, inquireBtn, seriesBtn, imageBtn);
-		  const prevTextBtn = el("button", { class: "btn", type: "button" }, "Previous image");
-		  const nextTextBtn = el("button", { class: "btn", type: "button" }, "Next image");
-		  const sequence = el("div", { class: "lb-sequence" }, prevTextBtn, nextTextBtn);
-					  const meta = el("div", { class: "lb-meta" }, metaKicker, metaTitle, metaSub, metaFacts, actions, metaTags, el("hr", { class: "sep lb-divider" }), metaDesc, sequence, counter);
+		  const prevTextBtn = el("button", { class: "btn", type: "button", "aria-label": "Previous image", title: "Previous image" }, "\u2190");
+		  const nextTextBtn = el("button", { class: "btn", type: "button", "aria-label": "Next image", title: "Next image" }, "\u2192");
+		  const sequence = el("div", { class: "lb-sequence" }, prevTextBtn, counter, nextTextBtn);
+					  const meta = el("div", { class: "lb-meta" }, metaKicker, metaTitle, metaSub, metaFacts, actions, metaTags, el("hr", { class: "sep lb-divider" }), metaDesc, sequence);
 				  prevBtn.className = "lb-media-nav lb-media-nav--prev";
 				  nextBtn.className = "lb-media-nav lb-media-nav--next";
 					  const media = el("div", { class: "lb-media" }, mediaFrame, prevBtn, nextBtn);

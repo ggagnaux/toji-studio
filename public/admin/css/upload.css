@@ -297,3 +297,57 @@
       }
     }
 
+
+/* Phase A: upload utility emphasis */
+.upload-section-originals,
+.upload-section-batch,
+.upload-primary-card,
+.upload-secondary-card,
+.file-picker-shell{
+  background: color-mix(in srgb, var(--panel) 97%, transparent);
+  box-shadow: none;
+}
+
+.file-picker-shell{
+  transform: none;
+  border-color: color-mix(in srgb, var(--line) 92%, transparent);
+}
+
+.status-toggle,
+.upload-new-card__pill,
+.upload-readiness__item{
+  box-shadow: none;
+}
+
+.status-toggle{
+  min-height: 32px;
+}
+
+/* Phase B: upload component consistency */
+.tag-filter-pill{
+  min-height: 28px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+#tagPills .pill,
+.upload-new-card,
+.upload-readiness__item{
+  border-radius: 10px;
+}
+
+.status-toggle-option{
+  min-height: 30px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.upload-floating-field input,
+.upload-floating-field select{
+  min-height: 44px;
+}

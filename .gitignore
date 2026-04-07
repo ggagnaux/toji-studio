@@ -6,5 +6,7 @@ public/server/.env
 public/server/.env.*
 public/server/.env copy
 public/server/dist/
+public/server/test-results/
+public/server/playwright-report/
 
 /public/assets/img/logo_OLD.png

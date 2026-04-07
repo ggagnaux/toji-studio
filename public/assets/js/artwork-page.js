@@ -1,14 +1,15 @@
 import { renderPublicHeader } from "./header.js";
     import { renderPublicFooter } from "./footer.js";
     import { initStickyHero } from "./site.js";
-    import { qs, el, sortBySortOrderAndDate, deriveArtworkCategory } from "./content-utils.js";
+    import { qs, el, slugifySeries, sortBySortOrderAndDate, deriveArtworkCategory } from "./content-utils.js";
 
     // Header/footers
 	    renderPublicHeader({
 	      active: "gallery",
 	      small: "artwork",
 	      ctaText: "Explore",
-	      ctaHref: "gallery.html"
+	      ctaHref: "gallery.html",
+	      showThemeControls: false
 	    });
     renderPublicFooter({
       rightHtml: `<a href="index.html">Home</a> &bull; <a href="gallery.html">Gallery</a> &bull; <a href="series.html">Series</a> &bull; <a href="about.html">About</a> &bull; <a href="contact.html">Contact</a> &bull; <a href="admin/index.html">Studio</a>`
@@ -36,6 +37,7 @@ import { renderPublicHeader } from "./header.js";
     // DOM
     const h1 = document.getElementById("t");
     const sub = document.getElementById("sub");
+    const artworkKicker = document.getElementById("artworkKicker");
     const img = document.getElementById("img");
     const titleEl = document.getElementById("title");
     const metaLine = document.getElementById("metaLine");
@@ -43,6 +45,9 @@ import { renderPublicHeader } from "./header.js";
     const tagsWrap = document.getElementById("tagsWrap");
     const inquireBtn = document.getElementById("inquireBtn");
     const copyLinkBtn = document.getElementById("copyLink");
+    const seriesContext = document.getElementById("seriesContext");
+    const seriesBtn = document.getElementById("seriesBtn");
+    const toolbarSeriesLink = document.getElementById("toolbarSeriesLink");
     const moreGrid = document.getElementById("moreGrid");
     const moreLink = document.getElementById("moreLink");
 
@@ -80,6 +85,7 @@ import { renderPublicHeader } from "./header.js";
     document.title = `${art.title || "Artwork"} \u2014 Toji Studios`;
     h1.textContent = art.title || "Artwork";
     const category = deriveArtworkCategory(art);
+    if (artworkKicker) artworkKicker.textContent = category || "Artwork view";
     sub.textContent = [category, art.series || null, art.year || null].filter(Boolean).join(" \u2022 ") || "Published work";
 
     titleEl.textContent = art.title || "Untitled";
@@ -89,6 +95,19 @@ import { renderPublicHeader } from "./header.js";
       art.year ? `Year: ${art.year}` : null,
       art.featured ? "Featured" : null
     ].filter(Boolean).join(" \u2022 ") || "";
+
+    if (seriesContext && seriesBtn && art.series) {
+      const seriesHref = `series.html?s=${encodeURIComponent(slugifySeries(art.series))}`;
+      seriesContext.hidden = false;
+      seriesBtn.href = seriesHref;
+      if (toolbarSeriesLink) {
+        toolbarSeriesLink.hidden = false;
+        toolbarSeriesLink.href = seriesHref;
+      }
+    } else if (seriesContext) {
+      seriesContext.hidden = true;
+      if (toolbarSeriesLink) toolbarSeriesLink.hidden = true;
+    }
 
     // Image
     img.src = art.image || art.thumb || "assets/img/placeholders/p1.jpg";
@@ -137,7 +156,7 @@ import { renderPublicHeader } from "./header.js";
     let more = sameSeries.length ? sortRecent(sameSeries) : sortRecent(items.filter(a => a.id !== art.id));
     more = more.slice(0, 6);
 
-    moreLink.href = art.series ? `series.html?s=${encodeURIComponent(art.series)}` : "gallery.html";
+    moreLink.href = art.series ? `series.html?s=${encodeURIComponent(slugifySeries(art.series))}` : "gallery.html";
 
     renderMore(more);
 

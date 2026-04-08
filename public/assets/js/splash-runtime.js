@@ -4883,12 +4883,12 @@ export async function initializeHomeSplash(options = {}) {
               p.textSize(plotTypeFontSize);
               p.textAlign(p.LEFT, p.TOP);
               const countdownVisible = !!(splashCountdown && !splashCountdown.classList.contains("hidden") && String(splashCountdown.textContent || "").trim());
-              const plotTypePanelX = left + 12;
-              const plotTypePanelY = countdownVisible ? 72 : 12;
               const plotTypePanelPadX = 12;
               const plotTypePanelPadY = 8;
               const plotTypePanelW = p.textWidth(plotTypeLabel) + (plotTypePanelPadX * 2);
               const plotTypePanelH = plotTypeFontSize + (plotTypePanelPadY * 2);
+              const plotTypePanelX = ((left + right) * 0.5) - (plotTypePanelW * 0.5);
+              const plotTypePanelY = countdownVisible ? 72 : 12;
               p.stroke(184, 198, 220, 110);
               p.strokeWeight(1);
               p.fill(18, 22, 30, 88);

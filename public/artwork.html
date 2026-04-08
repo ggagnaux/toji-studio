@@ -1,55 +1,80 @@
-﻿<!doctype html>
+<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Artwork &mdash; Toji Studios</title>
   <link rel="stylesheet" href="assets/css/site.css" />
+  <link rel="stylesheet" href="assets/css/artwork.css" />
 </head>
-<body>
+<body class="home-animated">
   <header id="siteHeader"></header>
 
-  <main class="container page-with-sticky-hero">
-    <section class="hero hero--sticky" style="padding-bottom:10px">
+  <main class="container page-with-sticky-hero artwork-page">
+    <section class="page-toolbar page-toolbar--public" aria-label="Artwork tools">
+      <div class="page-toolbar__shell">
+        <div class="page-toolbar__left">
+          <a class="page-toolbar__pill is-active" href="gallery.html" aria-current="page">Gallery</a>
+          <a class="page-toolbar__pill" id="toolbarSeriesLink" href="series.html" hidden>Series</a>
+          <a class="page-toolbar__pill" href="contact.html">Contact</a>
+        </div>
+        <div class="page-toolbar__right">
+          <div class="segmented page-toolbar__theme" role="group" aria-label="Theme mode">
+            <button type="button" data-theme-choice="system">System</button>
+            <button type="button" data-theme-choice="light">Light</button>
+            <button type="button" data-theme-choice="dark">Dark</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="hero hero--sticky artwork-hero page-toolbar-target">
+      <p class="hero-kicker" id="artworkKicker">Artwork view</p>
       <h1 id="t">Artwork</h1>
       <p id="sub">Loading&hellip;</p>
     </section>
 
-    <section class="grid" aria-label="Artwork layout">
-      <div class="card" style="grid-column: span 8">
-        <div class="thumb artwork-media" style="aspect-ratio: 16/10">
+    <section class="grid artwork-layout" aria-label="Artwork layout">
+      <div class="card artwork-stage-card page-toolbar-target" style="grid-column: span 8">
+        <div class="thumb artwork-media">
           <img id="img" alt="" />
         </div>
       </div>
 
-      <div class="card" style="grid-column: span 4">
-        <div class="meta">
+      <div class="card artwork-context-card page-toolbar-target" style="grid-column: span 4">
+        <div class="meta artwork-context-card__meta">
+          <p class="artwork-context-kicker">Artwork context</p>
           <p class="title" id="title">&mdash;</p>
-          <p class="sub" id="metaLine">&mdash;</p>
+          <p class="sub artwork-meta-line" id="metaLine">&mdash;</p>
+
+          <div class="artwork-series-context" id="seriesContext" hidden>
+            <p class="artwork-series-context__label">Part of a larger body of work</p>
+            <a class="btn" id="seriesBtn" href="series.html">View series</a>
+          </div>
 
           <hr class="sep" />
 
-          <p class="sub" id="desc" style="font-size:15px; line-height:1.65; white-space:pre-wrap"></p>
+          <p class="sub artwork-description" id="desc"></p>
 
-          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px">
+          <div class="artwork-action-row">
             <a class="btn primary" id="inquireBtn" href="contact.html">Inquire</a>
             <button class="btn" id="copyLink" type="button">Copy link</button>
             <a class="btn" href="gallery.html">Back to gallery</a>
           </div>
 
-          <div id="tagsWrap" style="margin-top:14px"></div>
+          <div id="tagsWrap" class="artwork-tags"></div>
         </div>
       </div>
 
-      <div class="card" style="grid-column: span 12">
-        <div class="meta">
-          <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap">
-            <p class="title" style="margin:0">More like this</p>
+      <div class="card artwork-related-card page-toolbar-target" style="grid-column: span 12">
+        <div class="meta artwork-related-card__meta">
+          <div class="artwork-related-card__header">
+            <p class="title artwork-related-card__title">More like this</p>
             <a class="btn" id="moreLink" href="gallery.html">View all</a>
           </div>
-          <p class="sub" style="margin-top:8px">From the same series (if available), otherwise from recent work.</p>
+          <p class="sub artwork-related-card__intro">From the same series (if available), otherwise from recent work.</p>
 
-          <div class="grid" id="moreGrid" style="margin-top:12px"></div>
+          <div class="grid artwork-related-grid" id="moreGrid"></div>
         </div>
       </div>
     </section>
@@ -60,5 +85,3 @@
   <script type="module" src="./assets/js/artwork-page.js"></script>
 </body>
 </html>
-
-

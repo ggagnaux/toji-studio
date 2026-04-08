@@ -174,12 +174,16 @@
     }
     #splashModeField{
       width:min(280px, 100%);
+      --floating-control-padding-top: 38px;
+      --floating-label-float-top: 4px;
     }
     #bannerLogoAnimationStyleField{
       width:min(320px, 100%);
     }
     #splashRandomCycleSecondsField{
       width:min(220px, 100%);
+      --floating-control-padding-top: 38px;
+      --floating-label-float-top: 4px;
     }
     #splashPreviewBtn:disabled{
       opacity:.38;
@@ -524,14 +528,16 @@
       display:none;
     }
     .other-settings-preview-stage .splash-logo{
-      position:relative;
+      position:absolute;
+      top:12px;
+      left:50%;
       z-index:2;
       border:1px solid rgba(255, 255, 255, .24);
       border-radius:999px;
       background:rgba(0, 0, 0, .28);
       padding:10px 14px;
       pointer-events:none;
-      transform:scale(.95);
+      transform:translateX(-50%) scale(.95);
     }
     .other-settings-preview-stage .splash-logo .brand-logo-icon-image{
       border:none;
@@ -568,3 +574,92 @@
 
 
 
+
+/* Phase A: other settings admin cleanup */
+.other-settings-tabbtn.is-active{
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  box-shadow: none;
+}
+
+.other-settings-tabcontent,
+.other-settings-modal__dialog{
+  background: color-mix(in srgb, var(--panel) 97%, transparent);
+  box-shadow: none;
+}
+
+.banner-logo-border-color-field input[type="color"]{
+  box-shadow: none;
+  background: var(--panel);
+}
+
+/* Phase B: other settings utility consistency */
+.other-settings-tabbar{
+  gap: 6px;
+}
+
+.other-settings-tabbtn{
+  min-height: 32px;
+  padding: 6px 10px;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+#otherPaneSplash #splashControlsBlock > .sub{
+  margin-top: 12px;
+  margin-bottom: 10px;
+}
+
+#otherPaneSplash #splashMode,
+#otherPaneBanner #bannerLogoAnimationStyle,
+#otherPaneBanner #bannerStaticLogoSrc{
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel) 98%, transparent);
+  border-color: var(--line);
+  font-family: inherit;
+}
+
+#otherPaneSplash #splashMode option,
+#otherPaneBanner #bannerLogoAnimationStyle option,
+#otherPaneBanner #bannerStaticLogoSrc option{
+  color: var(--text);
+  background: var(--panel);
+}
+
+#otherPaneBanner .other-settings-floating-field,
+#otherPaneBanner .banner-static-logo-select-wrap{
+  margin-top: 4px;
+}
+
+#otherPaneAiIntegration #aiControlsBlock .field{
+  margin-top: 14px;
+}
+
+#otherPaneVariants .settings-grid{
+  row-gap: 14px;
+  column-gap: 12px;
+}
+
+#otherPaneVariants .btn{
+  font-family: inherit;
+}
+
+#otherPaneContact .field{
+  margin-top: 16px;
+}
+
+.other-settings-chip-actions .btn,
+.other-settings-modal__controls .btn{
+  min-height: 30px;
+}
+
+.other-settings-floating-field input,
+.other-settings-floating-field select{
+  min-height: 44px;
+  border-radius: 10px;
+}

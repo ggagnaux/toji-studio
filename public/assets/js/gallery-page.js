@@ -52,7 +52,6 @@ import { renderPublicHeader } from "./header.js";
     const categoryChipHost = document.getElementById("categoryChips");
     const tagPrefilterHost = document.getElementById("tagPrefilterChips");
     const chipHost = document.getElementById("tagChips");
-	    const tagFilterSummary = document.getElementById("tagFilterSummary");
 	    const galleryTagsShortcut = document.getElementById("galleryTagsShortcut");
 	    const qInput = document.getElementById("q");
 	    const qClear = document.getElementById("qClear");
@@ -112,7 +111,6 @@ import { renderPublicHeader } from "./header.js";
 	    function syncTagFilterVisibility() {
       const visible = selectedLetters.size > 0;
       if (chipHost) chipHost.hidden = !visible;
-      if (tagFilterSummary) tagFilterSummary.hidden = !visible;
     }
 
 	    function refreshSearchClear(){
@@ -353,7 +351,6 @@ import { renderPublicHeader } from "./header.js";
       syncTagFilterVisibility();
       chipHost.innerHTML = "";
       if (selectedLetters.size === 0) {
-        renderTagFilterSummary();
         return;
       }
       const visibleTags = getVisibleTagsByLetter();
@@ -382,77 +379,6 @@ import { renderPublicHeader } from "./header.js";
           chipHost.appendChild(el("span", { class: "tag-chip-separator", "aria-hidden": "true" }));
         }
       });
-      renderTagFilterSummary();
-    }
-
-    function renderTagFilterSummary() {
-      if (!tagFilterSummary) return;
-
-      const selectedLetterList = prefilterTokens.filter((token) => selectedLetters.has(token));
-      const selectedTagList = Array.from(selectedTags);
-      const hasSearchFilter = !!q;
-      tagFilterSummary.innerHTML = "";
-
-      if (!selectedLetterList.length && !selectedTagList.length && !hasSearchFilter && selectedCategory === "all") {
-        tagFilterSummary.textContent = "No filtering";
-        return;
-      }
-
-      if (selectedCategory !== "all") {
-        tagFilterSummary.appendChild(
-          el("div", { class: "tag-filter-summary-line" },
-            el("span", {}, "Showing category: "),
-            el("span", { class: "tag-filter-summary-pills" },
-              el("span", { class: "chip tag-filter-summary-pill" }, PUBLIC_TAXONOMY.find((category) => category.toLowerCase() === selectedCategory) || selectedCategory)
-            )
-          )
-        );
-      }
-      if (hasSearchFilter) {
-        tagFilterSummary.appendChild(
-          el("div", { class: "tag-filter-summary-line" },
-            el("span", {}, `Showing tags matching search: "${q}"`)
-          )
-        );
-      }
-      if (selectedLetterList.length) {
-        tagFilterSummary.appendChild(
-          el("div", { class: "tag-filter-summary-line" },
-            el("span", {}, "Showing tags starting with the following: "),
-            el("span", { class: "tag-filter-summary-pills" },
-              ...selectedLetterList.flatMap((token, idx) => (
-                idx === 0
-                  ? [el("span", { class: "chip tag-filter-summary-pill" }, token)]
-                  : [el("span", { class: "tag-filter-summary-joiner" }, "or"), el("span", { class: "chip tag-filter-summary-pill" }, token)]
-              ))
-            )
-          )
-        );
-      }
-      if (selectedTagList.length) {
-        tagFilterSummary.appendChild(
-          el("div", { class: "tag-filter-summary-line" },
-            el("span", {}, "Showing images containing the following tags: "),
-            el("span", { class: "tag-filter-summary-pills" },
-              ...selectedTagList.flatMap((tag, idx) => (
-                idx === 0
-                  ? [el("span", { class: "chip tag-filter-summary-pill" }, tag)]
-                  : [el("span", { class: "tag-filter-summary-joiner" }, "and"), el("span", { class: "chip tag-filter-summary-pill" }, tag)]
-              ))
-            )
-          )
-        );
-      }
-      if (selectedLetterList.length || selectedTagList.length || hasSearchFilter || selectedCategory !== "all") {
-        tagFilterSummary.appendChild(
-          el("div", { class: "tag-filter-summary-actions" },
-            el("button", { id: "tagFiltersClearBtn", class: "btn", type: "button" }, "Clear filters")
-          )
-        );
-        tagFilterSummary.querySelector("#tagFiltersClearBtn")?.addEventListener("click", () => {
-          clearTagFilters();
-        });
-      }
     }
 
 	    function renderCategoryChips() {

@@ -15,6 +15,12 @@
       gap:10px;
       margin-top:12px;
     }
+    .external-links-card .btn,
+    .external-link-row input:not([type="checkbox"]),
+    .external-link-row select,
+    .external-link-confirm p{
+      font-family:inherit;
+    }
     .external-link-row{
       display:grid;
       grid-template-columns: auto minmax(130px, 1.05fr) minmax(180px, 2fr) minmax(120px, .9fr) auto;
@@ -24,6 +30,35 @@
       border-radius:12px;
       padding:10px;
       background:color-mix(in srgb, var(--panel) 90%, transparent);
+    }
+    .external-link-row input:not([type="checkbox"]),
+    .external-link-row select{
+      min-height:42px;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:10px 12px;
+      background:color-mix(in srgb, var(--panel) 98%, transparent);
+      color:var(--text);
+      box-shadow:none;
+      transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+    }
+    .external-link-row select{
+      padding-right:44px;
+    }
+    .external-link-row input:not([type="checkbox"]):hover,
+    .external-link-row select:hover{
+      border-color:var(--accent-border);
+    }
+    .external-link-row input:not([type="checkbox"]):focus,
+    .external-link-row input:not([type="checkbox"]):focus-visible,
+    .external-link-row select:focus,
+    .external-link-row select:focus-visible{
+      outline:none;
+      border-color:var(--accent-border);
+      box-shadow:0 0 0 3px var(--focus-ring);
+    }
+    .external-link-row input:not([type="checkbox"])::placeholder{
+      color:color-mix(in srgb, var(--muted) 85%, transparent);
     }
     .external-link-row.is-disabled input:not([type="checkbox"]),
     .external-link-row.is-disabled select{

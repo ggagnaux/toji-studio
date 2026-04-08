@@ -1233,3 +1233,170 @@ textarea::placeholder{
 
 
 
+
+/* Phase A: public/admin shell split overrides */
+:root{
+  --surface-public: color-mix(in srgb, var(--panel) 82%, transparent);
+  --surface-public-strong: color-mix(in srgb, var(--panel) 92%, var(--bg));
+  --surface-admin: color-mix(in srgb, var(--panel) 97%, var(--bg));
+  --surface-admin-muted: color-mix(in srgb, var(--panel) 90%, transparent);
+}
+
+main.container{
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--accent) 5%, transparent), transparent 56%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 98%, white 2%), color-mix(in srgb, var(--bg) 94%, transparent));
+}
+
+.admin-shell main.container{
+  background: transparent;
+}
+
+.page-toolbar__shell{
+  background: color-mix(in srgb, var(--surface-public-strong) 78%, transparent);
+  border-color: color-mix(in srgb, var(--line) 84%, transparent);
+  box-shadow: none;
+}
+
+.admin-shell .page-toolbar__shell{
+  background: var(--surface-admin);
+  border-color: color-mix(in srgb, var(--line) 96%, transparent);
+  border-radius: 14px;
+}
+
+.page-toolbar__pill{
+  min-height: 34px;
+  padding: 6px 12px;
+  background: color-mix(in srgb, var(--panel) 72%, transparent);
+  border-color: color-mix(in srgb, var(--line) 78%, transparent);
+  box-shadow: none;
+}
+
+.admin-shell .page-toolbar__pill{
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+}
+
+.page-toolbar__theme,
+.page-toolbar__theme .theme-toggle,
+.page-toolbar__theme .theme-toggle button{
+  box-shadow: none;
+}
+
+.page-toolbar__theme{
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+  border-color: color-mix(in srgb, var(--line) 76%, transparent);
+}
+
+.admin-shell .page-toolbar__theme{
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+}
+
+.header .container.nav{
+  background: color-mix(in srgb, var(--surface-public) 62%, transparent);
+  border-color: color-mix(in srgb, var(--line) 76%, transparent);
+  box-shadow: none;
+}
+
+.admin-shell .header .container.nav{
+  background: color-mix(in srgb, var(--panel) 98%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--line) 96%, transparent);
+}
+
+.btn,
+button.btn,
+a.btn{
+  box-shadow: none;
+}
+
+.admin-shell .btn,
+.admin-shell button.btn,
+.admin-shell a.btn{
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 10px;
+}
+
+.card{
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .08);
+}
+
+.admin-shell .card{
+  box-shadow: none;
+  background: var(--surface-admin);
+}
+
+.segmented{
+  background: color-mix(in srgb, var(--panel) 64%, transparent);
+  box-shadow: none;
+}
+
+.segmented button{
+  min-height: 34px;
+}
+
+.admin-shell .segmented{
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  border-color: color-mix(in srgb, var(--line) 92%, transparent);
+}
+
+.admin-shell .segmented button{
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 10px;
+}
+
+.admin-shell .search{
+  min-height: 38px;
+  padding-inline: 12px;
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+}
+
+/* Phase B: admin utility component consistency */
+.admin-shell .btn,
+.admin-shell button.btn,
+.admin-shell a.btn{
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+
+.admin-shell .btn.mini,
+.admin-shell .mini{
+  min-height: 28px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.admin-shell .chip{
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.admin-shell .field input,
+.admin-shell .field textarea,
+.admin-shell .field select{
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 98%, transparent);
+  box-shadow: none;
+}
+
+.admin-shell .field .sub,
+.admin-shell .sub{
+  letter-spacing: .06em;
+}
+
+.admin-shell .table th{
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-shell .table td{
+  padding-top: 10px;
+  padding-bottom: 10px;
+}

@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="../assets/css/site.css" />
   <style>
     #seriesManagerGrid{
-      grid-template-columns:minmax(360px, 3.2fr) minmax(0, 8.8fr);
+      grid-template-columns:minmax(360px, 4.8fr) minmax(0, 7.2fr);
       align-items:start;
     }
     #seriesListCard,
@@ -32,6 +32,28 @@
       #seriesEditorCard{
         grid-column:span 1 !important;
       }
+    }
+    #seriesEditorCard .series-editor-tab,
+    #seriesEditorCard .tab{
+      border-top-left-radius:10px;
+      border-top-right-radius:10px;
+      border-bottom-left-radius:0;
+      border-bottom-right-radius:0;
+    }
+    #seriesListCard .btn,
+    #seriesEditorCard .btn{
+      min-height:32px;
+      border-radius:10px;
+      font-size:13px;
+      font-weight:650;
+    }
+    #seriesListCard input,
+    #seriesEditorCard input,
+    #seriesEditorCard textarea,
+    #seriesEditorCard select{
+      border-radius:10px;
+      background:color-mix(in srgb, var(--panel) 98%, transparent);
+      box-shadow:none;
     }
   </style>
 </head>

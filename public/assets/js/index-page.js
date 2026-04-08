@@ -87,6 +87,12 @@ await initializeHomeSplash();
     );
     const featured = sortGallery(all.filter(a => a.featured));
 
+    function getSeriesSummary(meta, items) {
+      const description = String(meta?.description || "").trim();
+      if (description) return description;
+      return `${items.length} published piece${items.length === 1 ? "" : "s"} arranged as a single body of work.`;
+    }
+
     if (isFeaturedVisible) {
       renderFeatured(featured);
     } else {
@@ -180,27 +186,42 @@ await initializeHomeSplash();
       homeSeriesHint.textContent = `${entries.length} series`;
 
       for (const s of entries) {
-        const previewItems = s.items.slice(0, 8);
+        const previewItems = s.items.slice(0, 3);
         homeSeriesGrid.appendChild(
-          el("article", { class: "home-series-item" },
+          el("article", { class: "home-series-item home-series-card" },
             el("a", {
-              class: "card series-card",
-              href: "#",
-              onclick: (e) => {
-                e.preventDefault();
-                openLightbox(s.items, 0);
-              }
+              class: "home-series-card__coverlink",
+              href: `series.html?s=${encodeURIComponent(s.slug)}`
             },
-              el("div", { class: "series-masonry", "aria-hidden": "true" },
+              el("div", { class: "home-series-card__cover" },
+                el("img", { src: s.cover, alt: `${s.name} cover artwork`, loading: "lazy" })
+              )
+            ),
+            el("div", { class: "home-series-card__body" },
+              el("p", { class: "home-series-card__eyebrow" }, "Series"),
+              el("h3", { class: "home-series-card__title" }, s.name),
+              el("p", { class: "home-series-card__summary" }, getSeriesSummary({ description: s.description }, s.items)),
+              el("div", { class: "home-series-card__meta" },
+                el("span", { class: "home-series-card__pill" }, `${s.count} piece${s.count === 1 ? "" : "s"}`),
+                s.items.some((item) => item.featured) ? el("span", { class: "home-series-card__pill" }, "Featured work inside") : null
+              ),
+              el("div", { class: "home-series-card__preview", "aria-hidden": "true" },
                 ...previewItems.map((item) => el("img", {
                   src: item.thumb || item.image || s.cover,
                   alt: "",
                   loading: "lazy"
                 }))
               ),
-              el("div", { class: "meta" },
-                el("p", { class: "title" }, s.name),
-                el("p", { class: "sub" }, `${s.count} piece${s.count === 1 ? "" : "s"}`)
+              el("div", { class: "home-series-card__actions" },
+                el("a", { class: "btn primary", href: `series.html?s=${encodeURIComponent(s.slug)}` }, "Open series"),
+                el("button", {
+                  class: "btn",
+                  type: "button",
+                  onclick: (e) => {
+                    e.preventDefault();
+                    openLightbox(s.items, 0);
+                  }
+                }, "Preview works")
               )
             )
           )
@@ -221,7 +242,7 @@ await initializeHomeSplash();
 
       items.forEach((a, idx) => {
         const card = el("a", {
-          class: "card",
+          class: "card home-featured-card",
           href: `artwork.html?id=${encodeURIComponent(a.id)}`,
           style: "",
           //onclick: null // (e)=>{ e.preventDefault(); openLightbox(items, idx); }
@@ -231,6 +252,7 @@ await initializeHomeSplash();
             el("img", { src: a.thumb || a.image, alt: a.alt || a.title || "Artwork", loading: "lazy" })
           ),
           el("div", { class: "meta" },
+            el("p", { class: "home-featured-card__eyebrow" }, "Featured work"),
             el("p", { class: "title" }, a.title || "Untitled"),
             el("p", { class: "sub" }, [a.series || null, a.year || null].filter(Boolean).join(" • ") || " ")
           )
@@ -258,7 +280,7 @@ await initializeHomeSplash();
 
       items.forEach((a, idx) => {
         const card = el("a", {
-          class: "card",
+          class: "card home-latest-card",
           href: `artwork.html?id=${encodeURIComponent(a.id)}`,
           style: `
             grid-column: span 4;

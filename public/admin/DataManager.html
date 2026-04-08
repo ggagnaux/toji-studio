@@ -24,14 +24,14 @@
       <section style="display:grid; gap:14px">
         <article class="card">
 	          <div class="meta" style="display:grid; gap:0;">
-	            <div class="other-settings-tabbar" role="tablist" aria-label="Data manager sections">
-	              <button class="other-settings-tabbtn is-active" id="dataTabExport" type="button" role="tab" aria-selected="true" aria-controls="dataPanelExport" data-data-tab="export">Export</button>
-	              <button class="other-settings-tabbtn" id="dataTabImport" type="button" role="tab" aria-selected="false" aria-controls="dataPanelImport" data-data-tab="import">Import</button>
-	              <button class="other-settings-tabbtn" id="dataTabMaintenance" type="button" role="tab" aria-selected="false" aria-controls="dataPanelMaintenance" data-data-tab="maintenance">Maintenance</button>
+              <div class="other-settings-tabbar data-manager-tabbar" role="tablist" aria-label="Data manager sections">
+                <button class="other-settings-tabbtn data-manager-tabbtn is-active" id="dataTabExport" type="button" role="tab" aria-selected="true" aria-controls="dataPanelExport" data-data-tab="export">Export</button>
+                <button class="other-settings-tabbtn data-manager-tabbtn" id="dataTabImport" type="button" role="tab" aria-selected="false" aria-controls="dataPanelImport" data-data-tab="import">Import</button>
+                <button class="other-settings-tabbtn data-manager-tabbtn" id="dataTabMaintenance" type="button" role="tab" aria-selected="false" aria-controls="dataPanelMaintenance" data-data-tab="maintenance">Maintenance</button>
 	            </div>
 
-            <div class="other-settings-tabcontent">
-              <section class="other-settings-tabpane" id="dataPanelExport" role="tabpanel" aria-labelledby="dataTabExport" data-data-panel="export" style="display:grid; gap:14px;">
+            <div class="other-settings-tabcontent data-manager-tabcontent">
+              <section class="other-settings-tabpane data-manager-tabpane" id="dataPanelExport" role="tabpanel" aria-labelledby="dataTabExport" data-data-panel="export" style="display:grid; gap:14px;">
                 <div>
                   <p class="title" style="margin:0">Data Export</p>
                   <p class="sub" style="margin-top:8px">Select one or more tables and download them as a bundled JSON export.</p>
@@ -48,7 +48,7 @@
                 <div class="sub" id="exportDatabaseStatus" aria-live="polite"></div>
               </section>
 
-	              <section class="other-settings-tabpane" id="dataPanelImport" role="tabpanel" aria-labelledby="dataTabImport" data-data-panel="import" hidden style="display:none; gap:14px;">
+                <section class="other-settings-tabpane data-manager-tabpane" id="dataPanelImport" role="tabpanel" aria-labelledby="dataTabImport" data-data-panel="import" hidden style="display:none; gap:14px;">
 	                <div>
 	                  <p class="title" style="margin:0">Data Import</p>
 	                  <p class="sub" style="margin-top:8px">Preview a bundled export file, then import only the safe tables supported in v1: settings, social platforms, and external links.</p>
@@ -68,7 +68,7 @@
 	                <div id="importPreviewList"></div>
 	              </section>
 
-	              <section class="other-settings-tabpane" id="dataPanelMaintenance" role="tabpanel" aria-labelledby="dataTabMaintenance" data-data-panel="maintenance" hidden style="display:none; gap:14px;">
+                <section class="other-settings-tabpane data-manager-tabpane" id="dataPanelMaintenance" role="tabpanel" aria-labelledby="dataTabMaintenance" data-data-panel="maintenance" hidden style="display:none; gap:14px;">
 	                <div>
 	                  <p class="title" style="margin:0">Maintenance</p>
 	                  <p class="sub" style="margin-top:8px">Run maintenance tasks that clean up orphaned files and broken variant records.</p>

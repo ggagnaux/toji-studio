@@ -125,18 +125,18 @@ function ensureLightboxStyles() {
 	      min-width:0;
 	    }
 	    .lb-counter{
-	      position:absolute;
-	      left:14px;
-	      bottom:14px;
+	      display:inline-flex;
+	      align-items:center;
+	      justify-content:center;
+	      min-height:34px;
 	      padding:6px 10px;
 	      border:1px solid color-mix(in srgb, var(--line) 78%, transparent);
 	      border-radius:999px;
 	      background:color-mix(in srgb, var(--panel) 82%, rgba(0,0,0,.18) 18%);
 	      color:var(--muted);
-	      font-size:19.5px;
+	      font-size:13px;
 	      line-height:1.2;
 	      white-space:nowrap;
-	      z-index:3;
 	      pointer-events:none;
 	      backdrop-filter:blur(6px);
 	    }
@@ -265,13 +265,14 @@ function ensureLightboxStyles() {
     }
 	    .lb-meta{
 	      padding:14px;
-	      padding-bottom:52px;
 	      border-right:1px solid var(--line);
 	      overflow:hidden;
 	      min-width:0;
 	      grid-column: 1;
 	      grid-row: 1;
 	      position:relative;
+	      display:flex;
+	      flex-direction:column;
 	    }
 	    .lb-meta .sub{ margin-top:8px; }
 	    .lb-kicker{
@@ -371,16 +372,24 @@ function ensureLightboxStyles() {
 		      transform: translate(2px, 0);
 		    }
 	    .lb-sequence{
-	      display:flex;
+	      display:grid;
+	      grid-template-columns: 1fr auto 1fr;
 	      gap:8px;
-	      flex-wrap:wrap;
-	      margin-top:12px;
+	      margin-top:auto;
+	      padding-top:14px;
 	      align-items:center;
+	      width:100%;
 	    }
 	    .lb-sequence .btn{
 	      min-height:34px;
 	      font-size:13px;
 	      padding:7px 10px;
+	    }
+	    .lb-sequence .btn:first-child{
+	      justify-self:start;
+	    }
+	    .lb-sequence .btn:last-child{
+	      justify-self:end;
 	    }
 	    .lb-sequence .btn[disabled]{
 	      opacity:.45;
@@ -416,6 +425,81 @@ function ensureLightboxStyles() {
   document.head.appendChild(style);
 }
 
+// Toast notification system for lightbox and other public pages
+function ensureToastContainer() {
+  let container = document.querySelector(".public-toast-container");
+  if (container && document.body.contains(container)) return container;
+
+  container = el("div", { class: "public-toast-container", "aria-live": "polite" });
+  
+  const style = document.createElement("style");
+  style.textContent = `
+    .public-toast-container {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      pointer-events: none;
+    }
+    .public-toast {
+      pointer-events: auto;
+      background: color-mix(in srgb, var(--panel, rgba(14,18,28,.94)) 96%, transparent);
+      border: 1px solid color-mix(in srgb, #2ea97d 45%, rgba(255,255,255,.22));
+      border-radius: 12px;
+      color: color-mix(in srgb, var(--text, #f8f7f4) 88%, #2ea97d 12%);
+      padding: 12px 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      box-shadow: 0 10px 24px rgba(0,0,0,.2);
+      max-width: min(90vw, 400px);
+      word-wrap: break-word;
+      white-space: pre-line;
+      animation: toastSlideIn .3s ease;
+    }
+    .public-toast.is-closing {
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    @keyframes toastSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(container);
+  
+  return container;
+}
+
+function showToast(message, duration = 3000) {
+  const container = ensureToastContainer();
+  const toast = el("div", { class: "public-toast" }, message);
+  container.appendChild(toast);
+
+  const timeout = window.setTimeout(() => {
+    toast.classList.add("is-closing");
+    const transitionTimeout = window.setTimeout(() => {
+      toast.remove();
+    }, 200);
+  }, duration);
+
+  return {
+    close: () => {
+      window.clearTimeout(timeout);
+      toast.classList.add("is-closing");
+      window.setTimeout(() => toast.remove(), 200);
+    }
+  };
+}
+
 export function createArtworkLightboxController() {
   ensureLightboxStyles();
 
@@ -442,10 +526,10 @@ export function createArtworkLightboxController() {
 		  const seriesBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "View series");
 		  const imageBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "Open image file");
 		  const actions = el("div", { class: "lb-actions" }, openPageBtn, copyLinkBtn, inquireBtn, seriesBtn, imageBtn);
-		  const prevTextBtn = el("button", { class: "btn", type: "button" }, "Previous image");
-		  const nextTextBtn = el("button", { class: "btn", type: "button" }, "Next image");
-		  const sequence = el("div", { class: "lb-sequence" }, prevTextBtn, nextTextBtn);
-					  const meta = el("div", { class: "lb-meta" }, metaKicker, metaTitle, metaSub, metaFacts, actions, metaTags, el("hr", { class: "sep lb-divider" }), metaDesc, sequence, counter);
+		  const prevTextBtn = el("button", { class: "btn", type: "button", "aria-label": "Previous image", title: "Previous image" }, "\u2190");
+		  const nextTextBtn = el("button", { class: "btn", type: "button", "aria-label": "Next image", title: "Next image" }, "\u2192");
+		  const sequence = el("div", { class: "lb-sequence" }, prevTextBtn, counter, nextTextBtn);
+					  const meta = el("div", { class: "lb-meta" }, metaKicker, metaTitle, metaSub, metaFacts, actions, metaTags, el("hr", { class: "sep lb-divider" }), metaDesc, sequence);
 				  prevBtn.className = "lb-media-nav lb-media-nav--prev";
 				  nextBtn.className = "lb-media-nav lb-media-nav--next";
 					  const media = el("div", { class: "lb-media" }, mediaFrame, prevBtn, nextBtn);
@@ -601,6 +685,7 @@ export function createArtworkLightboxController() {
 		    try {
 		      await navigator.clipboard.writeText(currentShareUrl);
 		      copyLinkBtn.textContent = "Copied!";
+		      showToast(`The artwork link has been copied to the clipboard.\n${currentShareUrl}`);
 		      window.setTimeout(() => {
 		        copyLinkBtn.textContent = "Copy link";
 		      }, 900);

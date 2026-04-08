@@ -74,6 +74,28 @@ function ensureQueueStyles() {
     .dashboard-controls .filters .chip{
       align-self:center;
     }
+    #queuePlatform,
+    #queueSort,
+    #queueSearch,
+    #refreshQueueBtn,
+    .social-queue-actions .btn{
+      font-family:inherit;
+    }
+    #queuePlatform,
+    #queueSort{
+      color:var(--text);
+      background:color-mix(in srgb, var(--panel) 98%, transparent);
+      border:1px solid var(--line);
+    }
+    #queuePlatform option,
+    #queueSort option{
+      color:var(--text);
+      background:var(--panel);
+    }
+    [data-theme="light"] #queuePlatform,
+    [data-theme="light"] #queueSort{
+      background:color-mix(in srgb, var(--panel) 94%, white 6%);
+    }
     .social-queue-card{
       border:1px solid var(--line);
       border-radius:14px;

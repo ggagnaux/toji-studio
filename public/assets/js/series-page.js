@@ -189,6 +189,12 @@ function getSeriesSummary(series, pieces) {
   return `${series.name} is a curated set of ${pieces.length} published piece${pieces.length === 1 ? "" : "s"} presented as a single body of work.`;
 }
 
+function getSeriesListNote(series, pieces) {
+  const description = String(series?.description || "").trim();
+  if (description) return description;
+  return `${pieces.length} published piece${pieces.length === 1 ? "" : "s"} arranged as one collection.`;
+}
+
 function getSeriesCategory(pieces) {
   const counts = new Map();
   pieces.forEach((piece) => {
@@ -252,7 +258,8 @@ function renderSeriesList(activeSlug) {
         cover ? el("img", { class: "series-list-item__cover", src: cover, alt: "" }) : null,
         el("div", { class: "series-list-item__body" },
           el("div", { class: "series-list-item__title" }, s.name),
-          el("div", { class: "sub" }, `${s.publishedCount} piece${s.publishedCount === 1 ? "" : "s"}`)
+          el("div", { class: "sub" }, `${s.publishedCount} piece${s.publishedCount === 1 ? "" : "s"}`),
+          el("div", { class: "series-list-item__note" }, getSeriesListNote(s, pieces))
         )
       )
     );
@@ -285,8 +292,9 @@ function createArtworkCard(list, artwork, index, extraMeta = []) {
 
 function renderOverview() {
   detail.innerHTML = "";
+  detail.appendChild(el("p", { class: "series-panel-kicker" }, "Curated overview"));
   detail.appendChild(el("p", { class: "title", style: "margin:0" }, "Series overview"));
-  detail.appendChild(el("p", { class: "sub", style: "margin-top:8px" }, "Browse each series as its own landing page, with cover imagery, context, highlights, and a full piece run."));
+  detail.appendChild(el("p", { class: "sub", style: "margin-top:8px" }, "Browse each series as its own landing page, with cover imagery, context, anchor works, and a full ordered run."));
 
   const wrap = el("div", { class: "series-overview-grid" });
 
@@ -305,8 +313,8 @@ function renderOverview() {
                 el("span", { class: "series-meta-pill" }, `${s.publishedCount} piece${s.publishedCount === 1 ? "" : "s"}`),
                 pieces.some((piece) => piece.featured) ? el("span", { class: "series-meta-pill" }, "Includes featured work") : null
               ),
-              el("div", { style: "margin-top:4px" },
-                el("a", { class: "btn", href: `series.html?s=${encodeURIComponent(s.slug)}` }, "Open series ->")
+              el("div", { class: "series-overview-card__actions" },
+                el("a", { class: "btn", href: `series.html?s=${encodeURIComponent(s.slug)}` }, "Open series")
               )
             )
           )
@@ -338,6 +346,7 @@ function openSeries(slug) {
         el("img", { src: cover, alt: `${s.name} cover artwork`, loading: "lazy" })
       ) : null,
       el("div", { class: "series-detail-hero__content" },
+        el("p", { class: "series-panel-kicker" }, "Series landing page"),
         el("div", { class: "series-detail-hero__top" },
           el("h2", { class: "series-detail-hero__title" }, s.name),
           el("span", { class: "sub" }, `${pieces.length} piece${pieces.length === 1 ? "" : "s"}`)

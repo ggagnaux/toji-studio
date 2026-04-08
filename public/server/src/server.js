@@ -121,6 +121,10 @@ export function createApp() {
 
   const siteRoot = resolveSiteRoot();
   if (siteRoot) {
+    app.get(/^\/admin\/?$/, (req, res) => {
+      res.sendFile(path.join(siteRoot, "admin", "index.html"));
+    });
+
     app.get("/admin/:page", (req, res, next) => {
       const filePath = resolveAdminPageFile(siteRoot, req.params.page);
       if (!filePath) return next();

@@ -845,7 +845,7 @@ async function loadImageVariantSettings() {
   try {
     const settings = await apiFetch("/api/admin/settings/image-variants", { method: "GET" });
     renderImageVariantSettings(settings);
-    setImageVariantStatus("Loaded from backend.", "success");
+    setImageVariantStatus("");
   } catch (error) {
     setImageVariantStatus(`Failed to load backend settings: ${error?.message || error}`, "error");
   }

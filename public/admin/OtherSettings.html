@@ -47,7 +47,7 @@
                 <div id="splashControlsBlock" style="margin-top:12px">
                 <p class="sub" style="margin-top:8px">Controls the background animation on the splash screen.</p>
 
-	                <div class="field" style="margin-top:12px">
+                  <div class="field" style="margin-top:16px">
   <div class="other-settings-inline-field-row">
     <div class="other-settings-floating-field" id="splashModeField">
       <select id="splashMode" aria-label="Active animation"></select>
@@ -65,7 +65,7 @@
                     </span>
                     <span class="sub">Change animation automatically while splash is open</span>
                   </label>
-                  <div class="field" style="margin-top:10px">
+	                  <div class="field" style="margin-top:14px">
 	                    <div class="other-settings-floating-field" id="splashRandomCycleSecondsField">
 	                      <input id="splashRandomCycleSeconds" type="number" min="1" step="1" value="12" aria-label="Change interval (seconds)" />
 	                      <label class="other-settings-floating-label" for="splashRandomCycleSeconds">Change interval (seconds)</label>
@@ -134,7 +134,7 @@
                   <span class="toggle-status-badge" id="bannerBezierToggleBadge" aria-live="polite">Disabled</span>
                   <span class="sub" id="bannerBezierToggleLabel">Banner Animation</span>
                 </label>
-                <div class="field banner-animation-style-field" style="margin-top:10px">
+                <div class="field banner-animation-style-field" style="margin-top:14px">
                   <div class="other-settings-floating-field" id="bannerLogoAnimationStyleField">
                     <select id="bannerLogoAnimationStyle" aria-label="Animation style">
                       <option value="circles">White circles</option>
@@ -145,7 +145,7 @@
                     <label class="other-settings-floating-label" for="bannerLogoAnimationStyle">Animation style</label>
                   </div>
                 </div>
-                <div class="field banner-static-logo-field" style="margin-top:10px">
+                <div class="field banner-static-logo-field" style="margin-top:14px">
                   <div class="sub">Static banner image</div>
                   <div class="banner-static-logo-select-wrap"><select id="bannerStaticLogoSrc"></select></div>
                   <div class="banner-logo-upload-row">
@@ -167,8 +167,8 @@
                   <span class="toggle-status-badge" id="aiFeaturesToggleBadge" aria-live="polite">Enabled</span>
                   <span class="sub" id="aiFeaturesToggleLabel">Ai Features</span>
                 </label>
-                <div id="aiControlsBlock" class="other-settings-controls-block" style="margin-top:10px">
-                  <div class="field" style="margin-top:0">
+                <div id="aiControlsBlock" class="other-settings-controls-block" style="margin-top:14px">
+                  <div class="field" style="margin-top:12px">
                     <div class="sub">Tag cap per artwork</div>
                     <input id="tagCap" type="number" min="1" max="120" step="1" value="20" />
                   </div>
@@ -178,7 +178,7 @@
               <section class="other-settings-tabpane" id="otherPaneVariants" role="tabpanel" aria-labelledby="otherTabVariants" data-settings-pane="variants" hidden>
                 <p class="title" style="margin:0">Image Variant Settings</p>
                 <p class="sub" style="margin-top:8px">Controls the sizes and JPEG quality used when upload processing creates `thumb` and `web` variants.</p>
-                <div class="settings-grid" style="margin-top:10px">
+                <div class="settings-grid" style="margin-top:14px">
                   <div class="field">
                     <div class="sub">Thumb max width (px)</div>
                     <input id="thumbMaxWidth" type="number" min="64" max="6000" step="1" value="560" />
@@ -196,7 +196,7 @@
                     <input id="webQuality" type="number" min="1" max="100" step="1" value="84" />
                   </div>
                 </div>
-                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:16px">
                   <button class="btn" id="resetImageVariantsBtn" type="button">Reset to defaults</button>
                   <span class="sub" id="imageVariantStatus" aria-live="polite"></span>
                 </div>
@@ -205,7 +205,7 @@
               <section class="other-settings-tabpane" id="otherPaneContact" role="tabpanel" aria-labelledby="otherTabContact" data-settings-pane="contact" hidden>
                 <p class="title" style="margin:0">Contact</p>
                 <p class="sub" style="margin-top:8px">Controls the email address shown on the Contact page's Direct panel.</p>
-                <div class="field" style="margin-top:12px">
+                <div class="field" style="margin-top:16px">
                   <div class="sub">Email Address</div>
                   <input id="contactEmailAddress" type="email" placeholder="you@example.com" autocomplete="email" />
                 </div>

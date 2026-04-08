@@ -44,6 +44,10 @@ function normalizeAdminPathname(pathname) {
 
 function isActiveAdminHref(href) {
   const current = normalizeAdminPathname(window.location.pathname || "");
+  // Handle /admin or /admin/ as index.html
+  if ((current === "/admin" || current === "/admin/") && String(href || "").toLowerCase() === "index.html") {
+    return true;
+  }
   return current.endsWith("/admin/" + String(href || "").toLowerCase());
 }
 

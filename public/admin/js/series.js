@@ -232,7 +232,7 @@
         }
         .series-manager-page .series-editor-tabs{
           display:flex;
-          gap:0;
+          gap:6px;
           flex-wrap:wrap;
           margin-top:12px;
           margin-bottom:0;
@@ -243,10 +243,13 @@
           min-width:120px;
           justify-content:center;
           border:1px solid transparent;
-          border-bottom:1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+          border-bottom:1px solid color-mix(in srgb, var(--accent) 80%, var(--line));
           background:transparent;
           color:var(--muted);
-          border-radius:10px 10px 0 0;
+          border-top-left-radius:10px;
+          border-top-right-radius:10px;
+          border-bottom-left-radius:0px;
+          border-bottom-right-radius:0px;
           padding:8px 12px;
           font:inherit;
           font-size:16px;
@@ -261,27 +264,28 @@
           color:var(--text);
           transform:none;
         }
-        .series-manager-page .series-editor-tab[data-series-tab="details"]{
-          --series-tab-color:#4db6ac;
-        }
+        .series-manager-page .series-editor-tab[data-series-tab="details"],
         .series-manager-page .series-editor-tab[data-series-tab="images"]{
-          --series-tab-color:#d9a14b;
+          --series-tab-color:var(--accent);
         }
         .series-manager-page .series-editor-tab.is-active{
           color:var(--text);
-          border-color:color-mix(in srgb, var(--series-tab-color, var(--accent)) 88%, var(--line));
+          border-color:color-mix(in srgb, var(--accent) 80%, var(--line));
           border-bottom-color:transparent;
-          background:color-mix(in srgb, var(--series-tab-color, var(--accent)) 16%, var(--panel));
+          background:color-mix(in srgb, var(--accent) 16%, var(--panel));
           box-shadow:none;
+        }
+        .series-manager-page .btn{
+          border-radius:10px;
         }
         .series-manager-page .series-tab-content{
           display:grid;
           gap:0;
           margin-top:0;
-          border:1px solid color-mix(in srgb, var(--series-pane-color, var(--accent)) 80%, var(--line));
-          border-top-color:color-mix(in srgb, var(--series-pane-color, var(--accent)) 80%, var(--line));
+          border:1px solid color-mix(in srgb, var(--accent) 80%, var(--line));
+          border-top-color:color-mix(in srgb, var(--accent) 80%, var(--line));
           border-radius:0 0 10px 10px;
-          background:color-mix(in srgb, var(--series-pane-color, var(--accent)) 8%, var(--panel));
+          background:color-mix(in srgb, var(--accent) 8%, var(--panel));
           padding:16px;
           transition:border-color .18s ease, background .18s ease;
         }
@@ -341,37 +345,23 @@
         }
         .series-manager-page .series-cover-option.is-picked{
           position:relative;
-          border-color: color-mix(in srgb, #ff8a1f 92%, white);
+          border-color: color-mix(in srgb, #ff8a1f 68%, var(--line));
           background: linear-gradient(
             180deg,
-            color-mix(in srgb, #ff8a1f 28%, var(--panel)),
-            color-mix(in srgb, #ff8a1f 18%, var(--panel))
+            color-mix(in srgb, #ff8a1f 16%, var(--panel)),
+            color-mix(in srgb, #ff8a1f 10%, var(--panel))
           );
           box-shadow:
-            0 0 0 5px color-mix(in srgb, #ff8a1f 42%, transparent),
-            0 16px 34px rgba(0,0,0,.28),
-            inset 0 0 0 2px color-mix(in srgb, white 18%, #ff8a1f);
-          transform: translateY(-3px) scale(1.02);
-        }
-        .series-manager-page .series-cover-option.is-picked::after{
-          content:"Selected";
-          position:absolute;
-          top:10px;
-          right:10px;
-          padding:4px 8px;
-          border-radius:999px;
-          background: color-mix(in srgb, #ff8a1f 82%, black 10%);
-          color:#fff;
-          font-size:11px;
-          font-weight:800;
-          letter-spacing:.02em;
-          box-shadow:0 6px 14px rgba(0,0,0,.28);
+            0 0 0 2px color-mix(in srgb, #ff8a1f 28%, transparent),
+            0 10px 20px rgba(0,0,0,.14),
+            inset 0 0 0 1px color-mix(in srgb, white 8%, #ff8a1f);
+          transform: translateY(-2px) scale(1.01);
         }
         .series-manager-page .series-cover-option.is-picked .series-cover-thumb{
-          border-color: color-mix(in srgb, #ff8a1f 88%, white);
+          border-color: color-mix(in srgb, #ff8a1f 64%, var(--line));
           box-shadow:
-            0 0 0 3px color-mix(in srgb, #ff8a1f 34%, transparent),
-            0 10px 20px rgba(0,0,0,.18);
+            0 0 0 2px color-mix(in srgb, #ff8a1f 18%, transparent),
+            0 6px 12px rgba(0,0,0,.12);
         }
         .series-manager-page .series-cover-option.is-picked .series-cover-label{
           color: color-mix(in srgb, white 22%, var(--text));
@@ -463,6 +453,48 @@
           gap:12px;
           align-items:center;
           width:100%;
+        }
+        .series-manager-page .series-row-select{
+          display:grid;
+          place-items:center;
+          width:28px;
+          height:28px;
+          border-radius:8px;
+          border:1.5px solid color-mix(in srgb, var(--line) 88%, transparent);
+          background:color-mix(in srgb, var(--panel) 92%, transparent);
+          cursor:pointer;
+          transition:background .16s ease, border-color .16s ease, box-shadow .16s ease;
+          box-shadow:0 2px 6px rgba(0,0,0,.12);
+          flex:0 0 auto;
+        }
+        .series-manager-page .series-row-select:hover{
+          background:color-mix(in srgb, var(--panel) 96%, var(--accent) 8%);
+          border-color:color-mix(in srgb, var(--accent) 32%, var(--line));
+          box-shadow:0 2px 8px rgba(0,0,0,.16);
+        }
+        .series-manager-page .series-row-select.is-selected{
+          border-color:color-mix(in srgb, var(--accent) 48%, var(--line));
+          background:color-mix(in srgb, var(--accent) 12%, var(--panel));
+        }
+        .series-manager-page .series-row-select input{
+          width:14px;
+          height:14px;
+          margin:0;
+          appearance:none;
+          -webkit-appearance:none;
+          -moz-appearance:none;
+          cursor:pointer;
+          border:2px solid color-mix(in srgb, var(--line) 88%, white 12%);
+          border-radius:999px;
+          background:transparent;
+          transition:background .16s ease, border-color .16s ease;
+        }
+        .series-manager-page .series-row-select input:checked{
+          background:#ff8a1f;
+          border-color:#ff8a1f;
+        }
+        .series-manager-page .series-row-select input:hover{
+          filter:brightness(1.1);
         }
         .series-manager-page .series-row__cover{
           width:48px;
@@ -1004,25 +1036,24 @@
         const isActive = s.slug === activeSlug;
         const isSelected = selectedSlugs.has(s.slug);
         const editorial = getSeriesEditorialSignals(s);
-        const selectPill = el("button", {
-          type: "button",
-          "aria-label": `${isSelected ? "Deselect" : "Select"} series ${s.name || s.slug}`,
-          "aria-pressed": isSelected ? "true" : "false",
-          style: `
-            display:inline-flex; align-items:center; justify-content:center;
-            min-width:34px; height:28px; padding:0 10px; border-radius:999px;
-            border:1px solid ${isSelected ? "var(--accent-border)" : "var(--line)"};
-            background:${isSelected ? "var(--accent-soft)" : "var(--surface)"};
-            color:${isSelected ? "var(--accent)" : "var(--muted)"};
-            font-size:12px; font-weight:650; letter-spacing:.01em; cursor:pointer; flex:0 0 auto;
-          `
-        }, isSelected ? "\u2713" : "\u25cb");
-        selectPill.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (selectedSlugs.has(s.slug)) selectedSlugs.delete(s.slug);
-          else selectedSlugs.add(s.slug);
-          renderList();
-        });
+        const selectPill = el("label", {
+          class: `series-row-select${isSelected ? " is-selected" : ""}`,
+          title: `${isSelected ? "Deselect" : "Select"} series ${s.name || s.slug}`,
+          "aria-label": `${isSelected ? "Deselect" : "Select"} series ${s.name || s.slug}`
+        },
+          el("input", {
+            type: "checkbox",
+            checked: isSelected ? "" : null,
+            "aria-label": `${isSelected ? "Deselect" : "Select"} series ${s.name || s.slug}`,
+            onchange: (e) => {
+              e.stopPropagation();
+              if (e.target.checked) selectedSlugs.add(s.slug);
+              else selectedSlugs.delete(s.slug);
+              renderList();
+            }
+          })
+        );
+        selectPill.addEventListener("click", (e) => e.stopPropagation());
 
         const reorderPill = el("button", {
           type: "button",
@@ -1061,10 +1092,14 @@
         }, "Preview");
         previewLink.addEventListener("click", (e) => e.stopPropagation());
 
+        const rowStyle = isSelected
+          ? "border-color:#ff8a1f; box-shadow:0 0 0 1px color-mix(in srgb, #ff8a1f 32%, transparent) inset;"
+          : (isActive ? "border-color: var(--accent-border); background: var(--accent-soft);" : "");
+
         const btn = el("button", {
           class:"btn series-row",
           type:"button",
-          style: isActive ? "border-color: var(--accent-border); background: var(--accent-soft);" : ""
+          style: rowStyle
         },
           el("div", { class:"series-row__main" },
             selectPill,
@@ -1361,7 +1396,7 @@
         const textNode = document.createTextNode(label);
         const btn = el("button", {
           type:"button",
-          class:"btn series-editor-tab" + (key === activeTab ? " is-active" : ""),
+          class:"tab series-editor-tab" + (key === activeTab ? " is-active" : ""),
           role:"tab",
           "aria-selected": key === activeTab ? "true" : "false",
           "data-series-tab": key
@@ -1403,7 +1438,7 @@
       detailsPanel.appendChild(pubField);
       detailsPanel.appendChild(coverSelect);
 
-      const imagesIntro = el("div", { class:"sub", style:"margin-top:4px" }, "Assign artwork to this series and review included thumbnails.");
+      const imagesIntro = el("div", { class:"sub", style:"margin-top:4px" }, "Assign artwork to this series and review included thumbnails. Drag to reorder artwork in this series.");
       const manageImagesBtn = el("button", { class:"btn primary", type:"button" }, "Manage Series Artwork");
       const imageThumbStrip = el("div", { class:"series-image-strip" });
       let draggedImageId = "";
@@ -1543,9 +1578,9 @@
         backdrop.dataset.seriesCoverPortal = "1";
         const panel = el("div", { class:"series-cover-modal-panel" });
         const picker = el("div", { class:"series-cover-picker", role:"listbox", "aria-label":"Series artwork picker" });
-        const includeBtn = el("button", { class:"btn", type:"button", disabled:"" }, "Include");
-        const excludeBtn = el("button", { class:"btn", type:"button", disabled:"" }, "Exclude");
-        const selectToggleBtn = el("button", { class:"btn", type:"button" }, "Select All");
+        const includeBtn = el("button", { class:"btn", type:"button", disabled:"", style:"font-weight:650" }, "Include");
+        const excludeBtn = el("button", { class:"btn", type:"button", disabled:"", style:"font-weight:650" }, "Exclude");
+        const selectToggleBtn = el("button", { class:"btn", type:"button", style:"font-weight:650" }, "Select All");
         const closeBtn = el("button", { class:"btn series-cover-modal-close", type:"button", "aria-label":"Close manage series artwork dialog" }, "\u00D7");
         const lastFocus = document.activeElement;
 

@@ -957,12 +957,29 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
               }
             })
           ),
-          el("a", {
-            class: "admin-thumb-media",
-            href: buildArtworkEditHref(a.id),
-            title: a.title || "Untitled"
-          },
-            el("img", { src: a.thumb || a.image, alt: a.title || "Artwork thumbnail", loading: "lazy" })
+          el("div", { class: "admin-thumb-media-wrapper" },
+            el("a", {
+              class: "admin-thumb-media",
+              href: buildArtworkEditHref(a.id),
+              title: a.title || "Untitled",
+              onclick: (e) => {
+                if (e.target === e.currentTarget || e.target.tagName === "IMG") {
+                  e.preventDefault();
+                  if (selected.has(a.id)) selected.delete(a.id);
+                  else selected.add(a.id);
+                  updateBulkUI();
+                  render();
+                }
+              }
+            },
+              el("img", { src: a.thumb || a.image, alt: a.title || "Artwork thumbnail", loading: "lazy" })
+            ),
+            el("a", {
+              class: "admin-thumb-edit-shortcut",
+              href: buildArtworkEditHref(a.id),
+              title: "Edit artwork",
+              "aria-label": `Edit ${a.title || a.id}`
+            }, "✎")
           )
           ,
           el("div", { class:"admin-thumb-meta" },

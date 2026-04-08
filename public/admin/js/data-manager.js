@@ -48,6 +48,11 @@ function ensureDataManagerStyles() {
   const style = document.createElement("style");
   style.id = "data-manager-styles";
   style.textContent = [
+    ".data-manager-tabbar{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;margin-bottom:0;border-bottom:1px solid var(--line);}",
+    ".data-manager-tabbtn{appearance:none;border:1px solid transparent;border-bottom:1px solid color-mix(in srgb, var(--accent) 38%, var(--line));background:transparent;color:var(--muted);border-top-left-radius:10px;border-top-right-radius:10px;border-bottom-left-radius:0;border-bottom-right-radius:0;padding:6px 10px;min-height:32px;font:inherit;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;margin-bottom:-1px;display:inline-flex;align-items:center;gap:8px;transition:border-color .18s ease, background .18s ease, color .18s ease;}",
+    ".data-manager-tabbtn:hover{color:var(--text);}",
+    ".data-manager-tabbtn.is-active{color:var(--text);border-color:color-mix(in srgb, var(--accent) 88%, var(--line));border-bottom-color:transparent;background:color-mix(in srgb, var(--accent) 16%, var(--panel));}",
+    ".data-manager-tabcontent{display:grid;gap:0;margin-top:0;border:1px solid color-mix(in srgb, var(--accent) 80%, var(--line));border-top-color:color-mix(in srgb, var(--accent) 80%, var(--line));border-radius:0 0 10px 10px;background:color-mix(in srgb, var(--accent) 8%, var(--panel));padding:16px;}",
     ".data-manager-list{display:grid;gap:10px;}",
     ".data-manager-table{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb, var(--panel) 86%, transparent);}",
     ".data-manager-table__head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;}",
@@ -68,9 +73,17 @@ function ensureDataManagerStyles() {
     ".data-manager-filepick:focus-within{outline:2px solid color-mix(in srgb, var(--accent) 55%, transparent);outline-offset:2px;}",
     ".data-manager-filepick .btn{pointer-events:none;}",
     ".data-manager-filepick__name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}",
-    "#exportSelectedBtn:disabled{opacity:.45;background:color-mix(in srgb, var(--panel) 90%, transparent);border-color:color-mix(in srgb, var(--line) 86%, transparent);color:var(--muted);cursor:not-allowed;box-shadow:none;}"
+    "#exportSelectedBtn:disabled,#importCommitBtn:disabled{opacity:.45;background:color-mix(in srgb, var(--panel) 90%, transparent);border-color:color-mix(in srgb, var(--line) 86%, transparent);color:var(--muted);cursor:not-allowed;box-shadow:none;}"
   ].join("");
   document.head.appendChild(style);
+}
+
+function updateImportCommitButtonState() {
+  if (!importCommitBtn) return;
+  const hasFile = !!importBundleInput?.files?.[0];
+  const hasPreview = !!state.importBundle && !!state.importPreview;
+  const hasSelection = getSelectedImportTables().length > 0;
+  importCommitBtn.disabled = !(hasFile && hasPreview && hasSelection);
 }
 
 function setInlineStatus(node, message, tone = "") {
@@ -189,7 +202,7 @@ function renderImportPreview() {
   const preview = state.importPreview;
 
   if (!preview) {
-    importCommitBtn.disabled = true;
+    updateImportCommitButtonState();
     importPreviewList.appendChild(el("div", { class: "sub" }, "No import preview yet."));
     return;
   }
@@ -257,7 +270,7 @@ function renderImportPreview() {
   });
 
   importPreviewList.appendChild(host);
-  importCommitBtn.disabled = getSelectedImportTables().length === 0;
+  updateImportCommitButtonState();
 }
 
 async function loadTableMetadata() {
@@ -327,7 +340,14 @@ async function exportSelectedTables() {
 
 async function previewImportFile(file) {
   updateImportFileName(file || null);
-  if (!file) return;
+  if (!file) {
+    state.importBundle = null;
+    state.importPreview = null;
+    state.importSelection = new Set();
+    renderImportPreview();
+    setInlineStatus(importDatabaseStatus, "Choose a bundled export file to preview its tables.");
+    return;
+  }
 
   setInlineStatus(importDatabaseStatus, "Reading import file...");
   try {

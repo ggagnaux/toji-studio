@@ -425,6 +425,81 @@ function ensureLightboxStyles() {
   document.head.appendChild(style);
 }
 
+// Toast notification system for lightbox and other public pages
+function ensureToastContainer() {
+  let container = document.querySelector(".public-toast-container");
+  if (container && document.body.contains(container)) return container;
+
+  container = el("div", { class: "public-toast-container", "aria-live": "polite" });
+  
+  const style = document.createElement("style");
+  style.textContent = `
+    .public-toast-container {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
+      pointer-events: none;
+    }
+    .public-toast {
+      pointer-events: auto;
+      background: color-mix(in srgb, var(--panel, rgba(14,18,28,.94)) 96%, transparent);
+      border: 1px solid color-mix(in srgb, #2ea97d 45%, rgba(255,255,255,.22));
+      border-radius: 12px;
+      color: color-mix(in srgb, var(--text, #f8f7f4) 88%, #2ea97d 12%);
+      padding: 12px 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      box-shadow: 0 10px 24px rgba(0,0,0,.2);
+      max-width: min(90vw, 400px);
+      word-wrap: break-word;
+      white-space: pre-line;
+      animation: toastSlideIn .3s ease;
+    }
+    .public-toast.is-closing {
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    @keyframes toastSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(container);
+  
+  return container;
+}
+
+function showToast(message, duration = 3000) {
+  const container = ensureToastContainer();
+  const toast = el("div", { class: "public-toast" }, message);
+  container.appendChild(toast);
+
+  const timeout = window.setTimeout(() => {
+    toast.classList.add("is-closing");
+    const transitionTimeout = window.setTimeout(() => {
+      toast.remove();
+    }, 200);
+  }, duration);
+
+  return {
+    close: () => {
+      window.clearTimeout(timeout);
+      toast.classList.add("is-closing");
+      window.setTimeout(() => toast.remove(), 200);
+    }
+  };
+}
+
 export function createArtworkLightboxController() {
   ensureLightboxStyles();
 
@@ -610,6 +685,7 @@ export function createArtworkLightboxController() {
 		    try {
 		      await navigator.clipboard.writeText(currentShareUrl);
 		      copyLinkBtn.textContent = "Copied!";
+		      showToast(`The artwork link has been copied to the clipboard.\n${currentShareUrl}`);
 		      window.setTimeout(() => {
 		        copyLinkBtn.textContent = "Copy link";
 		      }, 900);

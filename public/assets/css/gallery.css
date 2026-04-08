@@ -219,30 +219,6 @@
       border-radius: 999px;
       pointer-events: none;
     }
-    .tag-filter-summary-line{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .tag-filter-summary-line + .tag-filter-summary-line{
-      margin-top:6px;
-    }
-    .tag-filter-summary-actions{
-      margin-top:10px;
-    }
-    .tag-filter-summary-pills{
-      display:inline-flex;
-      gap:8px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-	    .tag-filter-summary-pill{
-	      pointer-events:none;
-	    }
-	    .tag-filter-summary-joiner{
-	      color: var(--muted);
-	    }
 	    .all-works-state-bar{
 	      display:grid;
 	      gap:10px;

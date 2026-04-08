@@ -211,7 +211,7 @@
     }
     .splash-logo{
       position:absolute;
-      top:50%;
+      top:clamp(22px, 5vh, 56px);
       left:50%;
       z-index:2;
       border: 0;
@@ -222,8 +222,8 @@
       cursor:pointer;
       text-align:center;
       box-shadow: none;
-      transform-origin: 50% 18%;
-      transform: translate(calc(-50% + var(--splash-logo-nudge-x, 0px)), calc(-50% + var(--splash-logo-nudge-y, 0px))) rotate(var(--splash-logo-tilt, 0deg)) scale(1);
+      transform-origin: 50% 0%;
+      transform: translate(calc(-50% + var(--splash-logo-nudge-x, 0px)), var(--splash-logo-nudge-y, 0px)) rotate(var(--splash-logo-tilt, 0deg)) scale(1);
       transition: top .6s ease, left .6s ease, transform .6s ease;
     }
     .splash-screen.logo-cornered .splash-logo{
@@ -267,6 +267,12 @@
     .splash-logo .brand-logo-wordmark-image{
       width:min(52vw, 360px);
       height:auto;
+    }
+
+    @media (max-width: 640px){
+      .splash-logo{
+        top:clamp(18px, 4vh, 32px);
+      }
     }
     .splash-logo--tojistudios{
       width:min(92vw, 1240px);

@@ -15,6 +15,12 @@
       gap:10px;
       margin-top:12px;
     }
+    .external-links-card .btn,
+    .external-link-row input:not([type="checkbox"]),
+    .external-link-row select,
+    .external-link-confirm p{
+      font-family:inherit;
+    }
     .external-link-row{
       display:grid;
       grid-template-columns: auto minmax(130px, 1.05fr) minmax(180px, 2fr) minmax(120px, .9fr) auto;

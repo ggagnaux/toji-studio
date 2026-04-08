@@ -1,6 +1,6 @@
 import { renderPublicHeader } from "./header.js";
     import { renderPublicFooter } from "./footer.js";
-    import { el, slugifySeries, sortGallery, createArtworkLightboxController, deriveArtworkCategory, PUBLIC_TAXONOMY } from "./content-utils.js";
+    import { el, slugifySeries, sortGallery, createArtworkLightboxController, deriveArtworkCategory, PUBLIC_TAXONOMY, resolveArtworkSeriesEntries, getCompactSeriesDisplay, artworkMatchesSeriesMembership } from "./content-utils.js";
 
 	    renderPublicHeader({
 	      active: "gallery",
@@ -80,14 +80,18 @@ import { renderPublicHeader } from "./header.js";
         .map(m => [String(m.slug).trim().toLowerCase(), m])
     );
 
+    function getArtworkSeriesEntries(artwork) {
+      return resolveArtworkSeriesEntries(artwork, state);
+    }
+
+    function getArtworkSeriesLabel(artwork, compact = false) {
+      const display = getCompactSeriesDisplay(artwork, state);
+      if (compact) return display.compactLabel;
+      return display.entries.map((entry) => entry.name).join(", ");
+    }
+
     function artworkMatchesSeries(artwork, series){
-      const value = String(artwork?.series || "").trim();
-      if (!value || !series) return false;
-      const lower = value.toLowerCase();
-      const normalized = slugifySeries(value).toLowerCase();
-      const seriesName = String(series?.name || "").trim().toLowerCase();
-      const seriesSlug = String(series?.slug || slugifySeries(series?.name || "")).trim().toLowerCase();
-      return lower === seriesName || lower === seriesSlug || normalized === seriesSlug;
+      return artworkMatchesSeriesMembership(artwork, series, state);
     }
 
     function sortSeriesItems(items, meta){
@@ -422,7 +426,7 @@ import { renderPublicHeader } from "./header.js";
       const artworkTags = new Set((a.tags || []).map(x => String(x).toLowerCase()));
       const categoryOk = selectedCategory === "all" || deriveArtworkCategory(a).toLowerCase() === selectedCategory;
       const tagOk = selectedTags.size === 0 || Array.from(selectedTags).every(tag => artworkTags.has(tag));
-      const text = `${a.title || ""} ${(a.tags || []).join(" ")} ${a.series || ""} ${a.year || ""}`.toLowerCase();
+      const text = `${a.title || ""} ${(a.tags || []).join(" ")} ${getArtworkSeriesLabel(a)} ${a.year || ""}`.toLowerCase();
       const qOk = !q || text.includes(q);
 	      return categoryOk && tagOk && qOk;
 	    }
@@ -513,7 +517,7 @@ import { renderPublicHeader } from "./header.js";
       items.forEach((a, idx) => {
         const metaBits = [
           deriveArtworkCategory(a),
-          a.series ? a.series : null,
+          getArtworkSeriesLabel(a, true) || null,
           a.year ? a.year : null,
           a.featured ? "Featured" : null
         ].filter(Boolean).join(" \u2022 ") || " ";
@@ -563,19 +567,22 @@ import { renderPublicHeader } from "./header.js";
 
     // ---- Series section ----
     function renderSeries() {
-      const filtered = sortGallery(allItems).filter(a => a.series);
+      const filtered = sortGallery(allItems).filter((a) => getArtworkSeriesEntries(a).length);
       const bySeries = new Map();
 
       for (const a of filtered) {
-        const key = String(a.series || "").trim();
-        if (!key) continue;
-        if (!bySeries.has(key)) bySeries.set(key, []);
-        bySeries.get(key).push(a);
+        for (const entry of getArtworkSeriesEntries(a)) {
+          const key = String(entry.slug || "").trim();
+          if (!key) continue;
+          if (!bySeries.has(key)) bySeries.set(key, { name: entry.name, items: [] });
+          bySeries.get(key).items.push(a);
+        }
       }
 
       const entries = Array.from(bySeries.entries())
-        .map(([name, items]) => {
-          const slug = slugifySeries(name);
+        .map(([slug, group]) => {
+          const name = group.name;
+          const items = group.items;
           const meta = seriesMetaByName.get(name.toLowerCase()) || seriesMetaBySlug.get(slug) || null;
           const seriesMeta = meta ? { ...meta, slug: meta.slug || slug, name: meta.name || name } : { slug, name, imageOrder: [] };
           const orderedItems = sortSeriesItems(items.filter((item) => artworkMatchesSeries(item, seriesMeta)), seriesMeta);

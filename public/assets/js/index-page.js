@@ -1,23 +1,23 @@
     import { renderPublicHeader } from "./header.js";
     import { renderPublicFooter } from "./footer.js";
     import { initStickyHero } from "./site.js";
-    import { el, slugifySeries, sortGallery, createArtworkLightboxController } from "./content-utils.js";
-import { initializeHomeSplash } from "./splash-runtime.js";
+    import { el, slugifySeries, sortGallery, createArtworkLightboxController, resolveArtworkSeriesEntries, getCompactSeriesDisplay } from "./content-utils.js";
+    import { initializeHomeSplash } from "./splash-runtime.js";
 
-	    renderPublicHeader({
-	      active: "home",
-	      small: "home",
-	      ctaText: "Explore",
-	      ctaHref: "gallery.html",
-	      showThemeControls: false
-	    });
+    renderPublicHeader({
+      active: "home",
+      small: "home",
+      ctaText: "Explore",
+      ctaHref: "gallery.html",
+      showThemeControls: false
+    });
     renderPublicFooter({
       rightHtml: `<a href="index.html">Home</a> • <a href="gallery.html">Gallery</a> • <a href="series.html">Series</a> • <a href="contact.html">Contact</a> • <a href="admin/index.html">Studio</a>`
     });
 
     initStickyHero({ heroSelector: "#homeHeroSection" });
 
-await initializeHomeSplash();
+    await initializeHomeSplash();
 
     const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
     const HOME_HERO_VISIBLE_KEY = "toji_home_hero_visible_v1";
@@ -87,6 +87,16 @@ await initializeHomeSplash();
     );
     const featured = sortGallery(all.filter(a => a.featured));
 
+    function getArtworkSeriesEntries(artwork) {
+      return resolveArtworkSeriesEntries(artwork, state);
+    }
+
+    function getArtworkSeriesLabel(artwork, compact = false) {
+      const display = getCompactSeriesDisplay(artwork, state);
+      if (compact) return display.compactLabel;
+      return display.entries.map((entry) => entry.name).join(", ");
+    }
+
     function getSeriesSummary(meta, items) {
       const description = String(meta?.description || "").trim();
       if (description) return description;
@@ -129,7 +139,7 @@ await initializeHomeSplash();
       const carousel = el("div", { class: "home-slideshow-carousel" });
       const track = el("div", { class: "home-slideshow-track" });
       const loops = [...items, ...items];
-      const speedPerItem = 5.5;
+      const speedPerItem = 8; // 0 == fastest motion
       const duration = Math.max(24, loops.length * speedPerItem);
       track.style.setProperty("--carousel-duration", `${duration}s`);
 
@@ -155,18 +165,21 @@ await initializeHomeSplash();
     function renderSeries(items) {
       if (!homeSeriesSection || !homeSeriesGrid || !homeSeriesHint) return;
 
-      const withSeries = sortGallery(items.filter(a => a.series));
+      const withSeries = sortGallery(items.filter((a) => getArtworkSeriesEntries(a).length));
       const bySeries = new Map();
       for (const a of withSeries) {
-        const key = String(a.series || "").trim();
-        if (!key) continue;
-        if (!bySeries.has(key)) bySeries.set(key, []);
-        bySeries.get(key).push(a);
+        for (const entry of getArtworkSeriesEntries(a)) {
+          const key = String(entry.slug || "").trim();
+          if (!key) continue;
+          if (!bySeries.has(key)) bySeries.set(key, { name: entry.name, items: [] });
+          bySeries.get(key).items.push(a);
+        }
       }
 
       const entries = Array.from(bySeries.entries())
-        .map(([name, list]) => {
-          const slug = slugifySeries(name);
+        .map(([slug, group]) => {
+          const name = group.name;
+          const list = group.items;
           const meta = seriesMetaByName.get(name.toLowerCase()) || seriesMetaBySlug.get(slug) || null;
           const cover = (meta && meta.coverThumb) || list[0]?.thumb || list[0]?.image || "assets/img/placeholders/p1.jpg";
           const description = (meta && meta.description) || "";
@@ -254,7 +267,7 @@ await initializeHomeSplash();
           el("div", { class: "meta" },
             el("p", { class: "home-featured-card__eyebrow" }, "Featured work"),
             el("p", { class: "title" }, a.title || "Untitled"),
-            el("p", { class: "sub" }, [a.series || null, a.year || null].filter(Boolean).join(" • ") || " ")
+            el("p", { class: "sub" }, [getArtworkSeriesLabel(a, true) || null, a.year || null].filter(Boolean).join(" • ") || " ")
           )
         );
 
@@ -293,7 +306,7 @@ await initializeHomeSplash();
           ),
           el("div", { class: "meta" },
             el("p", { class: "title" }, a.title || "Untitled"),
-            el("p", { class: "sub" }, [a.series || null, a.year || null].filter(Boolean).join(" • ") || " ")
+            el("p", { class: "sub" }, [getArtworkSeriesLabel(a, true) || null, a.year || null].filter(Boolean).join(" • ") || " ")
           )
         );
 

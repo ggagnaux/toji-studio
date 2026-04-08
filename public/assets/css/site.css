@@ -469,7 +469,7 @@ main.container{
 .brand-logo-combo{
   display:inline-flex;
   align-items:center;
-  gap:12px;
+   gap:0;
   line-height:0;
 }
 .brand-logo-icon-stack,

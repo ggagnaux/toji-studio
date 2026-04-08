@@ -6,6 +6,46 @@ const STORAGE_KEY = "toji_admin_state_v1";
 const THEME_KEY = "toji_theme_mode";
 const ADMIN_SESSION_COOKIE = "toji_admin_session";
 
+function slugifySeries(name = "") {
+  return String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+}
+
+function normalizeSeriesSlugs(value) {
+  if (Array.isArray(value)) return value.map((entry) => String(entry || "").trim()).filter(Boolean);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.map((entry) => String(entry || "").trim()).filter(Boolean);
+    } catch {}
+  }
+  return [];
+}
+
+function resolveArtworkSeriesEntries(artwork, state) {
+  const rows = Object.values(state.seriesMeta || {});
+  const bySlug = new Map();
+  rows.forEach((row) => {
+    const slug = String(row?.slug || slugifySeries(row?.name || row?.title || "")).trim();
+    const name = String(row?.name || row?.title || row?.slug || "").trim();
+    if (slug && name && !bySlug.has(slug)) bySlug.set(slug, { slug, name });
+  });
+  const out = [];
+  const seen = new Set();
+  normalizeSeriesSlugs(artwork?.seriesSlugs).forEach((slug) => {
+    if (seen.has(slug)) return;
+    out.push(bySlug.get(slug) || { slug, name: slug });
+    seen.add(slug);
+  });
+  const legacyName = String(artwork?.series || "").trim();
+  const legacySlug = legacyName ? slugifySeries(legacyName) : "";
+  if (legacySlug && !seen.has(legacySlug)) {
+    out.unshift(bySlug.get(legacySlug) || { slug: legacySlug, name: legacyName });
+  }
+  return out;
+}
+
 export async function seedClientState(page, {
   state = E2E_ADMIN_STATE,
   theme = "system",
@@ -60,7 +100,9 @@ export async function mockPublicApi(page, state = E2E_ADMIN_STATE) {
     .filter((series) => series && series.isPublic !== false)
     .map((series) => ({
       ...series,
-      publishedCount: publishedArtworks.filter((artwork) => artwork.series === series.name).length
+      publishedCount: publishedArtworks.filter((artwork) =>
+        resolveArtworkSeriesEntries(artwork, state).some((entry) => entry.slug === series.slug)
+      ).length
     }));
 
   await page.route('**/api/public/artworks', async (route) => {

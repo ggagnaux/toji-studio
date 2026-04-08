@@ -15,7 +15,7 @@
       <div class="page-toolbar__shell">
         <div class="page-toolbar__left">
           <a class="page-toolbar__pill is-active" href="gallery.html" aria-current="page">Gallery</a>
-          <a class="page-toolbar__pill" id="toolbarSeriesLink" href="series.html" hidden>Series</a>
+          <div class="artwork-toolbar-series-links" id="toolbarSeriesLinks" hidden></div>
           <a class="page-toolbar__pill" href="contact.html">Contact</a>
         </div>
         <div class="page-toolbar__right">
@@ -49,7 +49,7 @@
 
           <div class="artwork-series-context" id="seriesContext" hidden>
             <p class="artwork-series-context__label">Part of a larger body of work</p>
-            <a class="btn" id="seriesBtn" href="series.html">View series</a>
+            <div class="artwork-series-context__links" id="seriesLinks"></div>
           </div>
 
           <hr class="sep" />
@@ -72,7 +72,7 @@
             <p class="title artwork-related-card__title">More like this</p>
             <a class="btn" id="moreLink" href="gallery.html">View all</a>
           </div>
-          <p class="sub artwork-related-card__intro">From the same series (if available), otherwise from recent work.</p>
+          <p class="sub artwork-related-card__intro" id="moreIntro">From related series memberships first, then recent work.</p>
 
           <div class="grid artwork-related-grid" id="moreGrid"></div>
         </div>

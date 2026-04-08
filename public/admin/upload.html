@@ -95,11 +95,19 @@
               </div>
             </div>
 
-            <div class="field upload-floating-field" id="seriesField">
-              <select id="series" aria-labelledby="seriesLabel">
-                <option value="">No change</option>
-              </select>
-              <label class="upload-floating-label" id="seriesLabel" for="series">Series</label>
+            <div class="field" id="seriesField">
+              <div class="sub">Series</div>
+              <div class="status-toggle upload-series-toggle" id="seriesMode" role="group" aria-label="Series apply mode">
+                <button class="btn status-toggle-option upload-series-toggle__option active" type="button" data-series-mode="no_change" aria-pressed="true">No Change</button>
+                <button class="btn status-toggle-option upload-series-toggle__option" type="button" data-series-mode="append" aria-pressed="false">Append</button>
+                <button class="btn status-toggle-option upload-series-toggle__option" type="button" data-series-mode="replace" aria-pressed="false">Replace</button>
+              </div>
+              <p class="sub upload-series-preview" id="seriesModePreview">No series metadata will be applied to this batch.</p>
+              <div id="selectedSeriesChips" class="pillrow upload-series-chips" style="min-height:40px"></div>
+              <div class="upload-series-picker">
+                <select id="seriesSelect" aria-label="Add series to batch"></select>
+                <button class="btn mini" id="addSeriesBtn" type="button">Add</button>
+              </div>
             </div>
 
             <div class="field upload-floating-field" id="yearField">

@@ -24,6 +24,7 @@ test.describe("public pages", () => {
     await expect(page.locator("#seriesListPanel")).toBeVisible();
     await expect(page.locator(".series-detail-hero")).toBeVisible();
     await expect(page.locator(".series-anchor-grid .card").first()).toBeVisible();
+    await expect(page.locator(".series-detail-hero__top .sub")).toContainText("3 piece");
     await expectNoHorizontalOverflow(page);
   });
 
@@ -34,6 +35,8 @@ test.describe("public pages", () => {
     await page.goto("/artwork.html?id=art-1");
 
     await expect(page.locator("#seriesContext")).toBeVisible();
+    await expect(page.locator("#seriesLinks .btn")).toHaveCount(2);
+    await expect(page.locator("#toolbarSeriesLinks .page-toolbar__pill")).toHaveCount(2);
     await expect(page.locator("#moreGrid .card").first()).toBeVisible();
     const contextBox = await page.locator(".artwork-context-card").boundingBox();
     const relatedBox = await page.locator(".artwork-related-card").boundingBox();
@@ -53,6 +56,7 @@ test.describe("public pages", () => {
 
     const sequence = page.locator(".lb-sequence");
     await expect(sequence).toBeVisible();
+    await expect(page.locator(".lb-title")).toContainText("Night Forms +1 more");
     await expect(sequence.getByRole("button", { name: "Previous image" })).toBeVisible();
     await expect(sequence.getByText(/Image 1 of/i)).toBeVisible();
     await expect(sequence.getByRole("button", { name: "Next image" })).toBeVisible();

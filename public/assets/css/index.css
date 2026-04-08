@@ -257,7 +257,7 @@
       text-transform:uppercase;
     }
     .splash-logo .brand-logo-combo{
-      gap: clamp(10px, 1.6vw, 18px);
+      /* gap: clamp(6px, 1vw, 12px); */
       align-items: center;
     }
     .splash-logo .brand-logo-icon-image{

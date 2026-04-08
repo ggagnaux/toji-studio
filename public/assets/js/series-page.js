@@ -53,6 +53,70 @@ async function loadLocalState() {
   return res.json();
 }
 
+function normalizeSeriesSlugs(value) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry || "").trim()).filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((entry) => String(entry || "").trim()).filter(Boolean);
+      }
+    } catch {}
+  }
+
+  return [];
+}
+
+function getSeriesMetaRows(stateLike) {
+  if (stateLike && stateLike.seriesMeta && typeof stateLike.seriesMeta === "object") {
+    return Object.values(stateLike.seriesMeta);
+  }
+  if (Array.isArray(stateLike?.series)) return stateLike.series;
+  return [];
+}
+
+function resolveArtworkSeriesMemberships(artwork, stateLike) {
+  const rows = getSeriesMetaRows(stateLike);
+  const bySlug = new Map();
+
+  rows.forEach((row) => {
+    const slug = String(row?.slug || slugifySeries(row?.name || row?.title || "")).trim();
+    const name = String(row?.name || row?.title || row?.slug || "").trim();
+    if (slug && name && !bySlug.has(slug)) bySlug.set(slug, { slug, name });
+  });
+
+  const out = [];
+  const seen = new Set();
+
+  normalizeSeriesSlugs(artwork?.seriesSlugs).forEach((slug) => {
+    if (seen.has(slug)) return;
+    const match = bySlug.get(slug);
+    out.push(match || { slug, name: slug });
+    seen.add(slug);
+  });
+
+  const legacyName = String(artwork?.series || "").trim();
+  const legacySlug = legacyName ? slugifySeries(legacyName) : "";
+  if (legacySlug && !seen.has(legacySlug)) {
+    out.unshift(bySlug.get(legacySlug) || { slug: legacySlug, name: legacyName });
+  }
+
+  return out.filter((row) => row.slug && row.name);
+}
+
+function artworkMatchesSeries(artwork, series, stateLike) {
+  if (!artwork || !series) return false;
+  const seriesSlug = String(series?.slug || slugifySeries(series?.name || "")).trim().toLowerCase();
+  if (!seriesSlug) return false;
+  return resolveArtworkSeriesMemberships(artwork, stateLike)
+    .some((entry) => String(entry.slug || "").trim().toLowerCase() === seriesSlug);
+}
+
 async function loadPublishedArtworks() {
   const rows = await tryFetchJson(`${API_BASE}/api/public/artworks`);
   if (rows) {
@@ -102,20 +166,24 @@ async function loadPublicSeries() {
   });
 
   if (fromMeta.length) {
-    const counts = new Map();
-    for (const a of published) {
-      if (!a.series) continue;
-      counts.set(a.series, (counts.get(a.series) || 0) + 1);
-    }
     return fromMeta
       .filter((s) => s.isPublic)
-      .map((s) => ({ ...s, publishedCount: counts.get(s.name) || 0 }))
+      .map((s) => ({
+        ...s,
+        publishedCount: published.filter((a) => artworkMatchesSeries(a, s, state)).length
+      }))
       .sort((a, b) => (a.sortOrder - b.sortOrder) || a.name.localeCompare(b.name));
   }
 
-  const names = Array.from(new Set(published.map((a) => a.series).filter(Boolean))).sort();
-  return names.map((name, i) => ({
-    slug: slugifySeries(name),
+  const fallbackSeries = new Map();
+  published.forEach((artwork) => {
+    resolveArtworkSeriesMemberships(artwork, state).forEach((series) => {
+      if (!fallbackSeries.has(series.slug)) fallbackSeries.set(series.slug, series.name);
+    });
+  });
+
+  return Array.from(fallbackSeries.entries()).sort((a, b) => a[1].localeCompare(b[1])).map(([slug, name], i) => ({
+    slug,
     name,
     description: "",
     sortOrder: i * 10,
@@ -123,7 +191,7 @@ async function loadPublicSeries() {
     coverArtworkId: "",
     coverThumb: "",
     imageOrder: [],
-    publishedCount: published.filter((a) => a.series === name).length
+    publishedCount: published.filter((a) => artworkMatchesSeries(a, { slug, name }, state)).length
   }));
 }
 
@@ -153,20 +221,10 @@ function sortSeriesPieces(items, series) {
   });
 }
 
-function artworkMatchesSeries(artwork, series) {
-  const value = String(artwork?.series || "").trim();
-  if (!value || !series) return false;
-  const lower = value.toLowerCase();
-  const normalized = slugifySeries(value).toLowerCase();
-  const seriesName = String(series?.name || "").trim().toLowerCase();
-  const seriesSlug = String(series?.slug || slugifySeries(series?.name || "")).trim().toLowerCase();
-  return lower === seriesName || lower === seriesSlug || normalized === seriesSlug;
-}
-
 const seriesWithCounts = [];
 const seenSeriesKeys = new Set();
 (seriesRows || []).forEach((s) => {
-  const count = published.filter((a) => artworkMatchesSeries(a, s)).length;
+  const count = published.filter((a) => artworkMatchesSeries(a, s, { series: seriesRows })).length;
   const row = { ...s, publishedCount: count };
   const key = `${String(row.slug || "").trim().toLowerCase()}::${String(row.name || "").trim().toLowerCase()}`;
   if (seenSeriesKeys.has(key)) return;
@@ -248,7 +306,7 @@ function renderSeriesList(activeSlug) {
 
   for (const s of seriesWithCounts) {
     const isActive = s.slug === activeSlug;
-    const pieces = sortSeriesPieces(published.filter((a) => artworkMatchesSeries(a, s)), s);
+    const pieces = sortSeriesPieces(published.filter((a) => artworkMatchesSeries(a, s, { series: seriesRows })), s);
     const cover = getSeriesCover(s, pieces);
     const btn = el("button", {
       class: `btn series-list-item${isActive ? " is-active" : ""}`,
@@ -299,7 +357,7 @@ function renderOverview() {
   const wrap = el("div", { class: "series-overview-grid" });
 
   for (const s of seriesWithCounts) {
-    const pieces = sortSeriesPieces(published.filter((a) => artworkMatchesSeries(a, s)), s);
+    const pieces = sortSeriesPieces(published.filter((a) => artworkMatchesSeries(a, s, { series: seriesRows })), s);
     const cover = getSeriesCover(s, pieces);
     wrap.appendChild(
       el("div", { class: "card series-overview-card" },
@@ -331,7 +389,7 @@ function openSeries(slug) {
   const s = bySlug.get(slug) || byName.get(slug);
   if (!s) return renderOverview();
 
-  const pieces = sortSeriesPieces(published.filter((a) => artworkMatchesSeries(a, s)), s);
+  const pieces = sortSeriesPieces(published.filter((a) => artworkMatchesSeries(a, s, { series: seriesRows })), s);
   const cover = getSeriesCover(s, pieces);
   const seriesCategory = getSeriesCategory(pieces);
   const anchors = getAnchorPieces(s, pieces);

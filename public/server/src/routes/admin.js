@@ -538,16 +538,163 @@ adminRouter.get("/admin/export/database.json", (req, res) => {
   sendJsonDownload(res, payload, buildDataExportFilename(allTables));
 });
 
+function normalizeSeriesLookupKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function normalizeSeriesLabel(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function parseSeriesSlugsInput(raw) {
+  if (raw == null) return [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  const out = [];
+  for (const item of list) {
+    if (item == null) continue;
+    if (Array.isArray(item)) {
+      out.push(...parseSeriesSlugsInput(item));
+      continue;
+    }
+    const text = String(item).trim();
+    if (!text) continue;
+    if (text.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(text);
+        if (!Array.isArray(parsed)) throw new Error("seriesSlugs JSON must be an array.");
+        out.push(...parseSeriesSlugsInput(parsed));
+        continue;
+      } catch {
+        throw new Error("seriesSlugs must be an array or a valid JSON array string.");
+      }
+    }
+    out.push(...text.split(/[;,\n]+/g));
+  }
+  return out
+    .map((value) => normalizeSeriesLookupKey(value))
+    .filter(Boolean);
+}
+
+function resolveSeriesMembershipWriteInput({ rawSeriesSlugs, rawLegacySeries }) {
+  const hasSeriesSlugs = rawSeriesSlugs !== undefined;
+  const hasLegacySeries = rawLegacySeries !== undefined;
+  if (!hasSeriesSlugs && !hasLegacySeries) {
+    return { provided: false, seriesSlugs: [], primaryLegacySeries: "" };
+  }
+
+  const rows = db.prepare(`SELECT slug, name FROM series`).all();
+  const canonicalByKey = new Map();
+  const nameBySlug = new Map();
+  for (const row of rows) {
+    const slug = String(row?.slug || "").trim();
+    if (!slug) continue;
+    const slugLower = slug.toLowerCase();
+    const name = normalizeSeriesLabel(row?.name || "");
+    canonicalByKey.set(slugLower, slug);
+    canonicalByKey.set(normalizeSeriesLookupKey(slug), slug);
+    if (name) {
+      canonicalByKey.set(name.toLowerCase(), slug);
+      canonicalByKey.set(normalizeSeriesLookupKey(name), slug);
+      nameBySlug.set(slug, name);
+    }
+  }
+
+  let requested = [];
+  if (hasSeriesSlugs) {
+    requested = parseSeriesSlugsInput(rawSeriesSlugs);
+  } else {
+    const legacySeries = normalizeSeriesLabel(rawLegacySeries || "");
+    if (!legacySeries) {
+      return { provided: true, seriesSlugs: [], primaryLegacySeries: "" };
+    }
+    requested = [legacySeries];
+  }
+
+  const seen = new Set();
+  const unknown = [];
+  const seriesSlugs = [];
+  for (const value of requested) {
+    const key = String(value || "").trim();
+    if (!key) continue;
+    const resolved =
+      canonicalByKey.get(key.toLowerCase()) ||
+      canonicalByKey.get(normalizeSeriesLookupKey(key)) ||
+      "";
+    if (!resolved) {
+      unknown.push(key);
+      continue;
+    }
+    if (seen.has(resolved)) continue;
+    seen.add(resolved);
+    seriesSlugs.push(resolved);
+  }
+
+  if (unknown.length) {
+    return {
+      provided: true,
+      seriesSlugs: [],
+      primaryLegacySeries: "",
+      error: `Unknown series slug(s): ${unknown.join(", ")}.`
+    };
+  }
+
+  const primarySlug = seriesSlugs[0] || "";
+  return {
+    provided: true,
+    seriesSlugs,
+    primaryLegacySeries: primarySlug ? (nameBySlug.get(primarySlug) || primarySlug) : ""
+  };
+}
+
+function replaceArtworkSeriesMemberships(artworkId, seriesSlugs, updatedAt) {
+  db.prepare(`DELETE FROM artwork_series WHERE artworkId=?`).run(artworkId);
+  if (!Array.isArray(seriesSlugs) || !seriesSlugs.length) return;
+  const insertMembership = db.prepare(`
+    INSERT INTO artwork_series (
+      artworkId,
+      seriesSlug,
+      isPrimary,
+      sortOrder,
+      createdAt,
+      updatedAt
+    ) VALUES (
+      @artworkId,
+      @seriesSlug,
+      @isPrimary,
+      0,
+      @createdAt,
+      @updatedAt
+    )
+  `);
+  seriesSlugs.forEach((seriesSlug, index) => {
+    insertMembership.run({
+      artworkId,
+      seriesSlug,
+      isPrimary: index === 0 ? 1 : 0,
+      createdAt: updatedAt,
+      updatedAt
+    });
+  });
+}
+
 adminRouter.get("/admin/artworks", (req, res) => {
   const rows = db.prepare(`
     SELECT a.*,
       (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='thumb') AS thumb,
-      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image
+      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image,
+      (SELECT GROUP_CONCAT(seriesSlug) FROM (SELECT seriesSlug FROM artwork_series WHERE artworkId=a.id ORDER BY isPrimary DESC, createdAt ASC)) AS _seriesSlugsRaw
     FROM artworks a
     ORDER BY a.updatedAt DESC
   `).all();
 
-  res.json(rows.map(r => ({ ...r, featured: !!r.featured, tags: jsonArray(r.tags) })));
+  res.json(rows.map(r => {
+    const { _seriesSlugsRaw, ...rest } = r;
+    return { ...rest, featured: !!rest.featured, tags: jsonArray(rest.tags), seriesSlugs: _seriesSlugsRaw ? _seriesSlugsRaw.split(',') : [] };
+  }));
 });
 
 adminRouter.patch("/admin/artworks/:id", (req, res) => {
@@ -557,11 +704,27 @@ adminRouter.patch("/admin/artworks/:id", (req, res) => {
 
   const patch = req.body || {};
   const updatedAt = nowIso();
+  let seriesWrite;
+  try {
+    seriesWrite = resolveSeriesMembershipWriteInput({
+      rawSeriesSlugs: patch.seriesSlugs,
+      rawLegacySeries: patch.series
+    });
+  } catch (error) {
+    return res.status(400).json({ error: String(error?.message || error || "Invalid series input.") });
+  }
+  if (seriesWrite.error) {
+    return res.status(400).json({ error: seriesWrite.error });
+  }
+
+  const legacySeriesValue = seriesWrite.provided
+    ? seriesWrite.primaryLegacySeries
+    : (patch.series ?? cur.series);
 
   const next = {
     title: patch.title ?? cur.title,
     year: patch.year ?? cur.year,
-    series: patch.series ?? cur.series,
+    series: legacySeriesValue,
     description: patch.description ?? cur.description,
     alt: patch.alt ?? cur.alt,
     status: patch.status ?? cur.status,
@@ -572,6 +735,7 @@ adminRouter.patch("/admin/artworks/:id", (req, res) => {
     updatedAt
   };
 
+  const runSave = db.transaction(() => {
     db.prepare(`
     UPDATE artworks SET
         title=@title, year=@year, series=@series, description=@description, alt=@alt,
@@ -579,16 +743,23 @@ adminRouter.patch("/admin/artworks/:id", (req, res) => {
         publishedAt=@publishedAt, updatedAt=@updatedAt
     WHERE id=@id
     `).run({ id, ...next });
+    if (seriesWrite.provided) {
+      replaceArtworkSeriesMemberships(id, seriesWrite.seriesSlugs, updatedAt);
+    }
+  });
+  runSave();
 
 
   const out = db.prepare(`
     SELECT a.*,
       (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='thumb') AS thumb,
-      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image
+      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image,
+      (SELECT GROUP_CONCAT(seriesSlug) FROM (SELECT seriesSlug FROM artwork_series WHERE artworkId=a.id ORDER BY isPrimary DESC, createdAt ASC)) AS _seriesSlugsRaw
     FROM artworks a WHERE a.id=?
   `).get(id);
 
-  res.json({ ...out, featured: !!out.featured, tags: jsonArray(out.tags) });
+  const { _seriesSlugsRaw: _patchSlugsRaw, ...patchOut } = out;
+  res.json({ ...patchOut, featured: !!patchOut.featured, tags: jsonArray(patchOut.tags), seriesSlugs: _patchSlugsRaw ? _patchSlugsRaw.split(',') : [] });
 });
 
 // Helpers

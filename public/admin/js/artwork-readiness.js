@@ -1,3 +1,35 @@
+function normalizeSeriesSlugs(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((entry) => String(entry || "").trim())
+          .filter(Boolean);
+      }
+    } catch {
+      // Treat non-JSON strings as legacy values; callers fall back to artwork.series.
+    }
+  }
+
+  return [];
+}
+
+function hasSeriesAssignment(artwork) {
+  const seriesSlugs = normalizeSeriesSlugs(artwork?.seriesSlugs);
+  if (seriesSlugs.length > 0) return true;
+  return !!String(artwork?.series || "").trim();
+}
+
 export const REQUIRED_PUBLISH_METADATA_RULES = Object.freeze([
   {
     key: "title",
@@ -36,9 +68,9 @@ export const REQUIRED_PUBLISH_METADATA_RULES = Object.freeze([
   },
   {
     key: "series",
-    label: "Series",
+    label: "Series assignment",
     test(artwork) {
-      return !!String(artwork?.series || "").trim();
+      return hasSeriesAssignment(artwork);
     }
   }
 ]);

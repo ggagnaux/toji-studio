@@ -62,6 +62,102 @@ export function slugifySeries(name) {
     .slice(0, 80);
 }
 
+export function normalizeSeriesSlugs(value) {
+	if (Array.isArray(value)) {
+		return value.map((entry) => String(entry || "").trim()).filter(Boolean);
+	}
+
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		if (!trimmed) return [];
+
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (Array.isArray(parsed)) {
+				return parsed.map((entry) => String(entry || "").trim()).filter(Boolean);
+			}
+		} catch {}
+	}
+
+	return [];
+}
+
+export function formatSeriesLabelFromSlug(slug) {
+	return String(slug || "")
+		.trim()
+		.split(/[-_]+/)
+		.filter(Boolean)
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(" ");
+}
+
+export function getSeriesMetaRows(stateLike) {
+	if (stateLike && stateLike.seriesMeta && typeof stateLike.seriesMeta === "object") {
+		return Object.values(stateLike.seriesMeta);
+	}
+	if (Array.isArray(stateLike?.series)) return stateLike.series;
+	return [];
+}
+
+export function resolveArtworkSeriesEntries(artwork, stateLike = null) {
+	const knownSeries = getSeriesMetaRows(stateLike);
+	const knownBySlug = new Map();
+	knownSeries.forEach((row) => {
+		const slug = String(row?.slug || slugifySeries(row?.name || row?.title || "")).trim();
+		const name = String(row?.name || row?.title || row?.slug || "").trim();
+		if (slug && name && !knownBySlug.has(slug)) {
+			knownBySlug.set(slug, { slug, name });
+		}
+	});
+
+	const seriesEntries = [];
+	const seen = new Set();
+	const slugs = normalizeSeriesSlugs(artwork?.seriesSlugs);
+	const legacyName = String(artwork?.series || "").trim();
+	const legacySlug = legacyName ? slugifySeries(legacyName) : "";
+
+	if (legacyName) {
+		const primarySlug = legacySlug || slugs[0] || "";
+		if (primarySlug && !seen.has(primarySlug)) {
+			seriesEntries.push({ slug: primarySlug, name: legacyName });
+			seen.add(primarySlug);
+		}
+	}
+
+	slugs.forEach((slug) => {
+		if (!slug || seen.has(slug)) return;
+		const known = knownBySlug.get(slug);
+		seriesEntries.push(known || { slug, name: formatSeriesLabelFromSlug(slug) || slug });
+		seen.add(slug);
+	});
+
+	return seriesEntries;
+}
+
+export function getCompactSeriesDisplay(artwork, stateLike = null) {
+	const seriesEntries = resolveArtworkSeriesEntries(artwork, stateLike);
+	const primary = seriesEntries[0] || null;
+	const extraCount = Math.max(0, seriesEntries.length - 1);
+	const compactLabel = primary
+		? (extraCount ? `${primary.name} +${extraCount} more` : primary.name)
+		: "";
+
+	return {
+		entries: seriesEntries,
+		primary,
+		extraCount,
+		compactLabel
+	};
+}
+
+export function artworkMatchesSeriesMembership(artwork, series, stateLike = null) {
+	if (!artwork || !series) return false;
+	const seriesSlug = String(series?.slug || slugifySeries(series?.name || "")).trim().toLowerCase();
+	if (!seriesSlug) return false;
+	return resolveArtworkSeriesEntries(artwork, stateLike)
+		.some((entry) => String(entry.slug || "").trim().toLowerCase() === seriesSlug);
+}
+
 export function sortBySortOrderAndDate(items) {
   return items.slice().sort((a, b) => {
     const soA = Number(a.sortOrder || 0);
@@ -590,13 +686,16 @@ export function createArtworkLightboxController() {
 			    if (!currentList.length || currentIndex < 0 || currentIndex >= currentList.length) return;
 			    const item = currentList[currentIndex];
 			    const category = deriveArtworkCategory(item);
+			    const seriesDisplay = getCompactSeriesDisplay(item);
 			    const artworkUrl = new URL(`artwork.html?id=${encodeURIComponent(item.id)}`, location.href);
 			    const imageUrl = item.image || item.thumb || "";
-			    title.textContent = item.series || category;
+			    title.textContent = seriesDisplay.compactLabel || category;
 			    counter.textContent = `Image ${currentIndex + 1} of ${currentList.length}`;
 			    metaKicker.textContent = category;
 			    metaTitle.textContent = item.title || "Untitled";
-			    metaSub.textContent = item.series ? `Part of ${item.series}` : "Standalone published work";
+			    metaSub.textContent = seriesDisplay.primary
+			      ? `Part of ${seriesDisplay.compactLabel}`
+			      : "Standalone published work";
 			    metaFacts.innerHTML = "";
 			    [
 			      item.year ? `Year ${item.year}` : null,
@@ -622,9 +721,9 @@ export function createArtworkLightboxController() {
 			      `&title=${encodeURIComponent(item.title || "")}` +
 			      `&id=${encodeURIComponent(item.id || "")}` +
 			      `&url=${encodeURIComponent(artworkUrl.href)}`;
-			    if (item.series) {
+			    if (seriesDisplay.primary) {
 			      seriesBtn.hidden = false;
-			      seriesBtn.href = new URL(`series.html?s=${encodeURIComponent(slugifySeries(item.series))}`, location.href).href;
+			      seriesBtn.href = new URL(`series.html?s=${encodeURIComponent(seriesDisplay.primary.slug)}`, location.href).href;
 			    } else {
 			      seriesBtn.hidden = true;
 			      seriesBtn.removeAttribute("href");

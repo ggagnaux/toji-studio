@@ -479,6 +479,19 @@ import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork
     const id = qs("id");
     const a = state.artworks.find(x => x.id === id) || state.artworks[0];
 
+    // Ensure seriesSlugs is always an array (backfill from legacy series if needed)
+    if (a && !Array.isArray(a.seriesSlugs)) {
+      if (a.series) {
+        const matchSlug = Object.keys(state.seriesMeta || {}).find(k => {
+          const m = state.seriesMeta[k];
+          return m && (k === a.series || m.name === a.series || m.slug === a.series);
+        });
+        a.seriesSlugs = matchSlug ? [matchSlug] : [];
+      } else {
+        a.seriesSlugs = [];
+      }
+    }
+
     const root = document.getElementById("root");
     const backNavBtn = document.getElementById("backNavBtn");
     const h1 = document.getElementById("h1");
@@ -517,7 +530,7 @@ import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork
       a.updatedAt = new Date().toISOString();
       saveState(state);
       h1.textContent = a.title || "Untitled";
-      sub.textContent = `ID: ${a.id} • Status: ${a.status}`;
+      sub.textContent = `ID: ${a.id} ï¿½ Status: ${a.status}`;
       renderPublishReadiness();
       if (!quiet) setStatusText("Saved locally.");
     }
@@ -526,12 +539,14 @@ import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork
     let saveTimer = null;
     let saving = false;
     let lastPatchJson = "";
+    let refreshSeriesChips = () => {};
 
     function buildPatch(){
       return {
         title: a.title || "",
         year: a.year || "",
         series: a.series || "",
+        seriesSlugs: Array.isArray(a.seriesSlugs) ? a.seriesSlugs : [],
         description: a.description || "",
         alt: a.alt || "",
         status: a.status || "draft",
@@ -565,6 +580,10 @@ import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork
 
         // merge backend truth into local cache + current object
         Object.assign(a, updated);
+
+        // ensure seriesSlugs is always an array after merge
+        if (!Array.isArray(a.seriesSlugs)) a.seriesSlugs = [];
+        refreshSeriesChips();
 
         // also keep series/tags lists healthy
         if (a.series && !state.series.includes(a.series)) state.series.push(a.series);
@@ -1926,11 +1945,7 @@ import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork
     const detailsPane = el("div", { class:"edit-tabpane", "data-tab":"details" },
       field("Title", "title", a.title, (v)=>{ a.title=v; scheduleBackendSave(); }),
       field("Year", "year", a.year || "", (v)=>{ a.year=v; scheduleBackendSave(); }),
-      selectField("Series", "series", getSeriesOptions(a.series || ""), a.series || "", (v)=>{
-        a.series=v;
-        if (v && !state.series.includes(v)) state.series.push(v);
-        scheduleBackendSave();
-      }),
+      seriesMultiField(),
       field("Alt text", "alt", a.alt || "", (v)=>{ a.alt=v; scheduleBackendSave(); updatePreviewAlt(); }),
       textareaField(
         "Description",
@@ -2056,6 +2071,101 @@ import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork
       return el("div", { class:"field", style:"margin-top:12px" },
         labelRow,
         t
+      );
+    }
+
+    function seriesMultiField() {
+      const slugToName = (slug) => {
+        const m = state.seriesMeta?.[slug];
+        return m?.name || slug;
+      };
+
+      const getSortedSeries = () =>
+        Object.values(state.seriesMeta || {})
+          .filter(row => row && row.name)
+          .sort((x, y) => {
+            const byOrder = Number(x.sortOrder || 0) - Number(y.sortOrder || 0);
+            return byOrder !== 0 ? byOrder : String(x.name).localeCompare(String(y.name));
+          });
+
+      const chipsWrap = el("div", { class:"edit-series-chips", style: "display:flex; flex-wrap:wrap; gap:6px; min-height:24px; margin:6px 0 8px" });
+
+      function renderChips() {
+        chipsWrap.innerHTML = "";
+        const slugs = Array.isArray(a.seriesSlugs) ? a.seriesSlugs : [];
+        if (!slugs.length) {
+          chipsWrap.appendChild(el("span", { class:"sub", style:"opacity:.5; font-size:12px" }, "No series assigned"));
+          return;
+        }
+        slugs.forEach((slug, idx) => {
+          const name = slugToName(slug);
+          const chip = el("span", { class:"chip active", style:"display:inline-flex; align-items:center; gap:4px; cursor:default; padding:4px 8px; font-size:12px" },
+            ...(idx === 0 ? [el("span", { style:"font-size:10px; opacity:.65; margin-right:2px", title:"Primary series" }, "\u2605")] : []),
+            el("span", {}, name),
+            el("button", {
+              type:"button",
+              class:"btn mini",
+              style:"padding:0 5px; margin-left:4px; font-size:12px; line-height:1.2; border-radius:99px; min-width:0",
+              "aria-label": `Remove ${name}`,
+              onclick: () => {
+                a.seriesSlugs = (a.seriesSlugs || []).filter(s => s !== slug);
+                syncLegacy();
+                renderChips();
+                renderAddSelect();
+                scheduleBackendSave();
+              }
+            }, "\u00d7")
+          );
+          chipsWrap.appendChild(chip);
+        });
+      }
+
+      const addSelect = el("select", { id:"seriesAddSelect", class:"edit-series-select", style:"flex:1; min-width:0" });
+
+      function renderAddSelect() {
+        addSelect.innerHTML = "";
+        addSelect.appendChild(el("option", { value:"" }, "\u2014 add series \u2014"));
+        const assigned = new Set(Array.isArray(a.seriesSlugs) ? a.seriesSlugs : []);
+        for (const row of getSortedSeries()) {
+          if (!assigned.has(row.slug)) {
+            addSelect.appendChild(el("option", { value: row.slug }, row.name));
+          }
+        }
+      }
+
+      function syncLegacy() {
+        const slugs = Array.isArray(a.seriesSlugs) ? a.seriesSlugs : [];
+        a.series = slugs.length ? slugToName(slugs[0]) : "";
+        if (a.series && !state.series.includes(a.series)) state.series.push(a.series);
+      }
+
+      const addBtn = el("button", {
+        type:"button",
+        class:"btn mini",
+        onclick: () => {
+          const slug = addSelect.value;
+          if (!slug) return;
+          if (!(a.seriesSlugs || []).includes(slug)) {
+            a.seriesSlugs = [...(a.seriesSlugs || []), slug];
+            syncLegacy();
+            renderChips();
+            renderAddSelect();
+            addSelect.value = "";
+            scheduleBackendSave();
+          }
+        }
+      }, "Add");
+
+      // Expose refresh so flushBackendSave can re-render after backend merge
+      refreshSeriesChips = () => { renderChips(); renderAddSelect(); };
+
+      renderChips();
+      renderAddSelect();
+
+      return el("div", { class:"field", style:"margin-top:12px" },
+        el("div", { class:"sub" }, "Series"),
+        chipsWrap,
+        el("div", { class:"edit-series-picker", style:"display:flex; gap:6px; align-items:center" }, addSelect, addBtn)
       );
     }
 

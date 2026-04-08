@@ -56,6 +56,113 @@ export function cleanSeries(s) {
   return String(s || "").trim().replace(/\s+/g, " ");
 }
 
+function normalizeSeriesLookupKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function parseSeriesSlugsInput(raw) {
+  if (raw == null) return [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  const out = [];
+  for (const item of list) {
+    if (item == null) continue;
+    if (Array.isArray(item)) {
+      out.push(...parseSeriesSlugsInput(item));
+      continue;
+    }
+    const text = String(item).trim();
+    if (!text) continue;
+    if (text.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(text);
+        if (!Array.isArray(parsed)) throw new Error("seriesSlugs JSON must be an array.");
+        out.push(...parseSeriesSlugsInput(parsed));
+        continue;
+      } catch {
+        throw new Error("seriesSlugs must be an array or a valid JSON array string.");
+      }
+    }
+    out.push(...text.split(/[;,\n]+/g));
+  }
+  return out
+    .map((value) => normalizeSeriesLookupKey(value))
+    .filter(Boolean);
+}
+
+function resolveSeriesMembershipWriteInput({ rawSeriesSlugs, rawLegacySeries }) {
+  const hasSeriesSlugs = rawSeriesSlugs !== undefined;
+  const hasLegacySeries = rawLegacySeries !== undefined;
+  if (!hasSeriesSlugs && !hasLegacySeries) {
+    return { provided: false, seriesSlugs: [], primaryLegacySeries: "" };
+  }
+
+  const rows = db.prepare(`SELECT slug, name FROM series`).all();
+  const canonicalByKey = new Map();
+  const nameBySlug = new Map();
+  for (const row of rows) {
+    const slug = String(row?.slug || "").trim();
+    if (!slug) continue;
+    const name = cleanSeries(row?.name || "");
+    canonicalByKey.set(slug.toLowerCase(), slug);
+    canonicalByKey.set(normalizeSeriesLookupKey(slug), slug);
+    if (name) {
+      canonicalByKey.set(name.toLowerCase(), slug);
+      canonicalByKey.set(normalizeSeriesLookupKey(name), slug);
+      nameBySlug.set(slug, name);
+    }
+  }
+
+  let requested = [];
+  if (hasSeriesSlugs) {
+    requested = parseSeriesSlugsInput(rawSeriesSlugs);
+  } else {
+    const legacySeries = cleanSeries(rawLegacySeries || "");
+    if (!legacySeries) {
+      return { provided: true, seriesSlugs: [], primaryLegacySeries: "" };
+    }
+    requested = [legacySeries];
+  }
+
+  const seen = new Set();
+  const unknown = [];
+  const seriesSlugs = [];
+  for (const value of requested) {
+    const key = String(value || "").trim();
+    if (!key) continue;
+    const resolved =
+      canonicalByKey.get(key.toLowerCase()) ||
+      canonicalByKey.get(normalizeSeriesLookupKey(key)) ||
+      "";
+    if (!resolved) {
+      unknown.push(key);
+      continue;
+    }
+    if (seen.has(resolved)) continue;
+    seen.add(resolved);
+    seriesSlugs.push(resolved);
+  }
+
+  if (unknown.length) {
+    return {
+      provided: true,
+      seriesSlugs: [],
+      primaryLegacySeries: "",
+      error: `Unknown series slug(s): ${unknown.join(", ")}.`
+    };
+  }
+
+  const primarySlug = seriesSlugs[0] || "";
+  return {
+    provided: true,
+    seriesSlugs,
+    primaryLegacySeries: primarySlug ? (nameBySlug.get(primarySlug) || primarySlug) : ""
+  };
+}
+
 export function cleanYear(y) {
   return String(y || "").trim();
 }
@@ -163,11 +270,13 @@ uploadRouter.post("/admin/artworks/:id/replace-image", upload.single("file"), as
   const out = db.prepare(`
     SELECT a.*,
       (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='thumb') AS thumb,
-      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image
+      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image,
+      (SELECT GROUP_CONCAT(seriesSlug) FROM (SELECT seriesSlug FROM artwork_series WHERE artworkId=a.id ORDER BY isPrimary DESC, createdAt ASC)) AS _seriesSlugsRaw
     FROM artworks a WHERE a.id=?
   `).get(artworkId);
 
-  res.json({ ...out, featured: !!out.featured, tags: jsonArray(out.tags) });
+  const { _seriesSlugsRaw: _replaceSlugsRaw, ...replaceOut } = out;
+  res.json({ ...replaceOut, featured: !!replaceOut.featured, tags: jsonArray(replaceOut.tags), seriesSlugs: _replaceSlugsRaw ? _replaceSlugsRaw.split(',') : [] });
 });
 
 // Rebuild thumb/web variants from the stored original (no change to metadata)
@@ -188,11 +297,13 @@ uploadRouter.post("/admin/artworks/:id/regenerate-variants", async (req, res) =>
   const out = db.prepare(`
     SELECT a.*,
       (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='thumb') AS thumb,
-      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image
+      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image,
+      (SELECT GROUP_CONCAT(seriesSlug) FROM (SELECT seriesSlug FROM artwork_series WHERE artworkId=a.id ORDER BY isPrimary DESC, createdAt ASC)) AS _seriesSlugsRaw
     FROM artworks a WHERE a.id=?
   `).get(artworkId);
 
-  res.json({ ...out, featured: !!out.featured, tags: jsonArray(out.tags) });
+  const { _seriesSlugsRaw: _regenSlugsRaw, ...regenOut } = out;
+  res.json({ ...regenOut, featured: !!regenOut.featured, tags: jsonArray(regenOut.tags), seriesSlugs: _regenSlugsRaw ? _regenSlugsRaw.split(',') : [] });
 });
 
 
@@ -204,10 +315,40 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
   const skipped = [];
   const createdAt = nowIso();
   const batchTags = parseTags(req.body?.tags);
-  const batchSeries = cleanSeries(req.body?.series);
+  let seriesWrite;
+  try {
+    seriesWrite = resolveSeriesMembershipWriteInput({
+      rawSeriesSlugs: req.body?.seriesSlugs,
+      rawLegacySeries: req.body?.series
+    });
+  } catch (error) {
+    return res.status(400).json({ error: String(error?.message || error || "Invalid series input.") });
+  }
+  if (seriesWrite.error) {
+    return res.status(400).json({ error: seriesWrite.error });
+  }
+  const batchSeriesSlugs = seriesWrite.seriesSlugs;
+  const batchSeries = seriesWrite.primaryLegacySeries;
   const batchYear = cleanYear(req.body?.year);
   const batchStatus = cleanStatus(req.body?.status);
   const batchPublishedAt = batchStatus === "published" ? createdAt : null;
+  const insertMembership = db.prepare(`
+    INSERT OR IGNORE INTO artwork_series (
+      artworkId,
+      seriesSlug,
+      isPrimary,
+      sortOrder,
+      createdAt,
+      updatedAt
+    ) VALUES (
+      @artworkId,
+      @seriesSlug,
+      @isPrimary,
+      0,
+      @createdAt,
+      @updatedAt
+    )
+  `);
 
   for (const f of files) {
     const base = safeBase(f.originalname);
@@ -262,17 +403,31 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
       height: meta.height || null
     });
 
+    if (batchSeriesSlugs.length) {
+      for (let index = 0; index < batchSeriesSlugs.length; index += 1) {
+        insertMembership.run({
+          artworkId,
+          seriesSlug: batchSeriesSlugs[index],
+          isPrimary: index === 0 ? 1 : 0,
+          createdAt,
+          updatedAt: createdAt
+        });
+      }
+    }
+
     // Create variants (only these are served)
     await writeConfiguredVariants({ artworkId, inputBuffer: f.buffer });
 
     const out = db.prepare(`
       SELECT a.*,
         (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='thumb') AS thumb,
-        (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image
+        (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image,
+        (SELECT GROUP_CONCAT(seriesSlug) FROM (SELECT seriesSlug FROM artwork_series WHERE artworkId=a.id ORDER BY isPrimary DESC, createdAt ASC)) AS _seriesSlugsRaw
       FROM artworks a WHERE a.id=?
     `).get(artworkId);
 
-    created.push({ ...out, featured: !!out.featured, tags: jsonArray(out.tags) });
+    const { _seriesSlugsRaw: _uploadSlugsRaw, ...uploadOut } = out;
+    created.push({ ...uploadOut, featured: !!uploadOut.featured, tags: jsonArray(uploadOut.tags), seriesSlugs: _uploadSlugsRaw ? _uploadSlugsRaw.split(',') : [] });
   }
 
   res.json({ created, skipped });

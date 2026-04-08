@@ -106,7 +106,7 @@
           <div id="bulkBar" class="dashboard-bulk-bar" style="display:inline-flex">
             <span class="sub"><b id="bulkCount">0</b> selected</span>
 
-            <select id="bulkAction" aria-label="Bulk action" style="width:auto; min-width:220px" disabled>
+            <select id="bulkAction" class="bulk-action-select" aria-label="Bulk action" style="width:auto; min-width:220px" disabled>
               <option value="">Bulk action...</option>
               <option value="publish">Publish</option>
               <option value="draft">Set Draft</option>
@@ -140,7 +140,7 @@
 
             <!-- Bulk series assignment (shown only for series action) -->
             <div id="bulkSeriesBox" style="display:none; align-items:center; gap:10px; flex-wrap:wrap">
-              <select id="bulkSeriesPick" aria-label="Pick series" style="width:auto; min-width:220px">
+              <select id="bulkSeriesPick" class="bulk-action-select" aria-label="Pick series" style="width:auto; min-width:220px">
                 <option value="">Pick series...</option>
               </select>
 

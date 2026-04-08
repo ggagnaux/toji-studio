@@ -4,6 +4,9 @@ import assert from "node:assert/strict";
 import {
   qs,
   slugifySeries,
+  resolveArtworkSeriesEntries,
+  getCompactSeriesDisplay,
+  artworkMatchesSeriesMembership,
   sortBySortOrderAndDate,
   sortGallery
 } from "../../assets/js/content-utils.js";
@@ -32,6 +35,58 @@ test("slugifySeries normalizes text into a stable slug", () => {
   assert.equal(slugifySeries("Sci-Fi & Fantasy"), "sci-fi-fantasy");
   assert.equal(slugifySeries("---Already---Sluggy---"), "already-sluggy");
   assert.ok(slugifySeries("a".repeat(120)).length <= 80);
+});
+
+test("resolveArtworkSeriesEntries prefers seriesSlugs and keeps the legacy series as primary fallback", () => {
+  const state = {
+    seriesMeta: {
+      "night-forms": { slug: "night-forms", name: "Night Forms" },
+      "signal-bloom": { slug: "signal-bloom", name: "Signal Bloom" }
+    }
+  };
+
+  const entries = resolveArtworkSeriesEntries({
+    series: "Night Forms",
+    seriesSlugs: ["night-forms", "signal-bloom"]
+  }, state);
+
+  assert.deepEqual(entries, [
+    { slug: "night-forms", name: "Night Forms" },
+    { slug: "signal-bloom", name: "Signal Bloom" }
+  ]);
+});
+
+test("getCompactSeriesDisplay summarizes extra linked series for tight UI contexts", () => {
+  const display = getCompactSeriesDisplay({
+    series: "Night Forms",
+    seriesSlugs: ["night-forms", "signal-bloom", "afterglow-study"]
+  });
+
+  assert.equal(display.primary?.name, "Night Forms");
+  assert.equal(display.extraCount, 2);
+  assert.equal(display.compactLabel, "Night Forms +2 more");
+});
+
+test("artworkMatchesSeriesMembership supports explicit memberships and legacy series fallback", () => {
+  const state = {
+    seriesMeta: {
+      "night-forms": { slug: "night-forms", name: "Night Forms" },
+      "signal-bloom": { slug: "signal-bloom", name: "Signal Bloom" }
+    }
+  };
+
+  assert.equal(
+    artworkMatchesSeriesMembership({ seriesSlugs: ["signal-bloom"] }, { slug: "signal-bloom", name: "Signal Bloom" }, state),
+    true
+  );
+  assert.equal(
+    artworkMatchesSeriesMembership({ series: "Night Forms" }, { slug: "night-forms", name: "Night Forms" }, state),
+    true
+  );
+  assert.equal(
+    artworkMatchesSeriesMembership({ seriesSlugs: [] }, { slug: "night-forms", name: "Night Forms" }, state),
+    false
+  );
 });
 
 test("sortBySortOrderAndDate sorts by descending sortOrder then newest date", () => {

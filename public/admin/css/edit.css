@@ -128,3 +128,33 @@
       display:grid;
       gap:8px;
     }
+
+    .edit-series-picker{
+      margin-top: 8px;
+    }
+    .edit-series-picker select{
+      flex: 1;
+      min-height: 44px;
+      border-radius: 10px;
+      color: var(--text);
+      background: color-mix(in srgb, var(--panel) 88%, var(--bg));
+      border: 1px solid color-mix(in srgb, var(--text) 24%, var(--line));
+      box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 8%, transparent) inset;
+    }
+    .edit-series-picker select:hover{
+      border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+      background: color-mix(in srgb, var(--panel) 84%, var(--bg));
+    }
+    .edit-series-picker select:focus,
+    .edit-series-picker select:focus-visible{
+      border-color: var(--accent-border);
+      box-shadow: 0 0 0 3px var(--focus-ring);
+      outline: none;
+    }
+    .edit-series-picker select option{
+      background: color-mix(in srgb, var(--panel) 92%, var(--bg));
+      color: var(--text);
+    }
+    .edit-series-picker .btn{
+      min-height: 30px;
+    }

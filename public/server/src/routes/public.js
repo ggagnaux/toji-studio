@@ -6,6 +6,22 @@ import { db, jsonArray, getContactSettings, getSplashSettings } from "../db.js";
 
 export const publicRouter = Router();
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
+
+function parseImageOrder(value, fallback = []) {
+  const source = value == null ? fallback : value;
+  let arr = [];
+  if (Array.isArray(source)) arr = source;
+  else {
+    try {
+      arr = JSON.parse(String(source || "[]"));
+    } catch {
+      arr = Array.isArray(fallback) ? fallback : [];
+    }
+  }
+  if (!Array.isArray(arr)) arr = [];
+  return Array.from(new Set(arr.map((id) => String(id || "").trim()).filter(Boolean)));
+}
+
 function resolvePublicSiteRoot() {
   const candidates = [
     path.resolve(process.cwd(), "public"),
@@ -63,33 +79,35 @@ publicRouter.get("/public/external-links", (req, res) => {
 
 publicRouter.get("/public/artworks", (req, res) => {
   const rows = db.prepare(`
-    SELECT a.*, 
+    SELECT a.*,
       (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='thumb') AS thumb,
-      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image
+      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image,
+      (SELECT GROUP_CONCAT(seriesSlug) FROM (SELECT seriesSlug FROM artwork_series WHERE artworkId=a.id ORDER BY isPrimary DESC, createdAt ASC)) AS _seriesSlugsRaw
     FROM artworks a
     WHERE a.status='published'
     ORDER BY a.featured DESC, a.sortOrder DESC, COALESCE(a.publishedAt, a.createdAt) DESC
   `).all();
 
-  res.json(rows.map(r => ({
-    ...r,
-    featured: !!r.featured,
-    tags: jsonArray(r.tags)
-  })));
+  res.json(rows.map(r => {
+    const { _seriesSlugsRaw, ...rest } = r;
+    return { ...rest, featured: !!rest.featured, tags: jsonArray(rest.tags), seriesSlugs: _seriesSlugsRaw ? _seriesSlugsRaw.split(',') : [] };
+  }));
 });
 
 publicRouter.get("/public/artworks/:id", (req, res) => {
   const r = db.prepare(`
     SELECT a.*,
       (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='thumb') AS thumb,
-      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image
+      (SELECT path FROM variants v WHERE v.artworkId=a.id AND v.kind='web') AS image,
+      (SELECT GROUP_CONCAT(seriesSlug) FROM (SELECT seriesSlug FROM artwork_series WHERE artworkId=a.id ORDER BY isPrimary DESC, createdAt ASC)) AS _seriesSlugsRaw
     FROM artworks a
     WHERE a.id=? AND a.status='published'
   `).get(req.params.id);
 
   if (!r) return res.status(404).json({ error: "Not found" });
 
-  res.json({ ...r, featured: !!r.featured, tags: jsonArray(r.tags) });
+  const { _seriesSlugsRaw, ...pubArtwork } = r;
+  res.json({ ...pubArtwork, featured: !!pubArtwork.featured, tags: jsonArray(pubArtwork.tags), seriesSlugs: _seriesSlugsRaw ? _seriesSlugsRaw.split(',') : [] });
 });
 
 publicRouter.get("/public/series", (req, res) => {
@@ -104,12 +122,10 @@ publicRouter.get("/public/series", (req, res) => {
       s.imageOrderJson,
       (SELECT path FROM variants v
         WHERE v.artworkId=s.coverArtworkId AND v.kind='thumb') AS coverThumb,
-      (SELECT COUNT(*) FROM artworks a
+      (SELECT COUNT(*) FROM artwork_series aw
+        JOIN artworks a ON a.id = aw.artworkId
         WHERE a.status='published'
-          AND (
-            LOWER(TRIM(COALESCE(a.series, ''))) = LOWER(TRIM(COALESCE(s.name, '')))
-            OR LOWER(TRIM(COALESCE(a.series, ''))) = LOWER(TRIM(COALESCE(s.slug, '')))
-          )) AS publishedCount
+          AND aw.seriesSlug = s.slug) AS publishedCount
     FROM series s
     WHERE s.isPublic=1
     ORDER BY s.sortOrder ASC, s.name ASC

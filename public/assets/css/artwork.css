@@ -100,6 +100,22 @@
   padding: 12px 0 2px;
 }
 
+.artwork-toolbar-series-links,
+.artwork-series-context__links{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.artwork-toolbar-series-links[hidden]{
+  display: none;
+}
+
+.artwork-series-context__links .btn,
+.artwork-toolbar-series-links .page-toolbar__pill{
+  white-space: nowrap;
+}
+
 .artwork-series-context__label{
   margin: 0;
   color: var(--muted);
@@ -127,6 +143,13 @@
 
 .artwork-action-row .btn{
   min-height: 34px;
+}
+
+@media (max-width: 720px){
+  .artwork-toolbar-series-links,
+  .artwork-series-context__links{
+    gap: 6px;
+  }
 }
 
 .artwork-tags{

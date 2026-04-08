@@ -113,6 +113,24 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
     return `Missing: ${preview} +${missing.length - 2}`;
   }
 
+  function getArtworkSeriesNames(artwork){
+    const seriesMeta = state.seriesMeta || {};
+    const fromSlugs = Array.isArray(artwork?.seriesSlugs)
+      ? artwork.seriesSlugs
+          .map((slug) => {
+            const key = String(slug || "").trim();
+            if (!key) return "";
+            return String(seriesMeta[key]?.name || key).trim();
+          })
+          .filter(Boolean)
+      : [];
+
+    if (fromSlugs.length) return Array.from(new Set(fromSlugs));
+
+    const legacy = normSeries(artwork?.series);
+    return legacy ? [legacy] : [];
+  }
+
 
   const counts = () => {
     const pub = state.artworks.filter(a => a.status === "published").length;
@@ -129,7 +147,8 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
       tab === "all" ||
       (tab === "featured" ? !!a.featured : a.status === tab);
 
-    const text = `${a.title} ${(a.tags||[]).join(" ")} ${a.series||""}`.toLowerCase();
+    const seriesText = getArtworkSeriesNames(a).join(" ");
+    const text = `${a.title} ${(a.tags||[]).join(" ")} ${seriesText}`.toLowerCase();
     const qOk = !q || text.includes(q);
     return tabOk && qOk;
   }
@@ -826,6 +845,8 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
 
     for (const a of items){
       const title = String(a.title || "Untitled");
+      const seriesNames = getArtworkSeriesNames(a);
+      const seriesCellText = seriesNames.length ? seriesNames.join(", ") : "-";
       const audit = getArtworkMetadataAudit(a);
       const isSelected = selected.has(a.id);
       const primaryStatus = a.status === "published" ? "draft" : "published";
@@ -851,7 +872,7 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
               else selected.add(a.id);
               render();
             }
-          }, isSelected ? "\u2713" : "\u25cb")
+          }, "")
         ),
         el("td", {},
           el("div", { class:"admin-artwork-summary" },
@@ -891,7 +912,7 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
             }, audit.isComplete ? "Complete" : `${audit.missing.length} missing`)
           )
         ),
-        el("td", { class:"admin-artwork-series", "data-label":"Series" }, a.series || "-"),
+        el("td", { class:"admin-artwork-series", "data-label":"Series" }, seriesCellText),
         el("td", { class:"admin-artwork-year", "data-label":"Year" }, a.year || "-"),
         el("td", { class:"admin-artwork-actions", "data-label":"Actions" },
           el("div", { class:"admin-artwork-action-row" },

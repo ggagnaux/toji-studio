@@ -95,6 +95,18 @@ CREATE TABLE IF NOT EXISTS series (
   updatedAt TEXT
 );
 
+CREATE TABLE IF NOT EXISTS artwork_series (
+  artworkId TEXT NOT NULL,
+  seriesSlug TEXT NOT NULL,
+  isPrimary INTEGER DEFAULT 0,
+  sortOrder INTEGER DEFAULT 0,
+  createdAt TEXT,
+  updatedAt TEXT,
+  UNIQUE(artworkId, seriesSlug),
+  FOREIGN KEY (artworkId) REFERENCES artworks(id) ON DELETE CASCADE,
+  FOREIGN KEY (seriesSlug) REFERENCES series(slug) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS social_platforms (
   id TEXT PRIMARY KEY,                 -- stable slug (instagram, threads, x, etc.)
   name TEXT NOT NULL,
@@ -142,6 +154,12 @@ CREATE INDEX IF NOT EXISTS idx_artwork_social_posts_platform_status
 CREATE INDEX IF NOT EXISTS idx_artwork_social_posts_artwork
   ON artwork_social_posts(artworkId);
 
+CREATE INDEX IF NOT EXISTS idx_artwork_series_artwork
+  ON artwork_series(artworkId);
+
+CREATE INDEX IF NOT EXISTS idx_artwork_series_series
+  ON artwork_series(seriesSlug);
+
 CREATE INDEX IF NOT EXISTS idx_external_links_sort
   ON external_links(sortOrder, updatedAt);
 
@@ -155,11 +173,120 @@ function ensureColumn(table, column, sqlTypeAndDefault) {
   db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${sqlTypeAndDefault}`);
 }
 
+function normalizeLegacySeriesText(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function normalizeSeriesSlugKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function backfillArtworkSeriesMemberships() {
+  const legacyRows = db.prepare(`
+    SELECT id, series
+    FROM artworks
+    WHERE TRIM(COALESCE(series, '')) <> ''
+  `).all();
+  if (!legacyRows.length) return;
+
+  const knownSeries = db.prepare(`
+    SELECT slug, name
+    FROM series
+  `).all();
+  const slugLookup = new Map();
+  for (const row of knownSeries) {
+    const slug = String(row?.slug || "").trim();
+    if (!slug) continue;
+    const name = normalizeLegacySeriesText(row?.name || "");
+    slugLookup.set(slug.toLowerCase(), slug);
+    slugLookup.set(normalizeSeriesSlugKey(slug), slug);
+    if (name) {
+      slugLookup.set(name.toLowerCase(), slug);
+      slugLookup.set(normalizeSeriesSlugKey(name), slug);
+    }
+  }
+
+  let inserted = 0;
+  let existing = 0;
+  let skippedUnknownSeries = 0;
+  const skippedSamples = [];
+  const insertMembership = db.prepare(`
+    INSERT OR IGNORE INTO artwork_series (
+      artworkId,
+      seriesSlug,
+      isPrimary,
+      sortOrder,
+      createdAt,
+      updatedAt
+    ) VALUES (
+      @artworkId,
+      @seriesSlug,
+      1,
+      0,
+      @createdAt,
+      @updatedAt
+    )
+  `);
+
+  const now = nowIso();
+  const runBackfill = db.transaction(() => {
+    for (const row of legacyRows) {
+      const artworkId = String(row?.id || "").trim();
+      const legacySeries = normalizeLegacySeriesText(row?.series || "");
+      if (!artworkId || !legacySeries) continue;
+
+      const resolvedSlug =
+        slugLookup.get(legacySeries.toLowerCase()) ||
+        slugLookup.get(normalizeSeriesSlugKey(legacySeries)) ||
+        "";
+      if (!resolvedSlug) {
+        skippedUnknownSeries += 1;
+        if (skippedSamples.length < 20) {
+          skippedSamples.push({ artworkId, legacySeries });
+        }
+        continue;
+      }
+
+      const result = insertMembership.run({
+        artworkId,
+        seriesSlug: resolvedSlug,
+        createdAt: now,
+        updatedAt: now
+      });
+      if (Number(result?.changes || 0) > 0) inserted += 1;
+      else existing += 1;
+    }
+  });
+
+  try {
+    runBackfill();
+  } catch (error) {
+    ignoreReadonlySqlite(error, "artwork_series backfill");
+    return;
+  }
+
+  console.info(
+    `[db] artwork_series backfill: checked ${legacyRows.length} legacy artwork row(s); inserted ${inserted}, existing ${existing}, skipped ${skippedUnknownSeries}.`
+  );
+  if (skippedSamples.length) {
+    const sampleText = skippedSamples
+      .map((row) => `${row.artworkId} => ${row.legacySeries}`)
+      .join(", ");
+    console.warn(`[db] artwork_series backfill skipped unknown series sample(s): ${sampleText}`);
+  }
+}
+
 ensureColumn("social_platforms", "configJson", "TEXT DEFAULT '{}'");
 ensureColumn("social_platforms", "authJson", "TEXT DEFAULT '{}'");
 ensureColumn("social_platforms", "iconLocation", "TEXT DEFAULT ''");
 
 ensureColumn("series", "imageOrderJson", "TEXT DEFAULT '[]'");
+
+backfillArtworkSeriesMemberships();
 
 const socialPlatforms = db.prepare(`
   SELECT id, iconLocation, configJson

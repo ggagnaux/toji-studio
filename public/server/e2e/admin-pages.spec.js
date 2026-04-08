@@ -32,6 +32,66 @@ test.describe("admin pages", () => {
     await expectNoHorizontalOverflow(page);
   });
 
+  test("upload page supports batch multi-series selection and mode preview", async ({ page }) => {
+    await page.goto("/admin/upload");
+
+    await page.locator('[data-series-mode="append"]').click();
+    await page.locator("#seriesSelect").selectOption("night-forms");
+    await page.locator("#addSeriesBtn").click();
+    await page.locator("#seriesSelect").selectOption("signal-bloom");
+    await page.locator("#addSeriesBtn").click();
+
+    await expect(page.locator("#selectedSeriesChips")).toContainText("Night Forms");
+    await expect(page.locator("#selectedSeriesChips")).toContainText("Signal Bloom");
+    await expect(page.locator("#seriesModePreview")).toContainText("Append mode will add 2 series");
+  });
+
+  test("upload page submits selected multi-series memberships in the request payload", async ({ page }) => {
+    let capturedBody = "";
+    await page.route("**/api/admin/upload", async (route) => {
+      capturedBody = route.request().postDataBuffer()?.toString("utf8") || "";
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          created: [{
+            id: "upload-art-1",
+            title: "Uploaded Multi Series",
+            status: "draft",
+            featured: false,
+            series: "Night Forms",
+            seriesSlugs: ["night-forms", "signal-bloom"],
+            year: "2026",
+            description: "",
+            alt: "",
+            tags: [],
+            thumb: "assets/img/placeholders/p1.jpg",
+            image: "assets/img/placeholders/p1.jpg",
+            createdAt: "2026-03-10T00:00:00.000Z",
+            publishedAt: null,
+            sortOrder: 0
+          }],
+          skipped: []
+        })
+      });
+    });
+
+    await page.goto("/admin/upload");
+    await page.locator('[data-series-mode="replace"]').click();
+    await page.locator("#seriesSelect").selectOption("night-forms");
+    await page.locator("#addSeriesBtn").click();
+    await page.locator("#seriesSelect").selectOption("signal-bloom");
+    await page.locator("#addSeriesBtn").click();
+    await page.locator("#files").setInputFiles({
+      name: "multi-series.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO7Z0ioAAAAASUVORK5CYII=", "base64")
+    });
+    await page.locator("#uploadBtn").click();
+    await expect.poll(() => capturedBody.includes('name="seriesSlugs"')).toBeTruthy();
+    expect(capturedBody).toContain('["night-forms","signal-bloom"]');
+  });
+
   test("series manager collapses cleanly on narrower widths", async ({ page }) => {
     await page.setViewportSize({ width: 760, height: 1100 });
     await page.goto("/admin/series");

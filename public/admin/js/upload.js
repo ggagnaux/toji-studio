@@ -7,14 +7,16 @@ import {
   getAdminToken,
   apiFetch,
   showToast,
-  API_BASE
+  API_BASE,
+  ensureSeriesMeta,
+  slugifySeries
 } from "../admin.js";
 import {
   initUploadFilterControllers,
   parseUploadTags,
   requireUploadAdminSession
 } from "./upload-controller.js";
-import { bindFloatingField, syncFloatingFieldState } from "../../assets/js/floating-fields.js";
+import { bindFloatingField } from "../../assets/js/floating-fields.js";
 import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork-readiness.js";
 
 ensureBaseStyles();
@@ -22,6 +24,7 @@ setYearFooter();
 
 (async function(){
   const state = await loadStateAutoSync();
+  ensureSeriesMeta(state);
 
   const fileInput = document.getElementById("files");
   const filePickerShell = fileInput?.closest(".file-picker-shell");
@@ -36,7 +39,11 @@ setYearFooter();
   const uiBlocker = document.getElementById("uiBlocker");
   const uiBlockerTitle = document.getElementById("uiBlockerTitle");
   const uiBlockerSub = document.getElementById("uiBlockerSub");
-  const seriesField = document.getElementById("seriesField");
+  const seriesSelect = document.getElementById("seriesSelect");
+  const addSeriesBtn = document.getElementById("addSeriesBtn");
+  const selectedSeriesChips = document.getElementById("selectedSeriesChips");
+  const seriesModePreview = document.getElementById("seriesModePreview");
+  const seriesModeButtons = Array.from(document.querySelectorAll("[data-series-mode]"));
   const yearField = document.getElementById("yearField");
   const newTagField = document.getElementById("newTagField");
   const uploadReadinessScore = document.getElementById("uploadReadinessScore");
@@ -45,6 +52,8 @@ setYearFooter();
   const uploadReadinessNote = document.getElementById("uploadReadinessNote");
   const selectedBatchTags = new Set();
   const selectedTagFilters = new Set();
+  let selectedBatchSeriesSlugs = [];
+  let seriesApplyMode = "no_change";
   const newIds = [];
   const publishedStatusBtn = statusPills.find((btn) => String(btn?.getAttribute?.("data-status-pill") || "").toLowerCase() === "published");
 
@@ -113,27 +122,134 @@ setYearFooter();
   }
 
   function getAllKnownSeries() {
+    const rows = Object.values(state.seriesMeta || {})
+      .filter((row) => row && row.slug && row.name)
+      .sort((left, right) => {
+        const byOrder = Number(left.sortOrder || 0) - Number(right.sortOrder || 0);
+        if (byOrder !== 0) return byOrder;
+        return String(left.name).localeCompare(String(right.name));
+      });
+
+    if (rows.length) return rows;
+
+    const fallback = new Map();
     const direct = Array.isArray(state.series) ? state.series : [];
-    const names = new Set();
     direct.forEach((series) => {
-      const value = typeof series === "string" ? series : (series?.name || series?.title || series?.slug || "");
-      if (value) names.add(String(value).trim());
+      const name = typeof series === "string" ? series : (series?.name || series?.title || series?.slug || "");
+      const trimmed = String(name || "").trim();
+      const slug = slugifySeries(trimmed);
+      if (trimmed && slug) fallback.set(slug, { slug, name: trimmed, sortOrder: 0 });
     });
     const artworkSeries = Array.isArray(state.artworks) ? state.artworks : [];
     artworkSeries.forEach((artwork) => {
-      const value = String(artwork?.series || "").trim();
-      if (value) names.add(value);
+      const name = String(artwork?.series || "").trim();
+      const slug = slugifySeries(name);
+      if (name && slug && !fallback.has(slug)) fallback.set(slug, { slug, name, sortOrder: 0 });
     });
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
+    return Array.from(fallback.values()).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  }
+
+  function getSeriesName(slug) {
+    const trimmed = String(slug || "").trim();
+    if (!trimmed) return "";
+    const match = (state.seriesMeta && state.seriesMeta[trimmed]) || getAllKnownSeries().find((row) => row.slug === trimmed);
+    return match?.name || trimmed;
+  }
+
+  function getEffectiveBatchSeriesSlugs() {
+    if (seriesApplyMode === "no_change") return [];
+    return selectedBatchSeriesSlugs.slice();
+  }
+
+  function renderSeriesModeButtons() {
+    seriesModeButtons.forEach((btn) => {
+      const active = btn.getAttribute("data-series-mode") === seriesApplyMode;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function renderSeriesPreview() {
+    if (!seriesModePreview) return;
+    const applied = getEffectiveBatchSeriesSlugs();
+    if (seriesApplyMode === "no_change") {
+      seriesModePreview.textContent = "No series metadata will be applied to this batch.";
+      return;
+    }
+    if (!applied.length) {
+      seriesModePreview.textContent = seriesApplyMode === "append"
+        ? "Append mode is selected, but no series are chosen yet. New uploads will remain unassigned."
+        : "Replace mode is selected, but no series are chosen yet. New uploads will remain unassigned.";
+      return;
+    }
+    const names = applied.map((slug, index) => index === 0 ? `${getSeriesName(slug)} (primary)` : getSeriesName(slug));
+    seriesModePreview.textContent = seriesApplyMode === "append"
+      ? `Append mode will add ${applied.length} series to each new upload: ${names.join(", ")}.`
+      : `Replace mode will set each new upload to exactly ${applied.length} series: ${names.join(", ")}.`;
+  }
+
+  function renderSeriesSelectOptions() {
+    if (!seriesSelect) return;
+    const current = seriesSelect.value;
+    const selected = new Set(selectedBatchSeriesSlugs);
+    seriesSelect.innerHTML = "";
+    seriesSelect.appendChild(new Option("— add series —", ""));
+    getAllKnownSeries().forEach((row) => {
+      if (!selected.has(row.slug)) {
+        seriesSelect.appendChild(new Option(row.name, row.slug));
+      }
+    });
+    if ([...seriesSelect.options].some((opt) => opt.value === current)) {
+      seriesSelect.value = current;
+    } else {
+      seriesSelect.value = "";
+    }
+  }
+
+  function renderSelectedSeriesChips() {
+    if (!selectedSeriesChips) return;
+    selectedSeriesChips.innerHTML = "";
+    if (!selectedBatchSeriesSlugs.length) {
+      selectedSeriesChips.appendChild(el("span", { class: "sub" }, "No batch series selected."));
+      return;
+    }
+    selectedBatchSeriesSlugs.forEach((slug, index) => {
+      const label = getSeriesName(slug);
+      selectedSeriesChips.appendChild(
+        el("span", { class: `chip ${seriesApplyMode === "no_change" ? "" : "active"} upload-series-chip` },
+          ...(index === 0 ? [el("span", { class: "upload-series-chip__primary", title: "Primary series" }, "★")] : []),
+          el("span", {}, label),
+          el("button", {
+            type: "button",
+            class: "btn mini upload-series-chip__remove",
+            "aria-label": `Remove ${label}`,
+            onclick: () => {
+              selectedBatchSeriesSlugs = selectedBatchSeriesSlugs.filter((value) => value !== slug);
+              renderSeriesControls();
+              renderUploadReadiness();
+            }
+          }, "×")
+        )
+      );
+    });
+  }
+
+  function renderSeriesControls() {
+    renderSeriesModeButtons();
+    renderSeriesPreview();
+    renderSelectedSeriesChips();
+    renderSeriesSelectOptions();
   }
 
   function buildBatchArtworkPreview() {
+    const seriesSlugs = getEffectiveBatchSeriesSlugs();
     return {
       title: "",
       description: "",
       alt: "",
       tags: Array.from(selectedBatchTags),
-      series: document.getElementById("series")?.value?.trim() || "",
+      series: seriesSlugs.length ? getSeriesName(seriesSlugs[0]) : "",
+      seriesSlugs,
       year: document.getElementById("year")?.value?.trim() || "",
       status: "draft"
     };
@@ -246,21 +362,6 @@ setYearFooter();
     renderUploadReadiness();
   }
 
-  function renderSeriesOptions(){
-    const seriesSelect = document.getElementById("series");
-    if (!seriesSelect) return;
-    const current = seriesSelect.value || "";
-    seriesSelect.innerHTML = "";
-    seriesSelect.appendChild(new Option("No change", ""));
-    for (const s of getAllKnownSeries()){
-      seriesSelect.appendChild(new Option(s, s));
-    }
-    if ([...seriesSelect.options].some(o => o.value === current)) {
-      seriesSelect.value = current;
-    }
-    syncFloatingFieldState(seriesField, seriesSelect);
-  }
-
   initUploadFilterControllers({
     statusSelect,
     statusPills,
@@ -272,7 +373,27 @@ setYearFooter();
   });
 
   document.getElementById("addTagBtn").addEventListener("click", addTagsFromInput);
-  document.getElementById("series")?.addEventListener("change", renderUploadReadiness);
+  addSeriesBtn?.addEventListener("click", () => {
+    const slug = String(seriesSelect?.value || "").trim();
+    if (!slug || selectedBatchSeriesSlugs.includes(slug)) return;
+    selectedBatchSeriesSlugs = [...selectedBatchSeriesSlugs, slug];
+    renderSeriesControls();
+    renderUploadReadiness();
+  });
+  seriesSelect?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    addSeriesBtn?.click();
+  });
+  seriesModeButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const nextMode = btn.getAttribute("data-series-mode") || "no_change";
+      if (nextMode === seriesApplyMode) return;
+      seriesApplyMode = nextMode;
+      renderSeriesControls();
+      renderUploadReadiness();
+    });
+  });
   document.getElementById("year")?.addEventListener("input", renderUploadReadiness);
   document.getElementById("newTagInput").addEventListener("keydown", (e) => {
     if (e.key !== "Enter") return;
@@ -372,11 +493,11 @@ setYearFooter();
 
       const fd = new FormData();
       files.forEach(file => fd.append("files", file));
-      const series = document.getElementById("series")?.value?.trim();
+      const seriesSlugs = getEffectiveBatchSeriesSlugs();
       const year = document.getElementById("year")?.value?.trim();
       const uploadStatus = statusSelect?.value || "draft";
       const tags = Array.from(selectedBatchTags);
-      if (series) fd.append("series", series);
+      if (seriesSlugs.length) fd.append("seriesSlugs", JSON.stringify(seriesSlugs));
       if (year) fd.append("year", year);
       if (uploadStatus) fd.append("status", uploadStatus);
       if (tags.length) fd.append("tags", tags.join(","));
@@ -419,11 +540,9 @@ setYearFooter();
     }
   });
 
-  const seriesSelect = document.getElementById("series");
   const yearInput = document.getElementById("year");
   const newTagInput = document.getElementById("newTagInput");
   [
-    [seriesField, seriesSelect],
     [yearField, yearInput],
     [newTagField, newTagInput]
   ].forEach(([field, control]) => {
@@ -431,7 +550,7 @@ setYearFooter();
     bindFloatingField(field, control);
   });
 
-  renderSeriesOptions();
+  renderSeriesControls();
   renderTagPills();
   renderUploadReadiness();
   renderNew();

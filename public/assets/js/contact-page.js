@@ -521,6 +521,7 @@ if (form && draftBox && draftPre) {
 }
 
 const copyEmailButton = document.getElementById("copyEmail");
+const directContactPanel = document.getElementById("contactEmailPanel");
 if (copyEmailButton) {
   copyEmailButton.addEventListener("click", async () => {
     try {
@@ -529,6 +530,54 @@ if (copyEmailButton) {
     } catch {
       setStatus("Couldn't copy email (browser blocked).", { tone: "warn" });
     }
+    if (emailEl) {
+      emailEl.classList.remove("element-flash");
+      void emailEl.offsetWidth;
+      emailEl.classList.add("element-flash");
+    }
+    if (directContactPanel) {
+      directContactPanel.classList.remove("panel-flash");
+      void directContactPanel.offsetWidth;
+      directContactPanel.classList.add("panel-flash");
+    }
+  });
+}
+
+const getInTouchPill = document.querySelector('.page-toolbar__pill[href="#contactFormPanel"]');
+const formPanel = document.getElementById("contactFormPanel");
+if (getInTouchPill && formPanel) {
+  getInTouchPill.addEventListener("click", () => {
+    formPanel.classList.remove("panel-flash");
+    void formPanel.offsetWidth;
+    formPanel.classList.add("panel-flash");
+  });
+  formPanel.addEventListener("animationend", () => {
+    formPanel.classList.remove("panel-flash");
+  });
+}
+
+const emailPill = document.querySelector('.page-toolbar__pill[href="#contactEmailPanel"]');
+if (emailPill && directContactPanel) {
+  emailPill.addEventListener("click", () => {
+    directContactPanel.classList.remove("panel-flash");
+    void directContactPanel.offsetWidth;
+    directContactPanel.classList.add("panel-flash");
+  });
+  directContactPanel.addEventListener("animationend", () => {
+    directContactPanel.classList.remove("panel-flash");
+  });
+}
+
+const linksPill = document.querySelector('.page-toolbar__pill[href="#contactLinksPanel"]');
+const linksPanel = document.getElementById("contactLinksPanel");
+if (linksPill && linksPanel) {
+  linksPill.addEventListener("click", () => {
+    linksPanel.classList.remove("panel-flash");
+    void linksPanel.offsetWidth;
+    linksPanel.classList.add("panel-flash");
+  });
+  linksPanel.addEventListener("animationend", () => {
+    linksPanel.classList.remove("panel-flash");
   });
 }
 

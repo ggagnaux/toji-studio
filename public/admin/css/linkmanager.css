@@ -37,13 +37,24 @@
       border:1px solid var(--line);
       border-radius:10px;
       padding:10px 12px;
-      background:color-mix(in srgb, var(--panel) 98%, transparent);
+      background-color:color-mix(in srgb, var(--panel) 98%, transparent);
       color:var(--text);
       box-shadow:none;
       transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
     }
     .external-link-row select{
-      padding-right:44px;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+        linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-repeat:no-repeat;
+      background-size:6px 6px, 6px 6px;
+      padding-right:38px;
+      background-position:
+        calc(100% - 21px) 50%,
+        calc(100% - 15px) 50%;
     }
     .external-link-row input:not([type="checkbox"]):hover,
     .external-link-row select:hover{

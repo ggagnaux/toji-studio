@@ -240,7 +240,20 @@ TOJI_STORAGE_DIR=/home/<site-user>/app-data/storage
 
 ### Install Dependencies And Start
 
-SSH into the CloudPanel site user, then run:
+SSH into the CloudPanel site user, 
+
+```bash
+ssh toji@172.218.5.118 password
+```
+
+Once connected successfully, stop the server:
+
+```bash
+pm2 stop toji-server
+```
+
+
+then run:
 
 ```bash
 cd /home/<site-user>/htdocs/<your-domain>
@@ -313,7 +326,15 @@ For future updates:
 .\deploy.bat
 ```
 
-2. Upload only the generated bundle for your chosen topology.
+2. Upload only the generated bundle for your chosen topology from the 'dist' folder:
+
+```bash
+package.json
+package-lock.json
+.env (if updated)
+src folder
+site folder
+```
 
 3. On the server, reinstall dependencies if `package-lock.json` changed.
 
@@ -324,7 +345,13 @@ npm ci --omit=dev
 4. Restart the app.
 
 ```bash
-pm2 restart toji-site
+pm2 restart toji-server
+
+or
+
+pm2 stop toji-server
+pm2 start toji-server
+
 ```
 
 ## Backups

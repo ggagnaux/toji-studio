@@ -100,6 +100,14 @@ function resolveSeriesMembershipWriteInput({ rawSeriesSlugs, rawLegacySeries }) 
     return { provided: false, seriesSlugs: [], primaryLegacySeries: "" };
   }
 
+  if (!hasSeriesSlugs) {
+    return {
+      provided: true,
+      seriesSlugs: [],
+      primaryLegacySeries: cleanSeries(rawLegacySeries || "")
+    };
+  }
+
   const rows = db.prepare(`SELECT slug, name FROM series`).all();
   const canonicalByKey = new Map();
   const nameBySlug = new Map();
@@ -116,16 +124,7 @@ function resolveSeriesMembershipWriteInput({ rawSeriesSlugs, rawLegacySeries }) 
     }
   }
 
-  let requested = [];
-  if (hasSeriesSlugs) {
-    requested = parseSeriesSlugsInput(rawSeriesSlugs);
-  } else {
-    const legacySeries = cleanSeries(rawLegacySeries || "");
-    if (!legacySeries) {
-      return { provided: true, seriesSlugs: [], primaryLegacySeries: "" };
-    }
-    requested = [legacySeries];
-  }
+  const requested = parseSeriesSlugsInput(rawSeriesSlugs);
 
   const seen = new Set();
   const unknown = [];

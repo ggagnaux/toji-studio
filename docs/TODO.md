@@ -23,4 +23,4 @@ Toji Studio TODO Items
 * Have the ability to place artwork into different scenes.
 * Home Screen - Featured image slide show - Randomize the order each time it's loaded.
 * Admin - Image Manager - Edit Image - Social Media - Available platforms listbox foreground and background colors are the same. Text cannot be seen.
-
+* Add a custom 404 page.

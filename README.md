@@ -274,4 +274,4 @@ For full deployment details, see:
 
 ## License / Ownership
 
-This repository appears to be a private project for Toji Studios. Add your preferred license text here if you want to formalize reuse terms.
+This repository is a private project for Toji Studios. If you want to use it, feel free :)

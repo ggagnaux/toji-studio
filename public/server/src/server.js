@@ -123,7 +123,8 @@ export function createApp() {
   if (siteRoot) {
 
     // Fix for missing trailing slash on /admin to ensure relative links work correctly
-    app.get("/admin", (req, res) => {
+    app.get("/admin", (req, res, next) => {
+      if (req.path.endsWith("/")) return next();
       res.redirect(301, "/admin/");
     });
     app.get("/admin/", (req, res) => {

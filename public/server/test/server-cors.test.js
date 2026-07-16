@@ -34,6 +34,13 @@ test("resolveCorsOriginOptions supports comma-separated origins and rejects unkn
   );
 });
 
+test("resolveCorsOriginOptions allows the local API origin when production CORS is configured", async () => {
+  const originResolver = resolveCorsOriginOptions("https://www.toji.studio", 5179);
+
+  await assert.doesNotReject(() => invokeOriginCheck(originResolver, "http://localhost:5179"));
+  await assert.doesNotReject(() => invokeOriginCheck(originResolver, "http://127.0.0.1:5179"));
+});
+
 test("resolveCorsOriginOptions returns open CORS mode when no origin is configured", () => {
   assert.equal(resolveCorsOriginOptions(""), true);
 });

@@ -1,6 +1,7 @@
 import { ensureSplashP5 } from "./p5-loader.js";
 import { mountSplashLogoIconAnimation } from "./logo-icon-animation.js";
 import { SPLASH_MODE_IDS, normalizeSplashMode, normalizeAllowedSplashModes } from "./splash-mode-config.js";
+import { hasPublicSiteVisited, markPublicSiteVisited } from "./site.js";
 
 function resolvePublicApiBase() {
   const override = String(localStorage.getItem("toji_api_base") || "").trim().replace(/\/+$/, "");
@@ -5099,13 +5100,14 @@ export async function initializeHomeSplash(options = {}) {
       }
       let showSplash = !!forceShow;
       if (!forceShow) {
-        showSplash = true;
+        showSplash = !hasPublicSiteVisited();
         try {
           const ref = document.referrer ? new URL(document.referrer) : null;
-          showSplash = !(ref && ref.origin === location.origin);
+          if (ref && ref.origin === location.origin) showSplash = false;
         } catch {
-          showSplash = true;
+          // Keep the storage-based decision when the referrer cannot be parsed.
         }
+        markPublicSiteVisited();
       }
   
       splashSettings = await loadSplashSettings();

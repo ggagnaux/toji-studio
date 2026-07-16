@@ -65,7 +65,15 @@ function addLoopbackAlias(origins, origin) {
   origins.add(alias.origin);
 }
 
-export function resolveCorsOriginOptions(rawOrigin = process.env.CORS_ORIGIN || "") {
+function addServerLoopbackOrigins(origins, port = process.env.PORT || 5179) {
+  const normalizedPort = String(port || "").trim();
+  if (!normalizedPort) return;
+
+  origins.add(`http://localhost:${normalizedPort}`);
+  origins.add(`http://127.0.0.1:${normalizedPort}`);
+}
+
+export function resolveCorsOriginOptions(rawOrigin = process.env.CORS_ORIGIN || "", port = process.env.PORT || 5179) {
   const configured = String(rawOrigin || "").trim();
   if (!configured) return true;
 
@@ -77,6 +85,7 @@ export function resolveCorsOriginOptions(rawOrigin = process.env.CORS_ORIGIN || 
   );
 
   for (const origin of [...origins]) addLoopbackAlias(origins, origin);
+  addServerLoopbackOrigins(origins, port);
 
   return (origin, callback) => {
     if (!origin || origins.has(origin)) {

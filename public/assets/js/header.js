@@ -1,4 +1,4 @@
-import { initThemeSystem } from "./site.js";
+import { initThemeSystem, markPublicSiteVisited } from "./site.js";
 
 const BANNER_BEZIER_LOGO_ENABLED_KEY = "toji_banner_logo_bezier_enabled_v1";
 const BANNER_LOGO_ANIMATION_MODE_KEY = "toji_banner_logo_animation_mode_v1";
@@ -96,6 +96,7 @@ export function renderPublicHeader({
   applyBannerLogoBorder(headerHost);
 
   const activeNav = resolveActiveNav();
+  if (activeNav !== "home" && activeNav !== "studio") markPublicSiteVisited();
   headerHost.querySelectorAll("[data-nav]").forEach(a => {
     const isActive = a.getAttribute("data-nav") === activeNav;
     a.classList.toggle("active", isActive);

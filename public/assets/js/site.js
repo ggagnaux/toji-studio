@@ -1,5 +1,23 @@
 export { qs, el } from "./content-utils.js";
 
+export const PUBLIC_SITE_VISITED_KEY = "toji_public_site_visited_v1";
+
+export function hasPublicSiteVisited() {
+  try {
+    return localStorage.getItem(PUBLIC_SITE_VISITED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markPublicSiteVisited() {
+  try {
+    localStorage.setItem(PUBLIC_SITE_VISITED_KEY, "1");
+  } catch {
+    // Storage can be unavailable in restrictive browser modes.
+  }
+}
+
 export async function loadGallery() {
   const res = await fetch("assets/data/gallery.sample.json");
   return res.json();

@@ -85,11 +85,6 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
       key: "tags",
       label: "Tags",
       test: (artwork) => Array.isArray(artwork?.tags) && artwork.tags.some((tag) => String(tag || "").trim())
-    }),
-    Object.freeze({
-      key: "series",
-      label: "Series",
-      test: (artwork) => !!String(artwork?.series || "").trim()
     })
   ]);
 

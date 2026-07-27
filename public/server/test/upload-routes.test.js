@@ -90,6 +90,8 @@ test("POST /api/admin/upload skips duplicate filenames and reports the existing 
     assert.equal(firstRes.status, 200);
     assert.equal(firstBody.created.length, 1);
     const createdId = firstBody.created[0].id;
+    assert.equal(firstBody.created[0].series, "");
+    assert.deepEqual(firstBody.created[0].seriesSlugs, []);
 
     const secondForm = new FormData();
     secondForm.append("files", createImageBlob(), "Duplicate Name!!.png");

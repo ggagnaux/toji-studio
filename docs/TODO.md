@@ -24,3 +24,38 @@ Toji Studio TODO Items
 * Home Screen - Featured image slide show - Randomize the order each time it's loaded.
 * Admin - Image Manager - Edit Image - Social Media - Available platforms listbox foreground and background colors are the same. Text cannot be seen.
 * Add a custom 404 page.
+
+
+
+July 27, 2026
+
+Page: Image Details (Non-admin)
+
+	- In the Image details page, if an image is not a member of a series, ensure that the 'View Series' button is either not shown or disabled.
+		
+Page: About
+
+	- Update text for 'Medium' to state "Digital [Conceived and created by an actual human]". Perhaps add "Made physical on demand :)"
+	
+Page: Admin -> Upload
+
+	- When uploading a new image, set the 'alt text' of the image to match the existing Title, which defaults to the images filename.
+	
+Page: Admin -> Image Manager
+
+	- After updating an image (add tags, add alt-text, add a description and setting the status to 'Publish', when going back to the Image Manager, the thumbnail for the image needs to be update to reflect this new information.  It will update if the page is fully refreshed.
+	
+	- Setting an image to 'Publish' in the edit.html page doesn't appear to actually set the image to 'Publish'. One must go back to the thumbnail or row view, select the image and then mark it as 'Publish' for the change to actually stick.
+	
+	
+Page: Admin -> edit.html
+
+	- In the 'Social Media' tab, the 'Available Platforms' dropdown colors are rendered incorrectly. On a dark theme, the dropdown is rendered with a light background (and light text, so the selections aren't readily viewable)
+
+
+Pages: Contact page
+
+	- Simplify this page by including only the 'Direct Contact' and 'Links' panels.  Hide the 'Start an Inquiry' panel for the first release.
+	- Hide the 'What to include' panel at the bottom as well.
+	
+

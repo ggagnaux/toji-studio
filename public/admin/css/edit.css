@@ -158,3 +158,17 @@
     .edit-series-picker .btn{
       min-height: 30px;
     }
+
+    .social-platform-select{
+      color: var(--text);
+      background-color: color-mix(in srgb, var(--panel) 92%, var(--bg));
+      border-color: color-mix(in srgb, var(--text) 24%, var(--line));
+      color-scheme: dark;
+    }
+    [data-theme="light"] .social-platform-select{
+      color-scheme: light;
+    }
+    .social-platform-select option{
+      color: var(--text);
+      background-color: color-mix(in srgb, var(--panel) 96%, var(--bg));
+    }

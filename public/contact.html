@@ -14,8 +14,8 @@
     <section class="page-toolbar page-toolbar--public" aria-label="Contact tools">
       <div class="page-toolbar__shell">
         <div class="page-toolbar__left">
-          <a class="page-toolbar__pill is-active" href="#contactFormPanel" aria-current="page">Get In Touch</a>
-          <a class="page-toolbar__pill" href="#contactEmailPanel">Email</a>
+          <a class="page-toolbar__pill" href="#contactFormPanel" hidden>Get In Touch</a>
+          <a class="page-toolbar__pill is-active" href="#contactEmailPanel" aria-current="page">Email</a>
           <a class="page-toolbar__pill" href="#contactLinksPanel">Links</a>
         </div>
         <div class="page-toolbar__right">
@@ -36,7 +36,7 @@
     </section>
 
     <section class="grid" aria-label="Contact content">
-      <div id="contactFormPanel" class="card contact-panel contact-panel--form page-toolbar-target" style="grid-column: span 7; grid-row: span 2">
+      <div id="contactFormPanel" class="card contact-panel contact-panel--form page-toolbar-target" style="grid-column: span 7; grid-row: span 2" hidden>
         <div class="meta">
           <p class="title">Start an inquiry</p>
           <p class="contact-panel__intro">Use the form to build an email draft for licensing, commissions, print requests, collaborations, or general questions.</p>
@@ -89,7 +89,7 @@
         </div>
       </div>
 
-      <div style="grid-column: span 5; grid-row: span 2; display: flex; flex-direction: column; gap: 16px">
+      <div class="contact-panels-row" style="grid-column: span 12">
 
         <div id="contactEmailPanel" class="card contact-panel contact-panel--direct page-toolbar-target">
           <div class="meta">
@@ -129,7 +129,7 @@
 
       </div>
 
-      <div class="card page-toolbar-target" style="grid-column: span 12">
+      <div id="contactIncludePanel" class="card page-toolbar-target" style="grid-column: span 12" hidden>
         <div class="meta">
           <p class="title">What to include</p>
           <p class="sub contact-help-copy">

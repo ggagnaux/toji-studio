@@ -1,7 +1,7 @@
 import { renderPublicHeader } from "./header.js";
     import { renderPublicFooter } from "./footer.js";
     import { initStickyHero } from "./site.js";
-    import { qs, el, slugifySeries, sortBySortOrderAndDate, deriveArtworkCategory } from "./content-utils.js";
+    import { qs, el, sortBySortOrderAndDate, deriveArtworkCategory, resolveArtworkSeriesEntries } from "./content-utils.js";
 
     // Header/footers
 	    renderPublicHeader({
@@ -52,58 +52,6 @@ import { renderPublicHeader } from "./header.js";
     const moreLink = document.getElementById("moreLink");
     const moreIntro = document.getElementById("moreIntro");
 
-    function normalizeSeriesSlugs(value){
-      if (Array.isArray(value)) {
-        return value.map((entry) => String(entry || "").trim()).filter(Boolean);
-      }
-      if (typeof value === "string") {
-        const trimmed = value.trim();
-        if (!trimmed) return [];
-        try {
-          const parsed = JSON.parse(trimmed);
-          if (Array.isArray(parsed)) {
-            return parsed.map((entry) => String(entry || "").trim()).filter(Boolean);
-          }
-        } catch {}
-      }
-      return [];
-    }
-
-    function getSeriesMetaRows(stateLike){
-      if (stateLike && stateLike.seriesMeta && typeof stateLike.seriesMeta === "object") {
-        return Object.values(stateLike.seriesMeta);
-      }
-      if (Array.isArray(stateLike?.series)) return stateLike.series;
-      return [];
-    }
-
-    function resolveArtworkSeries(artwork, stateLike){
-      const rows = getSeriesMetaRows(stateLike);
-      const bySlug = new Map();
-      rows.forEach((row) => {
-        const slug = String(row?.slug || slugifySeries(row?.name || row?.title || "")).trim();
-        const name = String(row?.name || row?.title || row?.slug || "").trim();
-        if (slug && name && !bySlug.has(slug)) bySlug.set(slug, { slug, name });
-      });
-
-      const out = [];
-      const seen = new Set();
-      normalizeSeriesSlugs(artwork?.seriesSlugs).forEach((slug) => {
-        if (seen.has(slug)) return;
-        const match = bySlug.get(slug);
-        out.push(match || { slug, name: slug });
-        seen.add(slug);
-      });
-
-      const legacyName = String(artwork?.series || "").trim();
-      const legacySlug = legacyName ? slugifySeries(legacyName) : "";
-      if (legacySlug && !seen.has(legacySlug)) {
-        out.unshift(bySlug.get(legacySlug) || { slug: legacySlug, name: legacyName });
-      }
-
-      return out.filter((row) => row.slug && row.name);
-    }
-
     function renderSeriesLinkSet(host, items, className){
       if (!host) return;
       host.innerHTML = "";
@@ -120,7 +68,7 @@ import { renderPublicHeader } from "./header.js";
     function getArtworkSeriesWithCache(artwork, stateLike){
       if (!artwork) return [];
       if (!Array.isArray(artwork._resolvedSeries)) {
-        artwork._resolvedSeries = resolveArtworkSeries(artwork, stateLike);
+        artwork._resolvedSeries = resolveArtworkSeriesEntries(artwork, stateLike);
       }
       return artwork._resolvedSeries;
     }
@@ -183,7 +131,7 @@ import { renderPublicHeader } from "./header.js";
     document.title = `${art.title || "Artwork"} \u2014 Toji Studios`;
     h1.textContent = art.title || "Artwork";
     const category = deriveArtworkCategory(art);
-    const artworkSeries = resolveArtworkSeries(art, state);
+    const artworkSeries = resolveArtworkSeriesEntries(art, state);
     const seriesNames = artworkSeries.map((item) => item.name);
     if (artworkKicker) artworkKicker.textContent = category || "Artwork view";
     sub.textContent = [category, seriesNames.length ? seriesNames.join(", ") : null, art.year || null].filter(Boolean).join(" \u2022 ") || "Published work";

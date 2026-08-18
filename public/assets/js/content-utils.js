@@ -112,11 +112,12 @@ export function resolveArtworkSeriesEntries(artwork, stateLike = null) {
 
 	const seriesEntries = [];
 	const seen = new Set();
+	const hasExplicitSeriesSlugs = Object.prototype.hasOwnProperty.call(artwork || {}, "seriesSlugs");
 	const slugs = normalizeSeriesSlugs(artwork?.seriesSlugs);
 	const legacyName = String(artwork?.series || "").trim();
 	const legacySlug = legacyName ? slugifySeries(legacyName) : "";
 
-	if (legacyName) {
+	if (legacyName && (!hasExplicitSeriesSlugs || slugs.length)) {
 		const primarySlug = legacySlug || slugs[0] || "";
 		if (primarySlug && !seen.has(primarySlug)) {
 			seriesEntries.push({ slug: primarySlug, name: legacyName });
@@ -456,6 +457,9 @@ function ensureLightboxStyles() {
 	      padding:8px 10px;
 	      font-size:13px;
 	    }
+	    .lb-actions .btn[hidden]{
+	      display:none !important;
+	    }
 		    .lb-actions .btn{
 		      transition: background .18s ease, border-color .18s ease, transform .18s ease, opacity .18s ease, box-shadow .18s ease, color .18s ease;
 		    }
@@ -619,7 +623,7 @@ export function createArtworkLightboxController() {
 		  const openPageBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "Open artwork page");
 		  const copyLinkBtn = el("button", { class: "btn", type: "button" }, "Copy link");
 		  const inquireBtn = el("a", { class: "btn primary", href: "contact.html" }, "Inquire about this piece");
-		  const seriesBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "View series");
+		  const seriesBtn = el("a", { class: "btn", target: "_blank", rel: "noopener", hidden: "" }, "View series");
 		  const imageBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "Open image file");
 		  const actions = el("div", { class: "lb-actions" }, openPageBtn, copyLinkBtn, inquireBtn, seriesBtn, imageBtn);
 		  const prevTextBtn = el("button", { class: "btn", type: "button", "aria-label": "Previous image", title: "Previous image" }, "\u2190");
@@ -723,10 +727,16 @@ export function createArtworkLightboxController() {
 			      `&url=${encodeURIComponent(artworkUrl.href)}`;
 			    if (seriesDisplay.primary) {
 			      seriesBtn.hidden = false;
+			      seriesBtn.style.display = "";
 			      seriesBtn.href = new URL(`series.html?s=${encodeURIComponent(seriesDisplay.primary.slug)}`, location.href).href;
+			      seriesBtn.removeAttribute("aria-disabled");
+			      seriesBtn.removeAttribute("tabindex");
 			    } else {
 			      seriesBtn.hidden = true;
+			      seriesBtn.style.display = "none";
 			      seriesBtn.removeAttribute("href");
+			      seriesBtn.setAttribute("aria-disabled", "true");
+			      seriesBtn.setAttribute("tabindex", "-1");
 			    }
 			    if (imageUrl) {
 			      imageBtn.hidden = false;

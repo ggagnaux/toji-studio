@@ -378,20 +378,23 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
     // Determine dimensions from original
     const meta = await sharp(f.buffer).rotate().metadata();
 
+    const title = base.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim() || "Untitled";
+
     // Insert artwork record (draft by default)
     db.prepare(`
       INSERT INTO artworks (
         id, title, year, series, description, alt, status, featured, sortOrder, tags,
         createdAt, updatedAt, publishedAt, originalPath, width, height
       ) VALUES (
-        @id, @title, @year, @series, '', '', @status, 0, 0, @tags,
+        @id, @title, @year, @series, '', @alt, @status, 0, 0, @tags,
         @createdAt, @updatedAt, @publishedAt, @originalPath, @width, @height
       )
     `).run({
       id: artworkId,
-      title: base.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim() || "Untitled",
+      title,
       year: batchYear,
       series: batchSeries,
+      alt: title,
       status: batchStatus,
       tags: toJson(batchTags),
       createdAt,

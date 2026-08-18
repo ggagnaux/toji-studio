@@ -52,6 +52,8 @@ test("POST /api/admin/upload applies batch metadata to created artworks", async 
     assert.equal(res.status, 200);
     assert.equal(body.skipped.length, 0);
     assert.equal(body.created.length, 2);
+    assert.deepEqual(body.created.map((item) => item.title).sort(), ["First Upload", "Second Upload"]);
+    assert.deepEqual(body.created.map((item) => item.alt).sort(), ["First Upload", "Second Upload"]);
 
     for (const item of body.created) {
       assert.equal(item.series, "Test Series");
@@ -90,6 +92,8 @@ test("POST /api/admin/upload skips duplicate filenames and reports the existing 
     assert.equal(firstRes.status, 200);
     assert.equal(firstBody.created.length, 1);
     const createdId = firstBody.created[0].id;
+    assert.equal(firstBody.created[0].title, "Duplicate Name");
+    assert.equal(firstBody.created[0].alt, "Duplicate Name");
     assert.equal(firstBody.created[0].series, "");
     assert.deepEqual(firstBody.created[0].seriesSlugs, []);
 

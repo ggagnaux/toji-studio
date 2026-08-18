@@ -1062,7 +1062,7 @@ import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork
 	      selectedBoundPlatformId: ""
 	    };
     const socialAutoSaveTimers = new Map();
-    const socialBindSelect = el("select", { "aria-label":"Available social platforms" });
+    const socialBindSelect = el("select", { class:"social-platform-select", "aria-label":"Available social platforms" });
     const socialBindBtn = el("button", { class:"btn mini", type:"button" }, "Bind platform");
     const socialBoundLabel = el("div", { class:"sub", style:"margin-top:10px; display:none;" }, "Bound platforms");
     const socialBoundPills = el("div", { class:"social-site-tabbar" });

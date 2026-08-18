@@ -29,22 +29,22 @@ Toji Studio TODO Items
 
 20260818
 
-20250818-1
+[Implemented]20250818-1
 Page: Image Details Popup (Non-admin)
 
 	- In the Image details page, if an image is not a member of a series, ensure that the 'View Series' button is either not shown or disabled.
 
-20250818-2
+[Implemented]20250818-2
 Page: Image Details Popup (Non-admin)
 
 	- In the Image details popup page, hide the 'Inquire about this piece' button.
 
-20250818-3
+[Implemented]20250818-3
 Page: About
 
 	- Update text for 'Medium' to state "Digital [Conceived and created by an actual human]". Perhaps add "Made physical on demand :)"
 	
-20250818-4
+[Implemented]20250818-4
 Page: Admin -> Upload
 
 	- When uploading a new image, set the 'alt text' of the image to match the existing Title, which defaults to the images filename.

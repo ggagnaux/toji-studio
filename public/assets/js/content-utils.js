@@ -456,6 +456,7 @@ function ensureLightboxStyles() {
 	    .lb-actions .btn{
 	      padding:8px 10px;
 	      font-size:13px;
+	      font-family:inherit;
 	    }
 	    .lb-actions .btn[hidden]{
 	      display:none !important;
@@ -622,7 +623,7 @@ export function createArtworkLightboxController() {
 		  const metaDesc = el("div", { class: "lb-meta-desc" }, "");
 		  const openPageBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "Open artwork page");
 		  const copyLinkBtn = el("button", { class: "btn", type: "button" }, "Copy link");
-		  const inquireBtn = el("a", { class: "btn primary", href: "contact.html" }, "Inquire about this piece");
+		  const inquireBtn = el("a", { class: "btn primary", href: "contact.html", hidden: "" }, "Inquire about this piece");
 		  const seriesBtn = el("a", { class: "btn", target: "_blank", rel: "noopener", hidden: "" }, "View series");
 		  const imageBtn = el("a", { class: "btn", href: "#", target: "_blank", rel: "noopener" }, "Open image file");
 		  const actions = el("div", { class: "lb-actions" }, openPageBtn, copyLinkBtn, inquireBtn, seriesBtn, imageBtn);
@@ -720,6 +721,8 @@ export function createArtworkLightboxController() {
 		    metaDesc.textContent = item.description || "No description has been published for this piece yet.";
 			    currentShareUrl = artworkUrl.href;
 			    openPageBtn.href = artworkUrl.href;
+			    inquireBtn.hidden = true;
+			    inquireBtn.style.display = "none";
 			    inquireBtn.href =
 			      `contact.html?topic=${encodeURIComponent("Licensing / inquiry")}` +
 			      `&title=${encodeURIComponent(item.title || "")}` +

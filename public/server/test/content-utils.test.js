@@ -56,6 +56,32 @@ test("resolveArtworkSeriesEntries prefers seriesSlugs and keeps the legacy serie
   ]);
 });
 
+test("resolveArtworkSeriesEntries returns no entries for unassigned artwork", () => {
+  const entries = resolveArtworkSeriesEntries({
+    series: "",
+    seriesSlugs: []
+  }, {
+    seriesMeta: {
+      "night-forms": { slug: "night-forms", name: "Night Forms" }
+    }
+  });
+
+  assert.deepEqual(entries, []);
+});
+
+test("resolveArtworkSeriesEntries ignores stale legacy series when explicit memberships are empty", () => {
+  const entries = resolveArtworkSeriesEntries({
+    series: "Night Forms",
+    seriesSlugs: []
+  }, {
+    seriesMeta: {
+      "night-forms": { slug: "night-forms", name: "Night Forms" }
+    }
+  });
+
+  assert.deepEqual(entries, []);
+});
+
 test("getCompactSeriesDisplay summarizes extra linked series for tight UI contexts", () => {
   const display = getCompactSeriesDisplay({
     series: "Night Forms",

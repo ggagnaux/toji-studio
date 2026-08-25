@@ -21,11 +21,6 @@
           <button class="chip gallery-tab" id="galleryTab-allWorksWrap" type="button" role="tab" aria-selected="false" aria-controls="allWorksWrap" data-tab-target="allWorksWrap">Archive</button>
         </div>
         <div class="gallery-tools-right">
-          <button id="galleryTagsShortcut" class="btn gallery-tools-pill" type="button">Tags</button>
-          <div class="search gallery-toolbar-search">
-            <input id="q" placeholder="Search work" />
-            <button id="qClear" class="icon-btn" type="button" aria-label="Clear search" style="display:none; width:28px; height:28px; padding:0;">x</button>
-          </div>
           <div class="segmented page-toolbar__theme" role="group" aria-label="Theme mode">
             <button type="button" data-theme-choice="system">System</button>
             <button type="button" data-theme-choice="light">Light</button>
@@ -72,6 +67,14 @@
 	      <div class="section-title">
 	        <h2>All works</h2>
 	        <span id="allCount">&mdash;</span>
+	      </div>
+
+	      <div class="all-works-toolbar" aria-label="All works tools">
+	        <button id="galleryTagsShortcut" class="btn gallery-tools-pill" type="button">Tags</button>
+	        <div class="search gallery-toolbar-search">
+	          <input id="q" placeholder="Search work" />
+	          <button id="qClear" class="icon-btn" type="button" aria-label="Clear search" style="display:none; width:28px; height:28px; padding:0;">x</button>
+	        </div>
 	      </div>
 
 		      <section class="filters" aria-label="Gallery filters">

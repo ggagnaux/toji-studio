@@ -46,6 +46,14 @@ function createSessionStorage() {
   };
 }
 
+function createDeferred() {
+  let resolve;
+  const promise = new Promise((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
 test("initLoginPage redirects immediately when an active session is detected", async () => {
   const form = createEventTarget();
   const passwordEl = { value: "" };
@@ -102,6 +110,42 @@ test("initLoginPage wires submit handling through the provided login function", 
   assert.equal(submitArgs.redirectTarget, "/admin/index.html#grid");
   assert.equal(submitArgs.sessionStorageRef, sessionStorageRef);
   assert.deepEqual(windowRef.redirects, ["/admin/index.html#grid"]);
+});
+
+test("initLoginPage ignores stale session checks after submit starts", async () => {
+  const form = createEventTarget();
+  const passwordEl = { value: "secret" };
+  const statusEl = { textContent: "", className: "", classList: { add() {} } };
+  const windowRef = createWindowRef("?next=%2Fadmin%2Findex.html");
+  const sessionCheck = createDeferred();
+  let cleared = 0;
+
+  const page = initLoginPage({
+    form,
+    passwordEl,
+    statusEl,
+    windowRef,
+    clearAdminSession() {
+      cleared += 1;
+    },
+    checkExistingSession: async ({ clearAdminSession }) => {
+      await sessionCheck.promise;
+      clearAdminSession();
+      return false;
+    },
+    submitLogin: async (args) => {
+      args.onRedirect(args.redirectTarget);
+      return { ok: true };
+    }
+  });
+
+  await form.dispatch("submit", { preventDefault() {} });
+  sessionCheck.resolve();
+  const isAuthenticated = await page.sessionCheckPromise;
+
+  assert.equal(isAuthenticated, false);
+  assert.equal(cleared, 0);
+  assert.deepEqual(windowRef.redirects, ["/admin/index.html"]);
 });
 
 test("initLoginPage dispose removes the submit listener", async () => {

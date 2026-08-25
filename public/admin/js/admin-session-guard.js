@@ -86,4 +86,10 @@
   }
 
   window.__tojiAdminSessionBootstrapPromise = verify();
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
+    root.dataset.adminSessionBootstrap = "pending";
+    root.classList.add("admin-auth-pending");
+    window.__tojiAdminSessionBootstrapPromise = verify();
+  });
 })();

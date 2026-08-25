@@ -132,7 +132,25 @@
 		      box-shadow:none;
 		    }
 	    .gallery-toolbar-search input{
-	      min-width:200px;
+	      flex:1 1 auto;
+	      min-width:0;
+	    }
+	    .gallery-toolbar-search #qClear{
+	      flex:0 0 28px;
+	      margin-left:auto;
+	    }
+	    .all-works-toolbar{
+	      display:flex;
+	      gap:12px;
+	      align-items:center;
+	      justify-content:flex-start;
+	      flex-wrap:wrap;
+	      margin: 2px 10px 16px;
+	    }
+	    .all-works-toolbar .gallery-toolbar-search{
+	      flex:1 1 280px;
+	      min-width:min(360px, 100%);
+	      max-width:520px;
 	    }
 	    .gallery-tab-panel{
 	      margin-top:14px;
@@ -175,6 +193,14 @@
 	      }
 	      .gallery-toolbar-search{
 	        width:100%;
+	      }
+	      .all-works-toolbar{
+	        margin-left:0;
+	        margin-right:0;
+	      }
+	      .all-works-toolbar .gallery-toolbar-search{
+	        flex-basis:100%;
+	        max-width:none;
 	      }
 	      .gallery-tools-right .page-toolbar__theme{
 	        width:auto;

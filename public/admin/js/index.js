@@ -4,6 +4,7 @@ import {
   sortArtworksManualFirst, ensureSeriesMeta,
   showToast, confirmToast,
   getAdminToken,
+  syncFromBackend,
     patchArtworkToBackend,
     deleteArtworkFromBackend
   } from "../admin.js";
@@ -18,11 +19,42 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
   ensureSeriesMeta(state);
   saveState(state);
 
-  let tab = "all";
-  let q = "";
   const DASHBOARD_VIEW_KEY = "toji_dashboard_view_mode_v1";
+  const DASHBOARD_FILTER_TAB_KEY = "toji_dashboard_filter_tab_v1";
+  const DASHBOARD_SEARCH_KEY = "toji_dashboard_search_v1";
+  const DASHBOARD_REFRESH_FLAG_KEY = "toji_dashboard_refresh_on_return_v1";
   const ROW_SORT_BY_KEY = "toji_dashboard_row_sort_by_v1";
   const ROW_SORT_DIR_KEY = "toji_dashboard_row_sort_dir_v1";
+
+  function readSessionValue(key, fallback = ""){
+    try {
+      return sessionStorage.getItem(key) || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function writeSessionValue(key, value){
+    try {
+      if (value) sessionStorage.setItem(key, value);
+      else sessionStorage.removeItem(key);
+    } catch {}
+  }
+
+  function consumeRefreshFlag(){
+    try {
+      const value = sessionStorage.getItem(DASHBOARD_REFRESH_FLAG_KEY);
+      sessionStorage.removeItem(DASHBOARD_REFRESH_FLAG_KEY);
+      return value === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  let tab = readSessionValue(DASHBOARD_FILTER_TAB_KEY, "all");
+  let searchText = readSessionValue(DASHBOARD_SEARCH_KEY, "");
+  let q = searchText.trim().toLowerCase();
+  if (!["all", "published", "draft", "hidden", "featured"].includes(tab)) tab = "all";
   let viewMode = localStorage.getItem(DASHBOARD_VIEW_KEY) || "rows";
   let rowSortBy = localStorage.getItem(ROW_SORT_BY_KEY) || "none";
   let rowSortDir = localStorage.getItem(ROW_SORT_DIR_KEY) || "asc";
@@ -42,6 +74,12 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
   // Bulk selection
   const selected = new Set();
   let openRowActionMenuId = "";
+  let refreshInFlight = null;
+
+  qInput.value = searchText;
+  chips.forEach((chip) => {
+    chip.classList.toggle("active", chip.getAttribute("data-tab") === tab);
+  });
 
   const selectAll = document.getElementById("selectAll");
   const bulkBar = document.getElementById("bulkBar");
@@ -1044,6 +1082,36 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
     applyViewModeUI();
   }
 
+  async function refreshDashboardFromBackend(){
+    if (!getAdminToken()) {
+      render();
+      return;
+    }
+
+    if (refreshInFlight) return refreshInFlight;
+
+    refreshInFlight = (async () => {
+      try {
+        await syncFromBackend(state);
+        ensureSeriesMeta(state);
+
+        const validIds = new Set((state.artworks || []).map((artwork) => artwork.id));
+        for (const id of Array.from(selected)) {
+          if (!validIds.has(id)) selected.delete(id);
+        }
+
+        saveState(state);
+      } catch (error) {
+        console.warn("Dashboard refresh failed; using local cache.", error);
+      } finally {
+        refreshInFlight = null;
+        render();
+      }
+    })();
+
+    return refreshInFlight;
+  }
+
   function applyViewModeUI(){
     const thumbs = viewMode === "thumbs";
     if (rowTableShell) rowTableShell.style.display = thumbs ? "none" : "";
@@ -1097,15 +1165,24 @@ import { initThumbSelectAllController } from "./dashboard-selection-controller.j
     chips.forEach(x => x.classList.remove("active"));
     c.classList.add("active");
     tab = c.getAttribute("data-tab");
+    writeSessionValue(DASHBOARD_FILTER_TAB_KEY, tab === "all" ? "" : tab);
     render();
   }));
 
   qInput.addEventListener("input", (e) => {
-    q = e.target.value.trim().toLowerCase();
+    searchText = e.target.value;
+    q = searchText.trim().toLowerCase();
+    writeSessionValue(DASHBOARD_SEARCH_KEY, searchText.trim() ? searchText : "");
     render();
   });
 
   render();
+
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted || consumeRefreshFlag()) {
+      refreshDashboardFromBackend();
+    }
+  });
 
 
 

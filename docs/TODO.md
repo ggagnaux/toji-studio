@@ -29,44 +29,52 @@ Toji Studio TODO Items
 
 20260818
 
-[Implemented]20250818-1
+[IMPLEMENTED]20250818-1
 Page: Image Details Popup (Non-admin)
 
 	- In the Image details page, if an image is not a member of a series, ensure that the 'View Series' button is either not shown or disabled.
 
-[Implemented]20250818-2
+[IMPLEMENTED]20250818-2
 Page: Image Details Popup (Non-admin)
 
 	- In the Image details popup page, hide the 'Inquire about this piece' button.
 
-[Implemented]20250818-3
+[IMPLEMENTED]20250818-3
 Page: About
 
 	- Update text for 'Medium' to state "Digital [Conceived and created by an actual human]". Perhaps add "Made physical on demand :)"
 	
-[Implemented]20250818-4
+[IMPLEMENTED]20250818-4
 Page: Admin -> Upload
 
 	- When uploading a new image, set the 'alt text' of the image to match the existing Title, which defaults to the images filename.
 	
-20250818-5
-Page: Admin -> Image Manager
-
-	- After updating an image (add tags, add alt-text, add a description and setting the status to 'Publish', when going back to the Image Manager, the thumbnail for the image needs to be update to reflect this new information.  It will update if the page is fully refreshed.
-	
-	- Setting an image to 'Publish' in the edit.html page doesn't appear to actually set the image to 'Publish'. One must go back to the thumbnail or row view, select the image and then mark it as 'Publish' for the change to actually stick.
-	
-	
-20250818-6
-Page: Admin -> edit.html
-
-	- In the 'Social Media' tab, the 'Available Platforms' dropdown colors are rendered incorrectly. On a dark theme, the dropdown is rendered with a light background (and light text, so the selections aren't readily viewable)
-
-
-20250818-7
+[IMPLEMENTED]20250818-5
 Pages: Contact page
 
 	- Simplify this page by including only the 'Direct Contact' and 'Links' panels.  Hide the 'Start an Inquiry' panel for the first release.
 	- Hide the 'What to include' panel at the bottom as well.
 	
+	
+[IMPLEMENTED]20250818-6
+Page: Admin -> edit.html
+
+	- In the 'Social Media' tab, the 'Available Platforms' dropdown colors are rendered incorrectly. On a dark theme, the dropdown is rendered with a light background (and light text, so the selections aren't readily viewable)
+
+
+20250821-1
+Page: Admin -> Image Manager
+
+	- [IMPLEMENTED]Remove 'Get In Touch' button from Contact page.
+	
+	- [IMPLEMENTED]Setting an image to 'Publish' in the edit.html page doesn't appear to actually set the image to 'Publish'. One must go back to the thumbnail or row view, select the image and then mark it as 'Publish' for the change to actually stick.
+
+	- [IMPLEMENTED]In the admin/edit.html page, add a small button next to the 'Alt text' label that says 'Copy Title'.  When the user clicks on this button, the text in the Title field is copied to the 'Alt text' field.
+	
+	- [IMPLEMENTED]In the Gallery.html page, move the 'Tags' button and Search box from the secondary nav area into the 'All Works' panel.
+
+	- [IMPLEMENTED]Add a modal dialog when the admin password is changed and redirect to login after closing dialog.
+
+	- [IMPLEMENTED]Resolve issue where no images load when viewing site on a clean browser instance.
+
 

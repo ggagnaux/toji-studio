@@ -54,7 +54,7 @@ export function renderPublicFooter({
 
   getSiteVersion().then((version) => {
     if (!version) return;
-    leftNode.textContent = `${leftBase} [V${version}]`;
+    leftNode.textContent = `${leftBase} [Website Version ${version}]`;
   });
 }
 

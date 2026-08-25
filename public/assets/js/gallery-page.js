@@ -192,31 +192,6 @@ import { renderPublicHeader } from "./header.js";
       return requested;
     }
 
-    function getJumpScrollTop() {
-      const header = document.getElementById("siteHeader");
-      const headerHeight = Math.ceil(header?.getBoundingClientRect().height || 0);
-      const heroHeight = Math.ceil(galleryHero?.getBoundingClientRect().height || 0);
-      const tabsHeight = Math.ceil(galleryTabsNav?.getBoundingClientRect().height || 0);
-      const sectionGap = 10;
-      return Math.max(
-        0,
-        window.scrollY + (galleryTabsNav?.getBoundingClientRect().top || 0) - (headerHeight + heroHeight + tabsHeight + sectionGap)
-      );
-    }
-
-    function scrollToTabsStable() {
-      const initialTop = getJumpScrollTop();
-      window.scrollTo({ top: initialTop, behavior: "smooth" });
-
-      // Mobile browsers can shift viewport chrome during smooth scroll; correct final alignment.
-      window.setTimeout(() => {
-        const correctedTop = getJumpScrollTop();
-        if (Math.abs(correctedTop - window.scrollY) > 2) {
-          window.scrollTo({ top: correctedTop, behavior: "auto" });
-        }
-      }, 420);
-    }
-
     function scrollToTopStable() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       // Correct for mobile viewport chrome movement after smooth scrolling.
@@ -240,7 +215,6 @@ import { renderPublicHeader } from "./header.js";
 	        const firstChip = chipHost.querySelector(".chip");
 	        if (firstChip && typeof firstChip.focus === "function") firstChip.focus();
 	      }
-	      scrollToTabsStable();
 	    });
 
     function syncBackToTopVisibility() {

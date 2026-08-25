@@ -91,8 +91,10 @@ adminSessionRouter.post("/admin/session/password", (req, res) => {
   try {
     process.env.ADMIN_PASSWORD = nextPassword;
     upsertEnvValue(getWritableEnvFilePath(), "ADMIN_PASSWORD", nextPassword);
+    if (authState.session) destroyAdminSession(authState.session.id);
+    clearAdminSessionCookie(res, req);
     res.setHeader("Cache-Control", "no-store");
-    return res.json({ ok: true, updated: true });
+    return res.json({ ok: true, updated: true, authenticated: false });
   } catch (error) {
     console.error("[admin-session] Failed to persist admin password", error);
     return res.status(500).json({ error: "Failed to persist admin password." });

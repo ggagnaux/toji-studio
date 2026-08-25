@@ -496,13 +496,52 @@ import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork
     const backNavBtn = document.getElementById("backNavBtn");
     const h1 = document.getElementById("h1");
     const sub = document.getElementById("sub");
+    const DASHBOARD_REFRESH_FLAG_KEY = "toji_dashboard_refresh_on_return_v1";
 
-    backNavBtn?.addEventListener("click", () => {
+    function requestDashboardRefresh(){
+      try {
+        sessionStorage.setItem(DASHBOARD_REFRESH_FLAG_KEY, "1");
+      } catch {}
+    }
+
+    async function flushAndReturnToDashboard(useHistory = false){
+      requestDashboardRefresh();
+      await flushBackendSave(true);
       if (window.history.length > 1) {
-        window.history.back();
-        return;
+        if (useHistory) {
+          window.history.back();
+          return;
+        }
       }
       window.location.href = "index.html";
+    }
+
+    backNavBtn?.addEventListener("click", async () => {
+      await flushAndReturnToDashboard(true);
+    });
+
+    document.addEventListener("click", async (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target?.closest?.("a");
+      if (!link || link.target) return;
+
+      const rawHref = String(link.getAttribute("href") || "").trim();
+      if (!rawHref || rawHref.startsWith("#")) return;
+
+      let url;
+      try {
+        url = new URL(link.href, window.location.href);
+      } catch {
+        return;
+      }
+
+      const path = url.pathname.replace(/\\/g, "/").toLowerCase();
+      if (url.origin !== window.location.origin || !path.endsWith("/admin/index.html")) return;
+
+      event.preventDefault();
+      requestDashboardRefresh();
+      await flushBackendSave(true);
+      window.location.href = link.href;
     });
 
     if (!a) {
@@ -1946,7 +1985,30 @@ import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork
       field("Title", "title", a.title, (v)=>{ a.title=v; scheduleBackendSave(); }),
       field("Year", "year", a.year || "", (v)=>{ a.year=v; scheduleBackendSave(); }),
       seriesMultiField(),
-      field("Alt text", "alt", a.alt || "", (v)=>{ a.alt=v; scheduleBackendSave(); updatePreviewAlt(); }),
+      field(
+        "Alt text",
+        "alt",
+        a.alt || "",
+        (v)=>{ a.alt=v; scheduleBackendSave(); updatePreviewAlt(); },
+        {
+          labelAction: el("button", {
+            id:"copyTitleToAltBtn",
+            class:"btn mini copy-title-to-alt-btn",
+            type:"button",
+            title:"Copy the current title into the Alt text field",
+            onclick:() => {
+              const titleInput = document.getElementById("title");
+              const altInput = document.getElementById("alt");
+              const titleValue = String(titleInput?.value || a.title || "").trim();
+              if (!altInput) return;
+              altInput.value = titleValue;
+              a.alt = titleValue;
+              scheduleBackendSave();
+              updatePreviewAlt();
+            }
+          }, "Copy Title")
+        }
+      ),
       textareaField(
         "Description",
         "description",
@@ -2050,11 +2112,17 @@ import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork
     // -----------------------
     // Fields
     // -----------------------
-    function field(label, id, value, onChange){
+    function field(label, id, value, onChange, opts = {}){
       const input = el("input", { id, value: value ?? "" });
       input.addEventListener("input", (e)=> onChange(e.target.value));
-      return el("div", { class:"field", style:"margin-top:12px" },
+      const labelRow = el(
+        "div",
+        { style:"display:flex; align-items:center; gap:10px; margin-bottom:6px;" },
         el("div", { class:"sub" }, label),
+        opts.labelAction || null
+      );
+      return el("div", { class:"field", style:"margin-top:12px" },
+        labelRow,
         input
       );
     }

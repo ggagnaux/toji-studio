@@ -92,6 +92,34 @@ test("POST /api/admin/session/password rejects unauthorized requests", async () 
   }
 });
 
+test("POST /api/admin/session/password clears the current session after success", async () => {
+  process.env.ADMIN_PASSWORD = "secret-pass";
+  const tempEnv = await createTempEnvFile("ADMIN_PASSWORD=secret-pass\n");
+  process.env.TOJI_ENV_FILE = tempEnv.filePath;
+  const server = await startTestServer(createApp);
+  try {
+    const headers = await createAuthenticatedHeaders(server.baseUrl);
+    const res = await fetch(`${server.baseUrl}/api/admin/session/password`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ currentPassword: "secret-pass", newPassword: "new-secret" })
+    });
+    const body = await readJson(res);
+    const setCookie = res.headers.get("set-cookie") || "";
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(body, { ok: true, updated: true, authenticated: false });
+    assert.match(setCookie, /toji_admin_session=/i);
+    assert.match(setCookie, /Max-Age=0/i);
+
+    const oldSession = await fetch(`${server.baseUrl}/api/admin/session/me`, { headers });
+    assert.equal(oldSession.status, 401);
+  } finally {
+    await server.close();
+    await tempEnv.cleanup();
+  }
+});
+
 test("GET protected admin route rejects unauthenticated access and allows session access", async () => {
   process.env.ADMIN_PASSWORD = "secret-pass";
   const server = await startTestServer(createApp);

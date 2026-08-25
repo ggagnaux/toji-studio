@@ -487,14 +487,6 @@
   background: color-mix(in srgb, var(--panel) 74%, transparent);
 }
 
-#featuredStrip .home-featured-card:first-child{
-  grid-column: span 7;
-}
-
-#featuredStrip .home-featured-card:nth-child(2){
-  grid-column: span 5;
-}
-
 .home-featured-card__eyebrow{
   margin: 0 0 6px;
   color: color-mix(in srgb, var(--accent) 56%, var(--muted));
@@ -506,10 +498,6 @@
 
 #featuredStrip .home-featured-card .thumb{
   aspect-ratio: 4 / 4.8;
-}
-
-#featuredStrip .home-featured-card:first-child .thumb{
-  aspect-ratio: 16 / 11;
 }
 
 #homeSeriesGrid{

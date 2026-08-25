@@ -60,7 +60,8 @@ export async function checkExistingAdminSession({
   fetchImpl = globalThis.fetch,
   isAdminSessionAuthenticated,
   clearAdminSession,
-  setAdminSessionAuthenticated
+  setAdminSessionAuthenticated,
+  sessionStorageRef = globalThis.sessionStorage
 } = {}) {
   try {
     const res = await fetchImpl(`${apiBase}/api/admin/session/me`, {

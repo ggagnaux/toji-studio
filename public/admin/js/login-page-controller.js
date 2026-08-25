@@ -18,19 +18,25 @@ export function initLoginPage({
   submitLogin = submitLoginForm
 } = {}) {
   const redirectTarget = getSafeAdminNext(windowRef?.location?.search, windowRef?.location?.origin);
+  let submitStarted = false;
 
   const sessionCheckPromise = checkExistingSession({
     apiBase,
     isAdminSessionAuthenticated,
-    clearAdminSession,
-    setAdminSessionAuthenticated
+    clearAdminSession() {
+      if (!submitStarted) clearAdminSession?.();
+    },
+    setAdminSessionAuthenticated,
+    sessionStorageRef
   }).then((isAuthenticated) => {
+    if (submitStarted) return false;
     if (isAuthenticated) windowRef?.location?.replace?.(redirectTarget);
     return isAuthenticated;
   });
 
   const handleSubmit = async (event) => {
     event?.preventDefault?.();
+    submitStarted = true;
     return submitLogin({
       password: String(passwordEl?.value || ""),
       statusEl,

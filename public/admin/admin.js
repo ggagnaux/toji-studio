@@ -1049,7 +1049,7 @@ function initAdminSidebarControls() {
   logoutBtn.textContent = "Log out";
   logoutBtn.addEventListener("click", async () => {
     await logoutAdminSession();
-    window.location.href = "login.html";
+    window.location.replace("login.html");
   });
 
   const logoutSep = document.createElement("hr");

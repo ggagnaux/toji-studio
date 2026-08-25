@@ -26,9 +26,78 @@
     const HOME_SERIES_VISIBLE_KEY = "toji_home_series_visible_v1";
     const HOME_FEATURED_SLIDESHOW_VISIBLE_KEY = "toji_home_featured_slideshow_visible_v1";
     const FALLBACK_URL = "assets/data/admin.sample.json";
+    const API_BASE = (getLocalStorageItem("toji_api_base") || window.location.origin || "").replace(/\/+$/, "");
+
+    function getLocalStorageItem(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    }
+
+    function normalizeMediaUrl(path) {
+      const value = String(path || "").trim();
+      if (!value || value.startsWith("http")) return value;
+      if (value.startsWith("/")) return `${API_BASE}${value}`;
+      return value;
+    }
+
+    async function tryFetchJson(url) {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) return null;
+        return await res.json();
+      } catch {
+        return null;
+      }
+    }
+
+    function normalizePublicArtwork(artwork) {
+      return {
+        ...artwork,
+        thumb: normalizeMediaUrl(artwork?.thumb),
+        image: normalizeMediaUrl(artwork?.image)
+      };
+    }
+
+    function normalizePublicSeries(series) {
+      return {
+        ...series,
+        coverThumb: normalizeMediaUrl(series?.coverThumb),
+        imageOrder: Array.isArray(series?.imageOrder)
+          ? series.imageOrder.map((id) => String(id || "").trim()).filter(Boolean)
+          : []
+      };
+    }
+
+    function buildSeriesMeta(rows) {
+      const meta = {};
+      (rows || []).forEach((series) => {
+        const slug = String(series?.slug || slugifySeries(series?.name || "")).trim();
+        if (!slug) return;
+        meta[slug] = normalizePublicSeries({ ...series, slug });
+      });
+      return meta;
+    }
 
     async function loadHomeState() {
-      const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
+      const [publicArtworks, publicSeries] = await Promise.all([
+        tryFetchJson(`${API_BASE}/api/public/artworks`),
+        tryFetchJson(`${API_BASE}/api/public/series`)
+      ]);
+      if (Array.isArray(publicArtworks)) {
+        const seriesRows = Array.isArray(publicSeries) ? publicSeries.map(normalizePublicSeries) : [];
+        return {
+          settings: {},
+          tags: [],
+          series: seriesRows,
+          seriesMeta: buildSeriesMeta(seriesRows),
+          artworks: publicArtworks.map(normalizePublicArtwork)
+        };
+      }
+
+      const saved = getLocalStorageItem(ADMIN_STORAGE_KEY);
       if (saved) {
         try {
           return JSON.parse(saved);
@@ -60,15 +129,15 @@
     const latestSection = document.getElementById("latestSection");
     const latestGrid = document.getElementById("latestGrid");
     const latestHint = document.getElementById("latestHint");
-    const heroRaw = localStorage.getItem(HOME_HERO_VISIBLE_KEY);
+    const heroRaw = getLocalStorageItem(HOME_HERO_VISIBLE_KEY);
     const isHeroVisible = heroRaw == null ? true : heroRaw === "1";
-    const featuredRaw = localStorage.getItem(HOME_FEATURED_VISIBLE_KEY);
+    const featuredRaw = getLocalStorageItem(HOME_FEATURED_VISIBLE_KEY);
     const isFeaturedVisible = featuredRaw == null ? true : featuredRaw === "1";
-    const seriesRaw = localStorage.getItem(HOME_SERIES_VISIBLE_KEY);
+    const seriesRaw = getLocalStorageItem(HOME_SERIES_VISIBLE_KEY);
     const isSeriesVisible = seriesRaw == null ? true : seriesRaw === "1";
-    const slideshowRaw = localStorage.getItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY);
+    const slideshowRaw = getLocalStorageItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY);
     const isSlideshowVisible = slideshowRaw == null ? true : slideshowRaw === "1";
-    const isLatestVisible = localStorage.getItem(HOME_LATEST_VISIBLE_KEY) === "1";
+    const isLatestVisible = getLocalStorageItem(HOME_LATEST_VISIBLE_KEY) === "1";
     if (homeHeroSection) homeHeroSection.style.display = isHeroVisible ? "" : "none";
     latestSection.style.display = isLatestVisible ? "" : "none";
 

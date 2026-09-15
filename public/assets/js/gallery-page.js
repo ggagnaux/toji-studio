@@ -13,12 +13,81 @@ import { renderPublicHeader } from "./header.js";
       rightHtml: `<a href="index.html">Home</a> &bull; <a href="gallery.html">Gallery</a> &bull; <a href="series.html">Series</a> &bull; <a href="contact.html">Contact</a> &bull; <a href="admin/index.html">Studio</a>`
     });
 
-    // ---- Gallery data source: Admin localStorage first, fallback to sample JSON ----
+    // ---- Gallery data source: public API first, then local admin cache/sample data ----
     const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
     const FALLBACK_URL = "assets/data/admin.sample.json";
+    const API_BASE = (getLocalStorageItem("toji_api_base") || window.location.origin || "").replace(/\/+$/, "");
+
+    function getLocalStorageItem(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    }
+
+    function normalizeMediaUrl(path) {
+      const value = String(path || "").trim();
+      if (!value || value.startsWith("http")) return value;
+      if (value.startsWith("/")) return `${API_BASE}${value}`;
+      return value;
+    }
+
+    async function tryFetchJson(url) {
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) return null;
+        return await res.json();
+      } catch {
+        return null;
+      }
+    }
+
+    function normalizePublicArtwork(artwork) {
+      return {
+        ...artwork,
+        thumb: normalizeMediaUrl(artwork?.thumb),
+        image: normalizeMediaUrl(artwork?.image)
+      };
+    }
+
+    function normalizePublicSeries(series) {
+      return {
+        ...series,
+        coverThumb: normalizeMediaUrl(series?.coverThumb),
+        imageOrder: Array.isArray(series?.imageOrder)
+          ? series.imageOrder.map((id) => String(id || "").trim()).filter(Boolean)
+          : []
+      };
+    }
+
+    function buildSeriesMeta(rows) {
+      const meta = {};
+      (rows || []).forEach((series) => {
+        const slug = String(series?.slug || slugifySeries(series?.name || "")).trim();
+        if (!slug) return;
+        meta[slug] = normalizePublicSeries({ ...series, slug });
+      });
+      return meta;
+    }
 
     async function loadGalleryState() {
-      const saved = localStorage.getItem(ADMIN_STORAGE_KEY);
+      const [publicArtworks, publicSeries] = await Promise.all([
+        tryFetchJson(`${API_BASE}/api/public/artworks`),
+        tryFetchJson(`${API_BASE}/api/public/series`)
+      ]);
+      if (Array.isArray(publicArtworks)) {
+        const seriesRows = Array.isArray(publicSeries) ? publicSeries.map(normalizePublicSeries) : [];
+        return {
+          settings: {},
+          tags: [],
+          series: seriesRows,
+          seriesMeta: buildSeriesMeta(seriesRows),
+          artworks: publicArtworks.map(normalizePublicArtwork)
+        };
+      }
+
+      const saved = getLocalStorageItem(ADMIN_STORAGE_KEY);
       if (saved) {
         try {
           return JSON.parse(saved);
@@ -435,8 +504,8 @@ import { renderPublicHeader } from "./header.js";
 	        ),
 	        el("div", { class: "all-works-state-bar__actions" },
 	          hasFilters ? el("button", { class: "btn", type: "button" }, "Clear filters") : null,
-	          filteredCount > shownCount ? el("button", { class: "btn", type: "button" }, `Load ${Math.min(ALL_WORKS_INCREMENT, filteredCount - shownCount)} more`) : null,
-	          filteredCount > shownCount ? el("button", { class: "btn", type: "button" }, "Show all") : null
+	          filteredCount > shownCount ? el("button", { class: "btn gallery-link-button", type: "button" }, `Load ${Math.min(ALL_WORKS_INCREMENT, filteredCount - shownCount)} more`) : null,
+	          filteredCount > shownCount ? el("button", { class: "btn gallery-link-button", type: "button" }, "Show all") : null
 	        )
 	      );
 	      allWorksStateBar.appendChild(top);

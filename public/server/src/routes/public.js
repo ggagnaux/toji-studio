@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Router } from "express";
-import { db, jsonArray, getContactSettings, getSplashSettings } from "../db.js";
+import { db, jsonArray, getContactSettings, getSplashSettings, getHomePageSettings, getBannerSettings } from "../db.js";
 
 export const publicRouter = Router();
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -56,6 +56,14 @@ publicRouter.get("/public/settings/contact", (req, res) => {
 
 publicRouter.get("/public/settings/splash", (req, res) => {
   res.json(getSplashSettings());
+});
+
+publicRouter.get("/public/settings/home-page", (req, res) => {
+  res.json(getHomePageSettings());
+});
+
+publicRouter.get("/public/settings/banner", (req, res) => {
+  res.json(getBannerSettings());
 });
 
 publicRouter.get("/public/banner-logos", (req, res) => {

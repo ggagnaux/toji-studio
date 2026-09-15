@@ -138,7 +138,7 @@ function renderSocialLinks(links) {
       rel: "noopener noreferrer",
       "aria-label": `${item.label} link`,
       title: item.label,
-      class: "btn"
+      class: "btn contact-link-button"
     }, item.label));
   });
 }

@@ -71,6 +71,57 @@
       };
     }
 
+    function normalizeBooleanSetting(value, fallback) {
+      if (typeof value === "boolean") return value;
+      if (value == null) return fallback;
+      const normalized = String(value).trim().toLowerCase();
+      if (!normalized) return fallback;
+      return normalized !== "0" && normalized !== "false" && normalized !== "off" && normalized !== "no";
+    }
+
+    function readLocalHomePageSettings() {
+      const heroRaw = getLocalStorageItem(HOME_HERO_VISIBLE_KEY);
+      const featuredRaw = getLocalStorageItem(HOME_FEATURED_VISIBLE_KEY);
+      const seriesRaw = getLocalStorageItem(HOME_SERIES_VISIBLE_KEY);
+      const slideshowRaw = getLocalStorageItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY);
+      return {
+        heroVisible: heroRaw == null ? true : heroRaw === "1",
+        latestVisible: getLocalStorageItem(HOME_LATEST_VISIBLE_KEY) === "1",
+        featuredVisible: featuredRaw == null ? true : featuredRaw === "1",
+        seriesVisible: seriesRaw == null ? true : seriesRaw === "1",
+        featuredSlideshowVisible: slideshowRaw == null ? true : slideshowRaw === "1"
+      };
+    }
+
+    function normalizeHomePageSettings(settings) {
+      const local = readLocalHomePageSettings();
+      const input = settings && typeof settings === "object" ? settings : {};
+      return {
+        heroVisible: normalizeBooleanSetting(input.heroVisible, local.heroVisible),
+        latestVisible: normalizeBooleanSetting(input.latestVisible, local.latestVisible),
+        featuredVisible: normalizeBooleanSetting(input.featuredVisible, local.featuredVisible),
+        seriesVisible: normalizeBooleanSetting(input.seriesVisible, local.seriesVisible),
+        featuredSlideshowVisible: normalizeBooleanSetting(input.featuredSlideshowVisible, local.featuredSlideshowVisible)
+      };
+    }
+
+    function cacheHomePageSettings(settings) {
+      try {
+        localStorage.setItem(HOME_HERO_VISIBLE_KEY, settings.heroVisible ? "1" : "0");
+        localStorage.setItem(HOME_LATEST_VISIBLE_KEY, settings.latestVisible ? "1" : "0");
+        localStorage.setItem(HOME_FEATURED_VISIBLE_KEY, settings.featuredVisible ? "1" : "0");
+        localStorage.setItem(HOME_SERIES_VISIBLE_KEY, settings.seriesVisible ? "1" : "0");
+        localStorage.setItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY, settings.featuredSlideshowVisible ? "1" : "0");
+      } catch {}
+    }
+
+    async function loadHomePageSettings() {
+      const saved = await tryFetchJson(`${API_BASE}/api/public/settings/home-page`);
+      const normalized = normalizeHomePageSettings(saved);
+      if (saved) cacheHomePageSettings(normalized);
+      return normalized;
+    }
+
     function buildSeriesMeta(rows) {
       const meta = {};
       (rows || []).forEach((series) => {
@@ -129,15 +180,12 @@
     const latestSection = document.getElementById("latestSection");
     const latestGrid = document.getElementById("latestGrid");
     const latestHint = document.getElementById("latestHint");
-    const heroRaw = getLocalStorageItem(HOME_HERO_VISIBLE_KEY);
-    const isHeroVisible = heroRaw == null ? true : heroRaw === "1";
-    const featuredRaw = getLocalStorageItem(HOME_FEATURED_VISIBLE_KEY);
-    const isFeaturedVisible = featuredRaw == null ? true : featuredRaw === "1";
-    const seriesRaw = getLocalStorageItem(HOME_SERIES_VISIBLE_KEY);
-    const isSeriesVisible = seriesRaw == null ? true : seriesRaw === "1";
-    const slideshowRaw = getLocalStorageItem(HOME_FEATURED_SLIDESHOW_VISIBLE_KEY);
-    const isSlideshowVisible = slideshowRaw == null ? true : slideshowRaw === "1";
-    const isLatestVisible = getLocalStorageItem(HOME_LATEST_VISIBLE_KEY) === "1";
+    const homePageSettings = await loadHomePageSettings();
+    const isHeroVisible = homePageSettings.heroVisible;
+    const isFeaturedVisible = homePageSettings.featuredVisible;
+    const isSeriesVisible = homePageSettings.seriesVisible;
+    const isSlideshowVisible = homePageSettings.featuredSlideshowVisible;
+    const isLatestVisible = homePageSettings.latestVisible;
     if (homeHeroSection) homeHeroSection.style.display = isHeroVisible ? "" : "none";
     latestSection.style.display = isLatestVisible ? "" : "none";
 

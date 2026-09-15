@@ -82,6 +82,19 @@
   margin: -1px -4px;
 }
 
+.contact-link-button{
+  appearance:none;
+  min-height:38px;
+  padding:8px 12px;
+  border-radius:8px;
+  font-family:inherit;
+  font-size:16px;
+  font-weight:600;
+  line-height:1.2;
+  text-decoration:none;
+  white-space:nowrap;
+}
+
 .contact-help-copy{
   font-size:15px;
   line-height:1.65;

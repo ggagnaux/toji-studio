@@ -6,6 +6,8 @@ const BANNER_STATIC_LOGO_SRC_KEY = "toji_banner_static_logo_src_v1";
 const BANNER_LOGO_BORDER_ENABLED_KEY = "toji_banner_logo_border_enabled_v1";
 const BANNER_LOGO_BORDER_COLOR_KEY = "toji_banner_logo_border_color_v1";
 let bannerP5LoadPromise = null;
+let bannerSettingsOverride = null;
+let bannerSettingsLoadPromise = null;
 
 export function renderPublicHeader({
   active = "home",       // "home" | "gallery" | "series" | "about" | "contact"
@@ -182,6 +184,7 @@ export function renderPublicHeader({
 
   initThemeSystem();
   applyBannerLogoBehavior(headerHost);
+  void hydratePublicBannerSettings(headerHost);
 }
 
 export function applyBannerLogoBehavior(headerHost) {
@@ -224,7 +227,74 @@ function resolveBannerAssetSrc(src) {
   return value;
 }
 
+function normalizeBooleanSetting(value, fallback) {
+  if (typeof value === "boolean") return value;
+  if (value == null) return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return fallback;
+  return normalized !== "0" && normalized !== "false" && normalized !== "off" && normalized !== "no";
+}
+
+function normalizeBannerLogoAnimationStyle(value) {
+  const style = String(value || "").trim().toLowerCase();
+  if (style === "circles") return "circles";
+  if (style === "plot") return "plot";
+  if (style === "radar") return "radar";
+  if (style === "sphere") return "sphere";
+  return "sphere";
+}
+
+function normalizeBannerSettingsPayload(raw = {}) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  return {
+    animatedLogoEnabled: normalizeBooleanSetting(input.animatedLogoEnabled, false),
+    animationMode: normalizeBannerLogoAnimationStyle(input.animationMode),
+    staticLogoSrc: String(input.staticLogoSrc || "").trim(),
+    logoBorderEnabled: normalizeBooleanSetting(input.logoBorderEnabled, true),
+    logoBorderColor: normalizeBannerLogoBorderColor(input.logoBorderColor)
+  };
+}
+
+function applyBannerSettingsToLocalStorage(settings) {
+  const normalized = normalizeBannerSettingsPayload(settings);
+  try {
+    localStorage.setItem(BANNER_BEZIER_LOGO_ENABLED_KEY, normalized.animatedLogoEnabled ? "1" : "0");
+    localStorage.setItem(BANNER_LOGO_ANIMATION_MODE_KEY, normalized.animationMode);
+    localStorage.setItem(BANNER_STATIC_LOGO_SRC_KEY, normalized.staticLogoSrc);
+    localStorage.setItem(BANNER_LOGO_BORDER_ENABLED_KEY, normalized.logoBorderEnabled ? "1" : "0");
+    localStorage.setItem(BANNER_LOGO_BORDER_COLOR_KEY, normalized.logoBorderColor);
+  } catch {}
+  return normalized;
+}
+
+async function hydratePublicBannerSettings(headerHost) {
+  if (!headerHost) return;
+  if (!bannerSettingsLoadPromise) {
+    bannerSettingsLoadPromise = (async () => {
+      const apiBase = String(window.location.origin || "").replace(/\/+$/, "");
+      if (!apiBase) return null;
+      const res = await fetch(`${apiBase}/api/public/settings/banner`, {
+        cache: "no-store",
+        credentials: "same-origin"
+      });
+      if (!res.ok) return null;
+      return res.json();
+    })().catch((error) => {
+      console.warn("Failed to load public banner settings; using local/default settings.", error);
+      return null;
+    });
+  }
+  const settings = await bannerSettingsLoadPromise;
+  if (!settings || !headerHost.isConnected) return;
+  bannerSettingsOverride = applyBannerSettingsToLocalStorage(settings);
+  applyBannerLogoBehavior(headerHost);
+}
+
 function getBannerStaticLogoSrc() {
+  if (bannerSettingsOverride) {
+    const value = String(bannerSettingsOverride.staticLogoSrc || "").trim();
+    if (value) return resolveBannerAssetSrc(value);
+  }
   try {
     const value = String(localStorage.getItem(BANNER_STATIC_LOGO_SRC_KEY) || "").trim();
     if (!value) return "";
@@ -243,6 +313,7 @@ function normalizeBannerLogoBorderColor(value) {
 }
 
 function bannerLogoBorderEnabled() {
+  if (bannerSettingsOverride) return !!bannerSettingsOverride.logoBorderEnabled;
   try {
     return localStorage.getItem(BANNER_LOGO_BORDER_ENABLED_KEY) !== "0";
   } catch {
@@ -251,6 +322,7 @@ function bannerLogoBorderEnabled() {
 }
 
 function getBannerLogoBorderColor() {
+  if (bannerSettingsOverride) return normalizeBannerLogoBorderColor(bannerSettingsOverride.logoBorderColor);
   try {
     return normalizeBannerLogoBorderColor(localStorage.getItem(BANNER_LOGO_BORDER_COLOR_KEY));
   } catch {
@@ -303,6 +375,11 @@ function applyStaticBannerLogo(headerHost) {
 }
 
 function getBannerLogoAnimationMode() {
+  if (bannerSettingsOverride) {
+    return bannerSettingsOverride.animatedLogoEnabled
+      ? normalizeBannerLogoAnimationStyle(bannerSettingsOverride.animationMode)
+      : "off";
+  }
   try {
     const enabled = localStorage.getItem(BANNER_BEZIER_LOGO_ENABLED_KEY) === "1";
     if (!enabled) return "off";

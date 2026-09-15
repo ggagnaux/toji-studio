@@ -393,6 +393,22 @@ export const DEFAULT_SPLASH_SETTINGS = Object.freeze({
   randomCycleSeconds: 12,
   allowedModes: DEFAULT_SPLASH_ALLOWED_MODES
 });
+export const HOME_PAGE_SETTINGS_KEY = "homePageSettings";
+export const DEFAULT_HOME_PAGE_SETTINGS = Object.freeze({
+  heroVisible: true,
+  latestVisible: false,
+  featuredVisible: true,
+  seriesVisible: true,
+  featuredSlideshowVisible: true
+});
+export const BANNER_SETTINGS_KEY = "bannerSettings";
+export const DEFAULT_BANNER_SETTINGS = Object.freeze({
+  animatedLogoEnabled: false,
+  animationMode: "sphere",
+  staticLogoSrc: "",
+  logoBorderEnabled: true,
+  logoBorderColor: "#871818"
+});
 
 function clampInt(value, fallback, min, max) {
   const n = Math.floor(Number(value));
@@ -462,6 +478,52 @@ export function normalizeSplashSettings(raw = {}) {
   };
 }
 
+function normalizeBannerAnimationMode(value) {
+  const mode = String(value || "").trim().toLowerCase();
+  if (mode === "circles") return "circles";
+  if (mode === "plot") return "plot";
+  if (mode === "radar") return "radar";
+  if (mode === "sphere") return "sphere";
+  return DEFAULT_BANNER_SETTINGS.animationMode;
+}
+
+function normalizeBannerStaticLogoSrc(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) return DEFAULT_BANNER_SETTINGS.staticLogoSrc;
+  if (/^https?:\/\//i.test(normalized) || normalized.startsWith("/")) return normalized;
+  if (/\.(png|jpe?g)$/i.test(normalized) && !normalized.includes("/") && !normalized.includes("\\")) {
+    return "/assets/img/logos/" + normalized;
+  }
+  return normalized;
+}
+
+function normalizeBannerLogoBorderColor(value) {
+  const normalized = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(normalized) ? normalized : DEFAULT_BANNER_SETTINGS.logoBorderColor;
+}
+
+export function normalizeHomePageSettings(raw = {}) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  return {
+    heroVisible: normalizeBooleanSetting(input.heroVisible, DEFAULT_HOME_PAGE_SETTINGS.heroVisible),
+    latestVisible: normalizeBooleanSetting(input.latestVisible, DEFAULT_HOME_PAGE_SETTINGS.latestVisible),
+    featuredVisible: normalizeBooleanSetting(input.featuredVisible, DEFAULT_HOME_PAGE_SETTINGS.featuredVisible),
+    seriesVisible: normalizeBooleanSetting(input.seriesVisible, DEFAULT_HOME_PAGE_SETTINGS.seriesVisible),
+    featuredSlideshowVisible: normalizeBooleanSetting(input.featuredSlideshowVisible, DEFAULT_HOME_PAGE_SETTINGS.featuredSlideshowVisible)
+  };
+}
+
+export function normalizeBannerSettings(raw = {}) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  return {
+    animatedLogoEnabled: normalizeBooleanSetting(input.animatedLogoEnabled, DEFAULT_BANNER_SETTINGS.animatedLogoEnabled),
+    animationMode: normalizeBannerAnimationMode(input.animationMode),
+    staticLogoSrc: normalizeBannerStaticLogoSrc(input.staticLogoSrc),
+    logoBorderEnabled: normalizeBooleanSetting(input.logoBorderEnabled, DEFAULT_BANNER_SETTINGS.logoBorderEnabled),
+    logoBorderColor: normalizeBannerLogoBorderColor(input.logoBorderColor)
+  };
+}
+
 export function getSettingJson(key, fallback) {
   const row = db.prepare(`SELECT value FROM settings WHERE key=?`).get(String(key));
   if (!row?.value) return fallback;
@@ -526,6 +588,30 @@ export function getSplashSettings() {
 export function setSplashSettings(value) {
   const normalized = normalizeSplashSettings(value);
   setSettingJson(SPLASH_SETTINGS_KEY, normalized);
+  return normalized;
+}
+
+export function getHomePageSettings() {
+  return normalizeHomePageSettings(
+    getSettingJson(HOME_PAGE_SETTINGS_KEY, DEFAULT_HOME_PAGE_SETTINGS)
+  );
+}
+
+export function setHomePageSettings(value) {
+  const normalized = normalizeHomePageSettings(value);
+  setSettingJson(HOME_PAGE_SETTINGS_KEY, normalized);
+  return normalized;
+}
+
+export function getBannerSettings() {
+  return normalizeBannerSettings(
+    getSettingJson(BANNER_SETTINGS_KEY, DEFAULT_BANNER_SETTINGS)
+  );
+}
+
+export function setBannerSettings(value) {
+  const normalized = normalizeBannerSettings(value);
+  setSettingJson(BANNER_SETTINGS_KEY, normalized);
   return normalized;
 }
 

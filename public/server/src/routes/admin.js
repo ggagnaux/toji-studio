@@ -17,7 +17,11 @@ import {
   getContactSettings,
   setContactSettings,
   getSplashSettings,
-  setSplashSettings
+  setSplashSettings,
+  getHomePageSettings,
+  setHomePageSettings,
+  getBannerSettings,
+  setBannerSettings
 } from "../db.js";
 import {
   ALLOWED_SOCIAL_PLATFORMS,
@@ -103,6 +107,24 @@ adminRouter.get("/admin/settings/splash", (req, res) => {
 
 adminRouter.put("/admin/settings/splash", (req, res) => {
   const saved = setSplashSettings(req.body || {});
+  res.json(saved);
+});
+
+adminRouter.get("/admin/settings/home-page", (req, res) => {
+  res.json(getHomePageSettings());
+});
+
+adminRouter.put("/admin/settings/home-page", (req, res) => {
+  const saved = setHomePageSettings(req.body || {});
+  res.json(saved);
+});
+
+adminRouter.get("/admin/settings/banner", (req, res) => {
+  res.json(getBannerSettings());
+});
+
+adminRouter.put("/admin/settings/banner", (req, res) => {
+  const saved = setBannerSettings(req.body || {});
   res.json(saved);
 });
 

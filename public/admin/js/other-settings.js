@@ -258,7 +258,7 @@ async function uploadBannerStaticLogoFile() {
     const selectedValue = String(json?.item?.src || "").trim();
     populateBannerStaticLogoOptions(selectedValue);
     if (bannerStaticLogoUpload) bannerStaticLogoUpload.value = "";
-    persistSettings({ refreshBanner: true });
+    void persistBannerSettings({ refreshBanner: true });
     setBannerStaticLogoUploadStatus(`Uploaded ${json?.item?.name || file.name}.`, "success");
   } catch (error) {
     setBannerStaticLogoUploadStatus(`Upload failed: ${error?.message || error}`, "error");
@@ -361,6 +361,32 @@ function applySplashSettingsToLocalStorage(settings) {
   localStorage.setItem(SPLASH_RANDOM_CYCLE_ENABLED_KEY, normalized.randomCycleEnabled ? "1" : "0");
   localStorage.setItem(SPLASH_RANDOM_CYCLE_SECONDS_KEY, String(normalized.randomCycleSeconds));
   localStorage.setItem(SPLASH_ALLOWED_MODES_KEY, JSON.stringify(normalized.allowedModes));
+  return normalized;
+}
+
+function collectBannerSettings() {
+  return {
+    animatedLogoEnabled: !!bannerBezierLogoEnabled?.checked,
+    animationMode: normalizeBannerLogoAnimationStyle(bannerLogoAnimationStyle?.value),
+    staticLogoSrc: normalizeBannerStaticLogoSrc(bannerStaticLogoSrc?.value),
+    logoBorderEnabled: !!bannerLogoBorderEnabled?.checked,
+    logoBorderColor: normalizeBannerLogoBorderColor(bannerLogoBorderColor?.value)
+  };
+}
+
+function applyBannerSettingsToLocalStorage(settings = {}) {
+  const normalized = {
+    animatedLogoEnabled: normalizeBooleanSetting(settings.animatedLogoEnabled, false),
+    animationMode: normalizeBannerLogoAnimationStyle(settings.animationMode),
+    staticLogoSrc: normalizeBannerStaticLogoSrc(settings.staticLogoSrc),
+    logoBorderEnabled: normalizeBooleanSetting(settings.logoBorderEnabled, true),
+    logoBorderColor: normalizeBannerLogoBorderColor(settings.logoBorderColor)
+  };
+  localStorage.setItem(BANNER_BEZIER_LOGO_ENABLED_KEY, normalized.animatedLogoEnabled ? "1" : "0");
+  localStorage.setItem(BANNER_LOGO_ANIMATION_MODE_KEY, normalized.animationMode);
+  localStorage.setItem(BANNER_STATIC_LOGO_SRC_KEY, normalized.staticLogoSrc);
+  localStorage.setItem(BANNER_LOGO_BORDER_ENABLED_KEY, normalized.logoBorderEnabled ? "1" : "0");
+  localStorage.setItem(BANNER_LOGO_BORDER_COLOR_KEY, normalized.logoBorderColor);
   return normalized;
 }
 
@@ -836,6 +862,24 @@ async function loadSplashSettings() {
   syncSplashModeUI();
 }
 
+async function loadBannerSettings() {
+  const fallback = applyBannerSettingsToLocalStorage(collectBannerSettings());
+  if (!getAdminToken()) {
+    syncSplashModeUI();
+    return;
+  }
+  try {
+    const saved = await apiFetch("/api/admin/settings/banner", { method: "GET" });
+    applyBannerSettingsToLocalStorage(saved);
+  } catch (error) {
+    console.warn("Failed to load backend banner settings; using local cache.", error);
+    applyBannerSettingsToLocalStorage(fallback);
+  }
+  syncSplashModeUI();
+  ensureStaticBannerIconMarkup();
+  applyBannerLogoBehavior(headerHost);
+}
+
 async function loadImageVariantSettings() {
   renderImageVariantSettings(DEFAULT_IMAGE_VARIANTS);
   if (!getAdminToken()) {
@@ -905,6 +949,26 @@ async function persistSplashSettings() {
   }
 }
 
+async function persistBannerSettings({ refreshBanner = false } = {}) {
+  persistSettings({ refreshBanner });
+  if (!getAdminToken()) return;
+  try {
+    const saved = await apiFetch("/api/admin/settings/banner", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(collectBannerSettings())
+    });
+    applyBannerSettingsToLocalStorage(saved);
+    syncSplashModeUI();
+    if (refreshBanner) {
+      ensureStaticBannerIconMarkup();
+      applyBannerLogoBehavior(headerHost);
+    }
+  } catch (error) {
+    console.warn("Failed to save backend banner settings; kept local cache.", error);
+  }
+}
+
 async function saveImageVariantSettings() {
   if (!getAdminToken()) {
     setImageVariantStatus("Sign in to the admin to save backend variant settings.", "error");
@@ -930,6 +994,7 @@ async function saveImageVariantSettings() {
 
 enhanceOtherSettingsFloatingFields();
 await loadBannerStaticLogoOptions();
+await loadBannerSettings();
 populateSplashModeOptions();
 bindFloatingField(splashModeField, splashMode);
 bindFloatingField(splashRandomCycleSecondsField, splashRandomCycleSeconds);
@@ -985,33 +1050,24 @@ splashClearAllowedBtn?.addEventListener("click", () => {
 
 bannerBezierLogoEnabled?.addEventListener("change", () => {
   updateRandomizeControls();
-  persistSettings({ refreshBanner: true });
+  void persistBannerSettings({ refreshBanner: true });
 });
 
 bannerLogoAnimationStyle?.addEventListener("change", () => {
-  persistSettings({ refreshBanner: true });
+  void persistBannerSettings({ refreshBanner: true });
 });
 
 bannerStaticLogoSrc?.addEventListener("change", () => {
-  persistSettings({ refreshBanner: true });
+  void persistBannerSettings({ refreshBanner: true });
 });
 
 bannerLogoBorderEnabled?.addEventListener("change", () => {
   updateRandomizeControls();
-  persistSettings({ refreshBanner: true });
+  void persistBannerSettings({ refreshBanner: true });
 });
 
 bannerLogoBorderColor?.addEventListener("input", () => {
-  persistSettings({ refreshBanner: true });
-});
-
-bannerLogoBorderEnabled?.addEventListener("change", () => {
-  updateRandomizeControls();
-  persistSettings({ refreshBanner: true });
-});
-
-bannerLogoBorderColor?.addEventListener("input", () => {
-  persistSettings({ refreshBanner: true });
+  void persistBannerSettings({ refreshBanner: true });
 });
 
 bannerStaticLogoUploadBtn?.addEventListener("click", () => {

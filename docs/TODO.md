@@ -78,3 +78,6 @@ Page: Admin -> Image Manager
 	- [IMPLEMENTED]Resolve issue where no images load when viewing site on a clean browser instance.
 
 
+20250825-1
+
+	- Ensure that any admin configurable settings are picked up by new users to the site.

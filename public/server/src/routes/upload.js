@@ -4,6 +4,7 @@ import sharp from "sharp";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { metadataFilenameKey, parseMetadataFiles } from "../upload-metadata.js";
 import {
   db,
   nowIso,
@@ -306,9 +307,33 @@ uploadRouter.post("/admin/artworks/:id/regenerate-variants", async (req, res) =>
 });
 
 
-uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) => {
-  const files = req.files || [];
+const uploadWithMetadata = upload.fields([{ name: "files", maxCount: 30 }, { name: "metadata", maxCount: 30 }]);
+
+uploadRouter.post("/admin/upload", (req, res, next) => {
+  uploadWithMetadata(req, res, error => error
+    ? res.status(400).json({ error: error.message })
+    : next());
+}, async (req, res) => {
+  const files = req.files?.files || [];
   if (!files.length) return res.status(400).json({ error: "No files" });
+
+  let metadata;
+  try {
+    metadata = parseMetadataFiles(req.files?.metadata || []);
+    const filenames = files.map(file => metadataFilenameKey(file.originalname));
+    if (metadata.size && new Set(filenames).size !== filenames.length) {
+      throw new Error("Image filenames must be unique when importing metadata.");
+    }
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+  const warnings = [];
+  const uploadedNames = new Set(files.map(file => metadataFilenameKey(file.originalname)));
+  for (const [key, record] of metadata) {
+    if (!uploadedNames.has(key)) warnings.push(`No uploaded image matches ${record.imageFilename}.`);
+  }
+  const failed = [];
+  let metadataApplied = 0;
 
   const created = [];
   const skipped = [];
@@ -372,13 +397,18 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
     const origName = `${artworkId}__${base}`;
     const origPath = path.join(originalsDir, origName);
 
+    try {
     // Save original privately
     fs.writeFileSync(origPath, f.buffer);
 
     // Determine dimensions from original
     const meta = await sharp(f.buffer).rotate().metadata();
 
-    const title = base.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim() || "Untitled";
+    const record = metadata.get(metadataFilenameKey(f.originalname));
+    if (metadata.size && !record) warnings.push(`No metadata matches ${f.originalname}; using upload defaults.`);
+    const title = record?.title?.trim() || base.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim() || "Untitled";
+    const description = record?.description || "";
+    const tags = parseTags([...batchTags, ...(record?.hierarchicalSubjects || [])]);
 
     // Insert artwork record (draft by default)
     db.prepare(`
@@ -386,17 +416,18 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
         id, title, year, series, description, alt, status, featured, sortOrder, tags,
         createdAt, updatedAt, publishedAt, originalPath, width, height
       ) VALUES (
-        @id, @title, @year, @series, '', @alt, @status, 0, 0, @tags,
+        @id, @title, @year, @series, @description, @alt, @status, 0, 0, @tags,
         @createdAt, @updatedAt, @publishedAt, @originalPath, @width, @height
       )
     `).run({
       id: artworkId,
       title,
+      description,
       year: batchYear,
       series: batchSeries,
       alt: title,
       status: batchStatus,
-      tags: toJson(batchTags),
+      tags: toJson(tags),
       createdAt,
       updatedAt: createdAt,
       publishedAt: batchPublishedAt,
@@ -430,8 +461,20 @@ uploadRouter.post("/admin/upload", upload.array("files", 30), async (req, res) =
 
     const { _seriesSlugsRaw: _uploadSlugsRaw, ...uploadOut } = out;
     created.push({ ...uploadOut, featured: !!uploadOut.featured, tags: jsonArray(uploadOut.tags), seriesSlugs: _uploadSlugsRaw ? _uploadSlugsRaw.split(',') : [] });
+    if (record) metadataApplied += 1;
+    } catch (error) {
+      db.transaction(() => {
+        db.prepare("DELETE FROM variants WHERE artworkId=?").run(artworkId);
+        db.prepare("DELETE FROM artwork_series WHERE artworkId=?").run(artworkId);
+        db.prepare("DELETE FROM artworks WHERE id=?").run(artworkId);
+      })();
+      for (const filePath of [origPath, path.join(variantsDir, `${artworkId}_thumb.jpg`), path.join(variantsDir, `${artworkId}_web.jpg`)]) {
+        fs.rmSync(filePath, { force: true });
+      }
+      failed.push({ filename: f.originalname, reason: "image_processing_failed" });
+    }
   }
 
-  res.json({ created, skipped });
+  res.json({ created, skipped, failed, warnings, metadataApplied });
 });
 

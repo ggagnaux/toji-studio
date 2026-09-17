@@ -484,15 +484,18 @@ setYearFooter();
   document.getElementById("uploadBtn").addEventListener("click", async () => {
     try {
       requireAdminSession();
-      const files = Array.from(fileInput.files || []);
+      const selectedFiles = Array.from(fileInput.files || []);
+      const metadataFiles = selectedFiles.filter(file => /\.json$/i.test(file.name));
+      const files = selectedFiles.filter(file => !/\.json$/i.test(file.name));
       if (!files.length) {
-        setStatus("Choose one or more files first.");
+        setStatus("Choose at least one image. JSON metadata files are optional.");
         flashFilePicker();
         return;
       }
 
       const fd = new FormData();
       files.forEach(file => fd.append("files", file));
+      metadataFiles.forEach(file => fd.append("metadata", file));
       const seriesSlugs = getEffectiveBatchSeriesSlugs();
       const year = document.getElementById("year")?.value?.trim();
       const uploadStatus = statusSelect?.value || "draft";
@@ -502,7 +505,7 @@ setYearFooter();
       if (uploadStatus) fd.append("status", uploadStatus);
       if (tags.length) fd.append("tags", tags.join(","));
 
-      showUiBlocker("Uploading artwork", `${files.length} file${files.length === 1 ? "" : "s"} in progress...`);
+      showUiBlocker("Uploading artwork", `${files.length} image${files.length === 1 ? "" : "s"}${metadataFiles.length ? ` and ${metadataFiles.length} JSON metadata file${metadataFiles.length === 1 ? "" : "s"}` : ""} in progress...`);
       if (progressWrap) progressWrap.style.display = "block";
       if (progressBar) progressBar.value = 0;
       if (progressLabel) progressLabel.textContent = "Preparing upload...";
@@ -514,7 +517,7 @@ setYearFooter();
       });
 
       const created = Array.isArray(out?.created) ? out.created : [];
-      const duplicates = Array.isArray(out?.duplicates) ? out.duplicates : [];
+      const duplicates = Array.isArray(out?.skipped) ? out.skipped : [];
       created.forEach((item) => {
         mergeUploadedArtwork(item);
         if (item?.id) newIds.unshift(item.id);
@@ -527,6 +530,9 @@ setYearFooter();
       const parts = [];
       if (created.length) parts.push(`Uploaded ${created.length} artwork${created.length === 1 ? "" : "s"}.`);
       if (duplicates.length) parts.push(`Skipped ${duplicates.length} duplicate${duplicates.length === 1 ? "" : "s"}.`);
+      if (out.metadataApplied) parts.push(`Applied JSON metadata to ${out.metadataApplied} artwork(s).`);
+      if (out.failed?.length) parts.push(`Failed to process: ${out.failed.map(item => item.filename).join(", ")}.`);
+      if (out.warnings?.length) parts.push(...out.warnings);
       setStatus(parts.join(" ") || "Upload complete.");
       showToast(parts.join(" ") || "Upload complete.");
     } catch (err) {

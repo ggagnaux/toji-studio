@@ -25,6 +25,50 @@ test.afterEach(() => {
   restoreEnv();
 });
 
+test("JSON upload matches filenames, merges atomic tags, reports unmatched records and cleans failed images", async () => {
+  process.env.TOJI_STORAGE_DIR = await fs.mkdtemp(path.join(os.tmpdir(), "toji-json-upload-"));
+  process.env.ADMIN_PASSWORD = "secret-pass";
+  const { createApp } = await importFreshServerModule();
+  const server = await startTestServer(createApp);
+  try {
+    const form = new FormData();
+    form.append("files", createImageBlob(), "JSON Artwork.png");
+    form.append("files", new Blob(["broken image"]), "Broken JSON.png");
+    form.append("tags", "series|orbs");
+    form.append("metadata", new Blob([JSON.stringify([
+      { imageFilename: "json artwork.PNG", title: "Imported title", description: "Imported description", hierarchicalSubjects: ["series|Orbs", "darktable|format|jpg", "series|Orbs"] },
+      { imageFilename: "Broken JSON.png", title: "Must not persist", hierarchicalSubjects: ["failed|tag"] },
+      { imageFilename: "Missing.png" }
+    ])]), "metadata.json");
+    const response = await fetch(`${server.baseUrl}/api/admin/upload`, { method: "POST", headers: await authHeaders(server), body: form });
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.created.length, 1);
+    assert.equal(body.metadataApplied, 1);
+    assert.equal(body.created[0].title, "Imported title");
+    assert.equal(body.created[0].description, "Imported description");
+    assert.deepEqual(body.created[0].tags, ["darktable|format|jpg", "series|orbs"]);
+    assert.equal(body.failed[0].filename, "Broken JSON.png");
+    assert.match(body.warnings.join(" "), /Missing.png/);
+    const { db } = await import("../src/db.js");
+    assert.equal(db.prepare("SELECT id FROM artworks WHERE title='Must not persist'").get(), undefined);
+    const retry = new FormData();
+    retry.append("files", createImageBlob(), "Broken JSON.png");
+    const retried = await fetch(`${server.baseUrl}/api/admin/upload`, { method: "POST", headers: await authHeaders(server), body: retry });
+    assert.equal((await retried.json()).created.length, 1);
+
+    const invalid = new FormData();
+    invalid.append("files", createImageBlob(), "Rejected JSON.png");
+    invalid.append("metadata", new Blob(["{"]), "invalid.json");
+    const rejected = await fetch(`${server.baseUrl}/api/admin/upload`, { method: "POST", headers: await authHeaders(server), body: invalid });
+    assert.equal(rejected.status, 400);
+    assert.match((await rejected.json()).error, /Invalid JSON/);
+    assert.equal(db.prepare("SELECT id FROM artworks WHERE title='Rejected JSON'").get(), undefined);
+  } finally {
+    await server.close();
+  }
+});
+
 test("POST /api/admin/upload applies batch metadata to created artworks", async () => {
   const storageDir = await fs.mkdtemp(path.join(os.tmpdir(), "toji-upload-storage-"));
   process.env.TOJI_STORAGE_DIR = storageDir;

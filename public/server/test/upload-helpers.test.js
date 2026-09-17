@@ -12,6 +12,20 @@ import {
   safeBase
 } from "../src/routes/upload.js";
 import { restoreEnv } from "./helpers.js";
+import { parseMetadataFiles } from "../src/upload-metadata.js";
+
+test("JSON metadata validates records and preserves atomic subjects", () => {
+  const file = value => ({ originalname: "metadata.json", buffer: Buffer.from(JSON.stringify(value)) });
+  const record = { imageFilename: "Artwork.JPG", hierarchicalSubjects: ["series|Orbs", "subject|red, blue"] };
+  assert.deepEqual(parseMetadataFiles([file(record)]).get("artwork.jpg"), record);
+  assert.equal(parseMetadataFiles([file([record, { imageFilename: "other.jpg" }])]).size, 2);
+  assert.deepEqual(parseTags([...record.hierarchicalSubjects, "SERIES|ORBS"]), ["series|orbs", "subject|red, blue"]);
+  assert.throws(() => parseMetadataFiles([file([record, record])]), /Multiple metadata/);
+  assert.throws(() => parseMetadataFiles([file({ ...record, hierarchicalSubjects: "a|b" })]), /array of strings/);
+  assert.throws(() => parseMetadataFiles([file({ imageFilename: "../image.jpg" })]), /without directories/);
+  assert.throws(() => parseMetadataFiles([{ originalname: "bad.json", buffer: Buffer.from("{") }]), /Invalid JSON/);
+  assert.throws(() => parseMetadataFiles([{ originalname: "large.json", buffer: Buffer.alloc(1024 * 1024 + 1) }]), /1 MB/);
+});
 
 test.afterEach(() => {
   restoreEnv();

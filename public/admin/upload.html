@@ -30,10 +30,11 @@
           <p class="title">Upload originals</p>
 
           <div class="field" style="margin-top:14px">
-            <div class="sub">Select files</div>
+            <label class="sub" for="files">Select images and optional JSON metadata</label>
             <div class="file-picker-shell">
-              <input id="files" type="file" multiple accept="image/*" />
+              <input id="files" type="file" multiple accept="image/*,.json,application/json" aria-describedby="metadataHelp" />
             </div>
+            <p class="sub" id="metadataHelp">Select images and optional JSON files together. JSON files can contain one record or an array of records, up to 1 MB each. Records match images by imageFilename and supply titles, descriptions, and tags. Each hierarchical subject stays one complete tag.</p>
           </div>
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center">

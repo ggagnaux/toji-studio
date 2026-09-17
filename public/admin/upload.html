@@ -54,68 +54,6 @@
           <p class="sub">Apply to the newly uploaded items:</p>
 
           <div style="display:grid; gap:12px; margin-top:12px">
-            <div class="field">
-              <div class="sub">Show tags starting with...</div>
-              <div class="tag-filter-row" id="tagFilterRow" role="group" aria-label="Filter available tags">
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="0-9" aria-pressed="false">0-9</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="a" aria-pressed="false">A</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="b" aria-pressed="false">B</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="c" aria-pressed="false">C</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="d" aria-pressed="false">D</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="e" aria-pressed="false">E</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="f" aria-pressed="false">F</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="g" aria-pressed="false">G</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="h" aria-pressed="false">H</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="i" aria-pressed="false">I</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="j" aria-pressed="false">J</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="k" aria-pressed="false">K</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="l" aria-pressed="false">L</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="m" aria-pressed="false">M</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="n" aria-pressed="false">N</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="o" aria-pressed="false">O</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="p" aria-pressed="false">P</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="q" aria-pressed="false">Q</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="r" aria-pressed="false">R</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="s" aria-pressed="false">S</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="t" aria-pressed="false">T</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="u" aria-pressed="false">U</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="v" aria-pressed="false">V</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="w" aria-pressed="false">W</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="x" aria-pressed="false">X</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="y" aria-pressed="false">Y</button>
-                <button class="btn mini tag-filter-pill" type="button" data-tag-filter="z" aria-pressed="false">Z</button>
-              </div>
-              <div class="sub">Available Tags</div>
-              <div id="tagPills" class="pillrow" style="min-height:40px"></div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center">
-                <div class="field upload-floating-field upload-floating-field--grow" id="newTagField" style="margin-top:0">
-                  <input id="newTagInput" placeholder=" " aria-labelledby="newTagLabel" />
-                  <label class="upload-floating-label" id="newTagLabel" for="newTagInput">Add tag(s): abstract, cosmic</label>
-                </div>
-                <button class="btn" id="addTagBtn" type="button">Add tag</button>
-              </div>
-            </div>
-
-            <div class="field" id="seriesField">
-              <div class="sub">Series</div>
-              <div class="status-toggle upload-series-toggle" id="seriesMode" role="group" aria-label="Series apply mode">
-                <button class="btn status-toggle-option upload-series-toggle__option active" type="button" data-series-mode="no_change" aria-pressed="true">No Change</button>
-                <button class="btn status-toggle-option upload-series-toggle__option" type="button" data-series-mode="append" aria-pressed="false">Append</button>
-                <button class="btn status-toggle-option upload-series-toggle__option" type="button" data-series-mode="replace" aria-pressed="false">Replace</button>
-              </div>
-              <p class="sub upload-series-preview" id="seriesModePreview">No series metadata will be applied to this batch.</p>
-              <div id="selectedSeriesChips" class="pillrow upload-series-chips" style="min-height:40px"></div>
-              <div class="upload-series-picker">
-                <select id="seriesSelect" aria-label="Add series to batch"></select>
-                <button class="btn mini" id="addSeriesBtn" type="button">Add</button>
-              </div>
-            </div>
-
-            <div class="field upload-floating-field" id="yearField">
-              <input id="year" placeholder=" " aria-labelledby="yearLabel" />
-              <label class="upload-floating-label" id="yearLabel" for="year">Year</label>
-            </div>
-
 	              <div class="field">
 	                <div class="sub">Status</div>
 	                <div id="statusPills" class="status-toggle" role="group" aria-label="Status">

@@ -14,6 +14,7 @@ import {
   requireUploadAdminSession
 } from "./upload-controller.js";
 import { getArtworkPublishReadiness, summarizeReadinessMissing } from "./artwork-readiness.js";
+import { prepareUploadMetadata, createBatchForm, uploadInBatches } from "./upload-batches.js";
 
 ensureBaseStyles();
 setYearFooter();
@@ -38,6 +39,8 @@ setYearFooter();
   const uploadReadinessList = document.getElementById("uploadReadinessList");
   const uploadReadinessNote = document.getElementById("uploadReadinessNote");
   const newIds = [];
+  const completedFiles = new Set();
+  const uploadBtn = document.getElementById("uploadBtn");
   const publishedStatusBtn = statusPills.find((btn) => String(btn?.getAttribute?.("data-status-pill") || "").toLowerCase() === "published");
 
   function getApiBase() {
@@ -181,6 +184,7 @@ setYearFooter();
       const token = getAdminToken();
       if (token && token !== "__session__") xhr.setRequestHeader("Authorization", `Bearer ${token}`);
       xhr.responseType = "json";
+      xhr.timeout = 180000;
       xhr.upload.onprogress = (evt) => {
         if (!evt.lengthComputable || typeof onProgress !== "function") return;
         const pct = Math.max(0, Math.min(100, Math.round((evt.loaded / evt.total) * 100)));
@@ -190,12 +194,21 @@ setYearFooter();
         const ok = xhr.status >= 200 && xhr.status < 300;
         if (!ok) {
           const payload = xhr.response && typeof xhr.response === "object" ? xhr.response : null;
-          reject(new Error(payload?.error || `Upload failed (${xhr.status})`));
+          const message = xhr.status === 401 || xhr.status === 403
+            ? "Your session has expired. Sign in again before retrying."
+            : payload?.error || `Upload failed (${xhr.status})`;
+          reject(Object.assign(new Error(message), { status: xhr.status, code: payload?.code }));
           return;
         }
-        resolve(xhr.response && typeof xhr.response === "object" ? xhr.response : {});
+        if (!Array.isArray(xhr.response?.created) || !Array.isArray(xhr.response?.skipped) || !Array.isArray(xhr.response?.failed)) {
+          reject(Object.assign(new Error("The server returned an incomplete upload response."), { status: 0 }));
+          return;
+        }
+        resolve(xhr.response);
       };
-      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.onerror = () => reject(Object.assign(new Error("Network error during upload."), { status: 0 }));
+      xhr.ontimeout = () => reject(Object.assign(new Error("Upload timed out."), { status: 408 }));
+      xhr.onabort = () => reject(Object.assign(new Error("Upload was interrupted."), { status: 0 }));
       xhr.send(formData);
     });
   }
@@ -217,60 +230,79 @@ setYearFooter();
     }
   }
 
-  document.getElementById("uploadBtn").addEventListener("click", async () => {
+  uploadBtn.addEventListener("click", async () => {
+    if (uploadBtn.disabled) return;
+    uploadBtn.disabled = true;
     try {
       requireAdminSession();
       const selectedFiles = Array.from(fileInput.files || []);
       const metadataFiles = selectedFiles.filter(file => /\.json$/i.test(file.name));
-      const files = selectedFiles.filter(file => !/\.json$/i.test(file.name));
+      const allImages = selectedFiles.filter(file => !/\.json$/i.test(file.name));
+      const files = allImages.filter(file => !completedFiles.has(file));
       if (!files.length) {
-        setStatus("Choose at least one image. JSON metadata files are optional.");
+        setStatus(allImages.length ? "All selected images have already been uploaded." : "Choose at least one image. JSON metadata files are optional.");
         flashFilePicker();
         return;
       }
 
-      const fd = new FormData();
-      files.forEach(file => fd.append("files", file));
-      metadataFiles.forEach(file => fd.append("metadata", file));
+      const { records, warnings } = await prepareUploadMetadata(allImages, metadataFiles);
       const uploadStatus = statusSelect?.value || "draft";
-      if (uploadStatus) fd.append("status", uploadStatus);
 
       showUiBlocker("Uploading artwork", `${files.length} image${files.length === 1 ? "" : "s"}${metadataFiles.length ? ` and ${metadataFiles.length} JSON metadata file${metadataFiles.length === 1 ? "" : "s"}` : ""} in progress...`);
       if (progressWrap) progressWrap.style.display = "block";
-      if (progressBar) progressBar.value = 0;
+      if (progressBar) progressBar.style.width = "0%";
       if (progressLabel) progressLabel.textContent = "Preparing upload...";
       setStatus("Uploading...");
 
-      const out = await uploadWithProgress("/api/admin/upload", fd, (pct) => {
-        if (progressBar) progressBar.value = pct;
-        if (progressLabel) progressLabel.textContent = `${pct}% uploaded`;
+      const out = await uploadInBatches({
+        files,
+        send: (batch, onProgress) => uploadWithProgress("/api/admin/upload", createBatchForm(batch, records, uploadStatus), onProgress),
+        onProgress: (done, count, pct, total) => {
+          const overall = Math.floor((done + count * pct / 100) / total * 100);
+          if (progressBar) progressBar.style.width = `${overall}%`;
+          const message = `${done} / ${total} images processed${count ? `; sending ${count} images (${pct}%)` : ""}.`;
+          if (progressLabel) progressLabel.textContent = message;
+          if (uiBlockerSub) uiBlockerSub.textContent = message;
+        },
+        onRetry: (size, reason) => {
+          const message = `${reason} Retrying with ${size} image${size === 1 ? "" : "s"} per batch...`;
+          setStatus(message);
+          if (uiBlockerSub) uiBlockerSub.textContent = message;
+          if (progressLabel) progressLabel.textContent = message;
+        },
+        onBatch: async (batchResult, batch) => {
+          const failedNames = new Set((batchResult.failed || []).map(item => item.filename));
+          batch.filter(file => !failedNames.has(file.name)).forEach(file => completedFiles.add(file));
+          const ids = new Set();
+          for (const item of batchResult.created) { mergeUploadedArtwork(item); ids.add(item.id); }
+          for (const item of batchResult.skipped) if (item.existingId) ids.add(item.existingId);
+          for (const id of ids) if (!newIds.includes(id)) newIds.unshift(id);
+          saveState(state);
+          renderNew();
+          await refreshUploadedArtworksFromBackend([...ids]);
+        }
       });
+      out.warnings.push(...warnings);
 
       const created = Array.isArray(out?.created) ? out.created : [];
       const duplicates = Array.isArray(out?.skipped) ? out.skipped : [];
-      created.forEach((item) => {
-        mergeUploadedArtwork(item);
-        if (item?.id) newIds.unshift(item.id);
-      });
-      saveState(state);
-      renderNew();
-      await refreshUploadedArtworksFromBackend(created.map((item) => item?.id).filter(Boolean));
 
       const parts = [];
       if (created.length) parts.push(`Uploaded ${created.length} artwork${created.length === 1 ? "" : "s"}.`);
       if (duplicates.length) parts.push(`Skipped ${duplicates.length} duplicate${duplicates.length === 1 ? "" : "s"}.`);
       if (out.metadataApplied) parts.push(`Applied JSON metadata to ${out.metadataApplied} artwork(s).`);
-      if (out.failed?.length) parts.push(`Failed to process: ${out.failed.map(item => item.filename).join(", ")}.`);
+      if (out.failed?.length) parts.push(`Failed: ${out.failed.map(item => `${item.filename} (${item.reason})`).join(", ")}.`);
       if (out.warnings?.length) parts.push(...out.warnings);
       setStatus(parts.join(" ") || "Upload complete.");
-      showToast(parts.join(" ") || "Upload complete.");
+      showToast(parts.join(" ") || "Upload complete.", { tone: out.failed.length || out.remaining.length ? "warn" : "success" });
     } catch (err) {
       setStatus(String(err?.message || err || "Upload failed."));
       showToast(String(err?.message || err || "Upload failed."), { tone: "error" });
     } finally {
+      uploadBtn.disabled = false;
       hideUiBlocker();
       if (progressWrap) progressWrap.style.display = "none";
-      if (progressBar) progressBar.value = 0;
+      if (progressBar) progressBar.style.width = "0%";
       if (progressLabel) progressLabel.textContent = "";
     }
   });

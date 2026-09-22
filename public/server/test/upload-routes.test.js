@@ -69,6 +69,70 @@ test("JSON upload matches filenames, merges atomic tags, reports unmatched recor
   }
 });
 
+test("JSON upload saves hierarchy years and defaults missing or invalid years to the current year", async () => {
+  process.env.TOJI_STORAGE_DIR = await fs.mkdtemp(path.join(os.tmpdir(), "toji-year-upload-"));
+  process.env.ADMIN_PASSWORD = "secret-pass";
+  const { createApp } = await importFreshServerModule();
+  const { db } = await import("../src/db.js");
+  const server = await startTestServer(createApp);
+  try {
+    const currentYear = String(new Date().getFullYear());
+    const cases = [
+      { name: "Year Valid.png", subjects: ["year|2024", "year|2025"], year: "2024" },
+      { name: "Year Nested.png", subjects: ["archive|Year|1999"], year: "1999" },
+      { name: "Year Invalid.png", subjects: ["year|20xx", "year|12345"], year: currentYear },
+      { name: "Year Missing.png", subjects: [], year: currentYear },
+      { name: "Year No JSON.png", year: currentYear }
+    ];
+    const form = new FormData();
+    for (const item of cases) form.append("files", createImageBlob(), item.name);
+    form.append("year", "1900");
+    form.append("metadata", new Blob([JSON.stringify(cases.filter(item => item.subjects).map(item => ({
+      imageFilename: item.name, hierarchicalSubjects: item.subjects
+    })))]), "years.json");
+    const response = await fetch(`${server.baseUrl}/api/admin/upload`, { method: "POST", headers: await authHeaders(server), body: form });
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.created.length, cases.length);
+    for (const item of cases) {
+      const artwork = body.created.find(row => row.title === item.name.replace(/\.png$/, ""));
+      assert.equal(artwork.year, item.year, item.name);
+      assert.equal(db.prepare("SELECT year FROM artworks WHERE id=?").get(artwork.id).year, item.year);
+    }
+    assert.deepEqual(body.created.find(row => row.title === "Year Valid").tags, ["year|2024", "year|2025"]);
+  } finally {
+    await server.close();
+  }
+});
+
+test("overlapping upload retries create one artwork and file-count errors have retry codes", async () => {
+  process.env.TOJI_STORAGE_DIR = await fs.mkdtemp(path.join(os.tmpdir(), "toji-retry-upload-"));
+  process.env.ADMIN_PASSWORD = "secret-pass";
+  const { createApp } = await importFreshServerModule();
+  const server = await startTestServer(createApp);
+  try {
+    const headers = await authHeaders(server);
+    const send = () => {
+      const form = new FormData();
+      form.append("files", createImageBlob(), "Concurrent Retry.png");
+      form.append("metadata", new Blob([JSON.stringify({ imageFilename: "Concurrent Retry.png", hierarchicalSubjects: ["year|2022"] })]), "retry.json");
+      return fetch(`${server.baseUrl}/api/admin/upload`, { method: "POST", headers, body: form }).then(response => response.json());
+    };
+    const results = await Promise.all([send(), send()]);
+    assert.equal(results.flatMap(result => result.created).length, 1);
+    assert.equal(results.flatMap(result => result.skipped).length, 1);
+    const created = results.flatMap(result => result.created)[0];
+    assert.equal(created.year, "2022");
+    assert.equal(results.flatMap(result => result.skipped)[0].existingId, created.id);
+    assert.ok(created.thumb && created.image);
+    const form = new FormData();
+    for (let i = 0; i < 31; i++) form.append("files", createImageBlob(), `too-many-${i}.png`);
+    const response = await fetch(`${server.baseUrl}/api/admin/upload`, { method: "POST", headers, body: form });
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).code, "LIMIT_UNEXPECTED_FILE");
+  } finally { await server.close(); }
+});
+
 test("POST /api/admin/upload applies batch metadata to created artworks", async () => {
   const storageDir = await fs.mkdtemp(path.join(os.tmpdir(), "toji-upload-storage-"));
   process.env.TOJI_STORAGE_DIR = storageDir;
@@ -81,7 +145,7 @@ test("POST /api/admin/upload applies batch metadata to created artworks", async 
     const form = new FormData();
     form.append("tags", "portrait, concept art, portrait");
     form.append("series", "  Test   Series ");
-    form.append("year", " 2026 ");
+    form.append("year", " 1900 ");
     form.append("status", "published");
     form.append("files", createImageBlob(), "First Upload!!.png");
     form.append("files", createImageBlob(), "Second Upload!!.png");
@@ -101,7 +165,7 @@ test("POST /api/admin/upload applies batch metadata to created artworks", async 
 
     for (const item of body.created) {
       assert.equal(item.series, "Test Series");
-      assert.equal(item.year, "2026");
+      assert.equal(item.year, String(new Date().getFullYear()));
       assert.equal(item.status, "published");
       assert.deepEqual(item.tags, ["concept art", "portrait"]);
       assert.ok(item.publishedAt);

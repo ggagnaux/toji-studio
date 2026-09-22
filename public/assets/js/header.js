@@ -8,6 +8,12 @@ const BANNER_LOGO_BORDER_COLOR_KEY = "toji_banner_logo_border_color_v1";
 let bannerP5LoadPromise = null;
 let bannerSettingsOverride = null;
 let bannerSettingsLoadPromise = null;
+let bannerSettingsRevision = 0;
+const bannerSketches = new WeakMap();
+
+function mountBannerSketch(headerHost, sketch) {
+  bannerSketches.set(headerHost, new window.p5(sketch));
+}
 
 export function renderPublicHeader({
   active = "home",       // "home" | "gallery" | "series" | "about" | "contact"
@@ -187,8 +193,14 @@ export function renderPublicHeader({
   void hydratePublicBannerSettings(headerHost);
 }
 
-export function applyBannerLogoBehavior(headerHost) {
+export function applyBannerLogoBehavior(headerHost, settings) {
   if (!headerHost) return;
+  if (settings !== undefined) {
+    bannerSettingsRevision++;
+    bannerSettingsOverride = applyBannerSettingsToLocalStorage(settings);
+  }
+  bannerSketches.get(headerHost)?.remove();
+  bannerSketches.delete(headerHost);
   applyBannerLogoBorder(headerHost);
   const mode = getBannerLogoAnimationMode();
   if (mode === "circles") {
@@ -269,6 +281,7 @@ function applyBannerSettingsToLocalStorage(settings) {
 
 async function hydratePublicBannerSettings(headerHost) {
   if (!headerHost) return;
+  const revision = bannerSettingsRevision;
   if (!bannerSettingsLoadPromise) {
     bannerSettingsLoadPromise = (async () => {
       const apiBase = String(window.location.origin || "").replace(/\/+$/, "");
@@ -285,7 +298,7 @@ async function hydratePublicBannerSettings(headerHost) {
     });
   }
   const settings = await bannerSettingsLoadPromise;
-  if (!settings || !headerHost.isConnected) return;
+  if (!settings || !headerHost.isConnected || revision !== bannerSettingsRevision) return;
   bannerSettingsOverride = applyBannerSettingsToLocalStorage(settings);
   applyBannerLogoBehavior(headerHost);
 }
@@ -457,7 +470,7 @@ function mountBannerBezierLogo(headerHost) {
       return [Number(m[1]), Number(m[2]), Number(m[3])];
     };
 
-    new window.p5((p) => {
+    mountBannerSketch(headerHost, (p) => {
       let cw = 0;
       let ch = 0;
       let frame = 0;
@@ -557,7 +570,7 @@ function mountBannerPlotLogo(headerHost) {
       return [Number(m[1]), Number(m[2]), Number(m[3])];
     };
 
-    new window.p5((p) => {
+    mountBannerSketch(headerHost, (p) => {
       let cw = 0;
       let ch = 0;
       let startAtMs = 0;
@@ -701,7 +714,7 @@ function mountBannerRadarLogo(headerHost) {
       if (!m) return [255, 84, 84];
       return [Number(m[1]), Number(m[2]), Number(m[3])];
     };
-    new window.p5((p) => {
+    mountBannerSketch(headerHost, (p) => {
       let cw = 0;
       let ch = 0;
       let sweepAngle = 0;
@@ -911,7 +924,7 @@ function mountBannerWireframeSphereLogo(headerHost) {
       return [Number(m[1]), Number(m[2]), Number(m[3])];
     };
 
-    new window.p5((p) => {
+    mountBannerSketch(headerHost, (p) => {
       let cw = 0;
       let ch = 0;
       let spin = 0;

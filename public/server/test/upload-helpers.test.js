@@ -12,7 +12,16 @@ import {
   safeBase
 } from "../src/routes/upload.js";
 import { restoreEnv } from "./helpers.js";
-import { parseMetadataFiles } from "../src/upload-metadata.js";
+import { parseMetadataFiles, resolveMetadataYear } from "../src/upload-metadata.js";
+
+test("metadata year uses the first valid hierarchy year or the current year", () => {
+  assert.equal(resolveMetadataYear(["year|2024"]), "2024");
+  assert.equal(resolveMetadataYear(["metadata| YEAR | 1998 |summer"]), "1998");
+  assert.equal(resolveMetadataYear(["year|bad", "year|2021", "year|2023"]), "2021");
+  assert.equal(resolveMetadataYear(["year|24", "year|20245", "year|2024abc", "year|0000", "notyear|2020"], 2031), "2031");
+  assert.equal(resolveMetadataYear(undefined, 2032), "2032");
+  assert.equal(resolveMetadataYear([]), String(new Date().getFullYear()));
+});
 
 test("JSON metadata validates records and preserves atomic subjects", () => {
   const file = value => ({ originalname: "metadata.json", buffer: Buffer.from(JSON.stringify(value)) });

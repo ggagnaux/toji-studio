@@ -1,6 +1,6 @@
 import { renderPublicHeader } from "./header.js";
     import { renderPublicFooter } from "./footer.js";
-    import { el, slugifySeries, sortGallery, createArtworkLightboxController, deriveArtworkCategory, PUBLIC_TAXONOMY, resolveArtworkSeriesEntries, getCompactSeriesDisplay, artworkMatchesSeriesMembership } from "./content-utils.js";
+    import { el, slugifySeries, sortGallery, sortFeaturedBySeriesAndDate, createArtworkLightboxController, deriveArtworkCategory, PUBLIC_TAXONOMY, resolveArtworkSeriesEntries, getCompactSeriesDisplay, artworkMatchesSeriesMembership } from "./content-utils.js";
 
 	    renderPublicHeader({
 	      active: "gallery",
@@ -547,7 +547,7 @@ import { renderPublicHeader } from "./header.js";
 
       if (!items.length) {
         host.appendChild(
-          el("div", { class: "card", style: "grid-column: 1 / -1; max-width:none; width:100%" },
+          el("div", { class: "card gallery-empty-state", style: "grid-column: 1 / -1; max-width:none; width:100%" },
             el("div", { class: "meta" },
               el("p", { class: "title" }, "No matches"),
               el("p", { class: "sub" }, "Try a different tag or search term.")
@@ -596,7 +596,7 @@ import { renderPublicHeader } from "./header.js";
 
     // ---- Featured section ----
     function renderFeatured() {
-      const featured = sortGallery(allItems.filter(a => a.featured));
+      const featured = sortFeaturedBySeriesAndDate(allItems.filter(a => a.featured), state);
 
       if (!featured.length) {
         featuredWrap.dataset.tabAvailable = "false";
@@ -693,7 +693,7 @@ import { renderPublicHeader } from "./header.js";
 	      if (!items.length) {
 	        renderAllWorksStateBar(items);
 	        grid.appendChild(
-          el("div", { class: "card", style: "grid-column: 1 / -1; max-width:none; width:100%" },
+          el("div", { class: "card gallery-empty-state", style: "grid-column: 1 / -1; max-width:none; width:100%" },
             el("div", { class: "meta" },
               el("p", { class: "title" }, "No matches"),
               el("p", { class: "sub" }, "Try a different tag or search term.")

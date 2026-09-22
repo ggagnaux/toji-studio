@@ -1,7 +1,7 @@
     import { renderPublicHeader } from "./header.js";
     import { renderPublicFooter } from "./footer.js";
     import { initStickyHero } from "./site.js";
-    import { el, slugifySeries, sortGallery, createArtworkLightboxController, resolveArtworkSeriesEntries, getCompactSeriesDisplay } from "./content-utils.js";
+    import { el, slugifySeries, sortGallery, sortFeaturedBySeriesAndDate, createArtworkLightboxController, resolveArtworkSeriesEntries, getCompactSeriesDisplay } from "./content-utils.js";
     import { initializeHomeSplash } from "./splash-runtime.js";
 
     renderPublicHeader({
@@ -202,7 +202,7 @@
         .filter(m => m && m.slug)
         .map(m => [String(m.slug).trim().toLowerCase(), m])
     );
-    const featured = sortGallery(all.filter(a => a.featured));
+    const featured = sortFeaturedBySeriesAndDate(all.filter(a => a.featured), state);
 
     function getArtworkSeriesEntries(artwork) {
       return resolveArtworkSeriesEntries(artwork, state);

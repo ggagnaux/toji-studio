@@ -4,7 +4,7 @@ import sharp from "sharp";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { metadataFilenameKey, parseMetadataFiles } from "../upload-metadata.js";
+import { metadataFilenameKey, parseMetadataFiles, resolveMetadataYear } from "../upload-metadata.js";
 import {
   db,
   nowIso,
@@ -309,9 +309,23 @@ uploadRouter.post("/admin/artworks/:id/regenerate-variants", async (req, res) =>
 
 const uploadWithMetadata = upload.fields([{ name: "files", maxCount: 30 }, { name: "metadata", maxCount: 30 }]);
 
+// Hold a filename until its original and variants finish, including on disconnected requests.
+const activeUploadNames = new Map();
+async function lockUploadName(name) {
+  while (activeUploadNames.has(name)) await activeUploadNames.get(name);
+  let release;
+  const pending = new Promise(resolve => { release = resolve; });
+  activeUploadNames.set(name, pending);
+  return () => { activeUploadNames.delete(name); release(); };
+}
+
 uploadRouter.post("/admin/upload", (req, res, next) => {
   uploadWithMetadata(req, res, error => error
-    ? res.status(400).json({ error: error.message })
+    ? res.status(error.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({
+      error: error.code === "LIMIT_FILE_SIZE" ? "An individual file exceeds the 50 MB upload limit." : error.message,
+      code: error.code,
+      field: error.field
+    })
     : next());
 }, async (req, res) => {
   const files = req.files?.files || [];
@@ -353,7 +367,7 @@ uploadRouter.post("/admin/upload", (req, res, next) => {
   }
   const batchSeriesSlugs = seriesWrite.seriesSlugs;
   const batchSeries = seriesWrite.primaryLegacySeries;
-  const batchYear = cleanYear(req.body?.year);
+  const currentYear = new Date().getFullYear();
   const batchStatus = cleanStatus(req.body?.status);
   const batchPublishedAt = batchStatus === "published" ? createdAt : null;
   const insertMembership = db.prepare(`
@@ -376,12 +390,14 @@ uploadRouter.post("/admin/upload", (req, res, next) => {
 
   for (const f of files) {
     const base = safeBase(f.originalname);
+    const unlock = await lockUploadName(base.toLowerCase());
+    try {
 
     // Prevent duplicate uploads by original filename (case-insensitive).
     const existing = db.prepare(`
       SELECT id
       FROM artworks
-      WHERE lower(originalPath) LIKE '%' || '__' || lower(@base)
+      WHERE lower(substr(originalPath, -length(@base) - 2)) = '__' || lower(@base)
       LIMIT 1
     `).get({ base });
     if (existing?.id) {
@@ -423,7 +439,7 @@ uploadRouter.post("/admin/upload", (req, res, next) => {
       id: artworkId,
       title,
       description,
-      year: batchYear,
+      year: resolveMetadataYear(record?.hierarchicalSubjects, currentYear),
       series: batchSeries,
       alt: title,
       status: batchStatus,
@@ -472,6 +488,9 @@ uploadRouter.post("/admin/upload", (req, res, next) => {
         fs.rmSync(filePath, { force: true });
       }
       failed.push({ filename: f.originalname, reason: "image_processing_failed" });
+    }
+    } finally {
+      unlock();
     }
   }
 

@@ -2,6 +2,14 @@ export function metadataFilenameKey(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+export function resolveMetadataYear(subjects = [], currentYear = new Date().getFullYear()) {
+  for (const subject of subjects) {
+    const match = subject.match(/(?:^|\|)\s*year\s*\|\s*((?!0000)\d{4})\s*(?=\||$)/i);
+    if (match) return match[1];
+  }
+  return String(currentYear);
+}
+
 export function parseMetadataFiles(files = []) {
   const records = new Map();
   for (const file of files) {

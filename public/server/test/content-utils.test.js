@@ -8,10 +8,76 @@ import {
   getCompactSeriesDisplay,
   artworkMatchesSeriesMembership,
   sortBySortOrderAndDate,
-  sortGallery
+  sortGallery,
+  sortFeaturedByDate,
+  sortFeaturedBySeriesAndDate
 } from "../../assets/js/content-utils.js";
 
 const ORIGINAL_LOCATION = globalThis.location;
+
+test("featured groups stay alphabetical even when another series has newer images", () => {
+  const items = [
+    { id: "a-old", seriesSlugs: ["a"], year: "2020" },
+    { id: "b-new", seriesSlugs: ["b"], title: "20290301" },
+    { id: "none-new", seriesSlugs: [], title: "20270101" },
+    { id: "a-new", seriesSlugs: ["a"], originalPath: "image20260101.png" },
+    { id: "b-old", seriesSlugs: ["b"], description: "Made 20240202" },
+    { id: "none-old", year: "2019" }
+  ];
+  assert.deepEqual(sortFeaturedBySeriesAndDate(items).map(item => item.id),
+    ["a-new", "a-old", "b-new", "b-old", "none-new", "none-old"]);
+  assert.equal(items[0].id, "a-old");
+});
+
+test("featured groups sort by series display name before artwork dates", () => {
+  const state = { seriesMeta: {
+    z: { slug: "z", name: "Alpha" },
+    a: { slug: "a", name: "Zebra" }
+  } };
+  const items = [
+    { id: "zebra", seriesSlugs: ["a"], year: "2026" },
+    { id: "alpha", seriesSlugs: ["z"], year: "2020" }
+  ];
+  assert.deepEqual(sortFeaturedBySeriesAndDate(items, state).map(item => item.id), ["alpha", "zebra"]);
+});
+
+test("featured grouping uses primary membership once and supports legacy and unassigned artworks", () => {
+  const items = [
+    { id: "multi", seriesSlugs: ["night-forms", "other"], series: "Other", year: "2026" },
+    { id: "other", seriesSlugs: ["other"], year: "2025" },
+    { id: "legacy", series: "Night Forms", year: "2024" },
+    { id: "unassigned", seriesSlugs: [], series: "Night Forms", year: "2030" },
+    { id: "undated", seriesSlugs: ["night-forms"] }
+  ];
+  const sorted = sortFeaturedBySeriesAndDate(items);
+  assert.deepEqual(sorted.map(item => item.id), ["multi", "legacy", "undated", "other", "unassigned"]);
+  assert.equal(new Set(sorted.map(item => item.id)).size, items.length);
+  assert.deepEqual(sortFeaturedBySeriesAndDate([]), []);
+});
+
+test("featured dates follow path, title, description, year precedence newest first", () => {
+  const items = [
+    { id: "path", originalPath: "/originals/prefix20240115extra.png", title: "20261231", year: "2027" },
+    { id: "title", title: "Artwork20250202-final", description: "20260101", year: "2028" },
+    { id: "description", description: "Created on 20250304 with extra text", year: "2029" },
+    { id: "year", year: "2026" },
+    { id: "unknown", publishedAt: "2030-01-01", sortOrder: 999 }
+  ];
+  assert.deepEqual(sortFeaturedByDate(items).map(item => item.id), ["year", "description", "title", "path", "unknown"]);
+  assert.equal(items[0].id, "path");
+});
+
+test("featured date extraction skips invalid dates and uses the first valid match", () => {
+  const items = [
+    { id: "invalid", originalPath: "20230229-20241301-20240431", title: "20230101" },
+    { id: "leap", originalPath: "bad20230229-good20240229-later20260101" },
+    { id: "year", description: "no date here", year: 2024 },
+    { id: "missing", year: "unknown" },
+    { id: "century", title: "19000229", year: "2000" },
+    { id: "leapCentury", title: "20000229" }
+  ];
+  assert.deepEqual(sortFeaturedByDate(items).map(item => item.id), ["leap", "year", "invalid", "leapCentury", "century", "missing"]);
+});
 
 test.afterEach(() => {
   if (typeof ORIGINAL_LOCATION === "undefined") {

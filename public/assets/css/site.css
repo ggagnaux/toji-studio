@@ -243,6 +243,41 @@ a{color:inherit;text-decoration:none}
 a:hover{color:var(--selecteditem)}
 img{max-width:100%;display:block}
 
+/* Keep images and their clipping frames square, including dynamically rendered admin images.
+   Override page-specific, inline, and injected component corner styles. */
+img,
+picture,
+:has(> img),
+:has(> picture),
+.card:has(img),
+.admin-thumb-card:has(img),
+figure:has(img),
+.home-slideshow,
+.lb:has(img){
+  border-radius:0 !important;
+}
+
+/* Presentation-only artwork crop; source files and non-artwork images stay intact. */
+.thumb img,
+.thumbSm img,
+.artwork-media img,
+.lb-media img,
+.home-slideshow-item img,
+.home-series-card__cover img,
+.home-series-card__preview img,
+.series-masonry img,
+img.series-list-item__cover,
+img.series-overview-card__cover,
+.series-detail-hero__media img,
+.admin-thumb-media img,
+.admin-artwork-thumb img,
+.series-cover-thumb img,
+img.series-row__cover,
+.series-preview-card__media img,
+.social-queue-thumb img{
+  clip-path:inset(0px);
+}
+
 .container{
   width:100%;
   max-width:var(--max);

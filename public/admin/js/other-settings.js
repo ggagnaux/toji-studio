@@ -877,7 +877,7 @@ async function loadBannerSettings() {
   }
   syncSplashModeUI();
   ensureStaticBannerIconMarkup();
-  applyBannerLogoBehavior(headerHost);
+  applyBannerLogoBehavior(headerHost, collectBannerSettings());
 }
 
 async function loadImageVariantSettings() {
@@ -929,7 +929,7 @@ function persistSettings({ refreshBanner = false } = {}){
   syncSplashModeUI();
   if (refreshBanner) {
     ensureStaticBannerIconMarkup();
-    applyBannerLogoBehavior(headerHost);
+    applyBannerLogoBehavior(headerHost, collectBannerSettings());
   }
 }
 
@@ -949,24 +949,33 @@ async function persistSplashSettings() {
   }
 }
 
-async function persistBannerSettings({ refreshBanner = false } = {}) {
+let bannerSaveRevision = 0;
+let bannerSaveQueue = Promise.resolve();
+
+function persistBannerSettings({ refreshBanner = false } = {}) {
+  const revision = ++bannerSaveRevision;
   persistSettings({ refreshBanner });
   if (!getAdminToken()) return;
-  try {
+  const settings = collectBannerSettings();
+  bannerSaveQueue = bannerSaveQueue.then(async () => {
+    // Coalesce edits waiting behind an in-flight save; only the newest needs saving.
+    if (revision !== bannerSaveRevision) return;
     const saved = await apiFetch("/api/admin/settings/banner", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(collectBannerSettings())
+      body: JSON.stringify(settings)
     });
+    if (revision !== bannerSaveRevision) return;
     applyBannerSettingsToLocalStorage(saved);
     syncSplashModeUI();
     if (refreshBanner) {
       ensureStaticBannerIconMarkup();
-      applyBannerLogoBehavior(headerHost);
+      applyBannerLogoBehavior(headerHost, saved);
     }
-  } catch (error) {
+  }).catch(error => {
     console.warn("Failed to save backend banner settings; kept local cache.", error);
-  }
+  });
+  return bannerSaveQueue;
 }
 
 async function saveImageVariantSettings() {

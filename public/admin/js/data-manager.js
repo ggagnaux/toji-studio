@@ -4,6 +4,8 @@ import {
   API_BASE,
   getAdminToken,
   apiFetch,
+  loadState,
+  saveState,
   confirmToast,
   showToast,
   el
@@ -33,6 +35,8 @@ const importPreviewList = document.getElementById("importPreviewList");
 const importCommitBtn = document.getElementById("importCommitBtn");
 const cleanupBtn = document.getElementById("cleanupBtn");
 const cleanupStatus = document.getElementById("cleanupStatus");
+const clearDatabaseBtn = document.getElementById("clearDatabaseBtn");
+const clearDatabaseStatus = document.getElementById("clearDatabaseStatus");
 
 const state = {
   tables: [],
@@ -411,6 +415,53 @@ async function commitImport() {
   }
 }
 
+async function confirmClearDatabase() {
+  if (!clearDatabaseBtn || clearDatabaseBtn.disabled) return;
+  clearDatabaseBtn.disabled = true;
+  setInlineStatus(clearDatabaseStatus, "");
+  const options = { confirmLabel: "Ok", cancelLabel: "Cancel", tone: "warn", destructive: true };
+  try {
+    const confirmed = await confirmToast(
+      `This action will reset ONLY the artwork_series, artworks, variants and series tables AND remove all uploaded original images and generated variants from the server. Other database tables and site assets will remain intact. This action is NOT reversible. Do you wish to proceed? Press "Ok" to continue, Press 'Cancel' to abort this operation.`,
+      options
+    );
+    if (!confirmed) return;
+
+    const absolutelySure = await confirmToast(
+      "Are you absolutely sure?  Press 'Ok' to proceed, press 'Cancel' to abort.",
+      options
+    );
+    if (!absolutelySure) return;
+
+    setInlineStatus(clearDatabaseStatus, "Clearing database and images...");
+    const result = await apiFetch("/api/admin/data/clear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmation: "clear-artwork-data-and-images" })
+    });
+    const message = result.imagesDeleted
+      ? "Cleared artwork_series, artworks, variants and series, and deleted uploaded images. Other tables were preserved."
+      : "The four tables were cleared. " + result.warnings.join(" ");
+    setInlineStatus(clearDatabaseStatus, message, result.imagesDeleted ? "success" : "warn");
+    showToast(message, { tone: result.imagesDeleted ? "success" : "warn", duration: 7000 });
+    try {
+      const cached = await loadState();
+      Object.assign(cached, { artworks: [], series: [], seriesMeta: {}, tags: [] });
+      saveState(cached);
+    } catch (error) {
+      showToast("Server reset completed, but the local artwork cache could not be cleared.", { tone: "warn" });
+    }
+    await loadTableMetadata();
+  } catch (error) {
+    const message = "Clear failed: " + (error?.message || error);
+    setInlineStatus(clearDatabaseStatus, message, "error");
+    showToast(message, { tone: "error" });
+  } finally {
+    clearDatabaseBtn.disabled = false;
+    clearDatabaseBtn.focus();
+  }
+}
+
 function setCleanupStatus(message, tone = "") {
   setInlineStatus(cleanupStatus, message, tone);
 }
@@ -483,6 +534,10 @@ importCommitBtn?.addEventListener("click", () => {
 
 cleanupBtn?.addEventListener("click", () => {
   void runCleanup();
+});
+
+clearDatabaseBtn?.addEventListener("click", () => {
+  void confirmClearDatabase();
 });
 
 updateImportFileName(importBundleInput?.files?.[0] || null);

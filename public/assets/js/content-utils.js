@@ -170,6 +170,55 @@ export function sortBySortOrderAndDate(items) {
   });
 }
 
+export function sortFeaturedByDate(items) {
+  function dateKey(artwork) {
+    for (const field of ["originalPath", "title", "description"]) {
+      for (const match of String(artwork[field] || "").matchAll(/(?=(\d{4})(\d{2})(\d{2}))/g)) {
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+        const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+        if (year > 0 && month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1]) {
+          return year * 10000 + month * 100 + day;
+        }
+      }
+    }
+    const year = String(artwork.year || "").trim();
+    // Year-only artwork sorts as January 1; undated artwork goes last.
+    return /^\d{4}$/.test(year) && Number(year) > 0 ? Number(year) * 10000 + 101 : 0;
+  }
+  return items.map(artwork => ({ artwork, date: dateKey(artwork) }))
+    .sort((a, b) => b.date - a.date)
+    .map(entry => entry.artwork);
+}
+
+export function sortFeaturedBySeriesAndDate(items, stateLike = null) {
+  const groups = new Map();
+  const unassigned = [];
+  // Dates determine order within a series, never the order of the series groups.
+  for (const artwork of sortFeaturedByDate(items)) {
+    const primary = normalizeSeriesSlugs(artwork.seriesSlugs)[0]
+      || resolveArtworkSeriesEntries(artwork, stateLike)[0]?.slug
+      || "";
+    const slug = primary.trim().toLowerCase();
+    if (!slug) {
+      unassigned.push(artwork);
+      continue;
+    }
+    if (!groups.has(slug)) {
+      const entry = resolveArtworkSeriesEntries(artwork, stateLike)
+        .find(series => series.slug.trim().toLowerCase() === slug);
+      groups.set(slug, { name: entry?.name || formatSeriesLabelFromSlug(slug), items: [] });
+    }
+    groups.get(slug).items.push(artwork);
+  }
+  return [...groups.values()]
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true }))
+    .flatMap(group => group.items)
+    .concat(unassigned);
+}
+
 export function sortGallery(items) {
   return items.slice().sort((a, b) => {
     const fa = !!a.featured;

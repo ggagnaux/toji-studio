@@ -5,8 +5,10 @@ import { fileURLToPath } from "node:url";
 
 import { Router } from "express";
 import multer from "multer";
+import { clearArtworkData } from "../clear-artwork-data.js";
 import {
   db,
+  STORAGE_DIR,
   nowIso,
   jsonArray,
   toJson,
@@ -1889,6 +1891,18 @@ adminRouter.delete("/admin/artworks/:id", (req, res) => {
  * - remove original files not referenced by DB
  * - remove DB variant rows whose files are missing
  */
+adminRouter.post("/admin/data/clear", (req, res) => {
+  if (req.body?.confirmation !== "clear-artwork-data-and-images") {
+    return res.status(400).json({ error: "Explicit confirmation is required." });
+  }
+  try {
+    return res.json(clearArtworkData(db, STORAGE_DIR));
+  } catch (error) {
+    console.error("Failed to clear artwork data:", error);
+    return res.status(500).json({ error: "Could not clear artwork data and images. Check server logs before retrying." });
+  }
+});
+
 adminRouter.post("/admin/cleanup", (req, res) => {
   fs.mkdirSync(originalsDir, { recursive: true });
   fs.mkdirSync(variantsDir, { recursive: true });

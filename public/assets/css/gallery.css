@@ -89,7 +89,7 @@
 		      border-radius:14px;
 		      padding:9px 18px;
 		      font:inherit;
-		      font-size:14px;
+		      font-size:var(--page-toolbar-font-size);
 		      font-weight:600;
 		      cursor:pointer;
 		      display:inline-flex;

@@ -289,8 +289,8 @@ function renderSeriesList(activeSlug) {
     type: "button"
   },
     el("div", { class: "series-list-item__body" },
-      el("div", { class: "series-list-item__title" }, "All series"),
-      el("div", { class: "sub" }, "Overview + highlights")
+      // el("div", { class: "series-list-item__title" }, "All series"),
+      //el("div", { class: "sub" }, "Overview + highlights")
     )
   );
   allButton.addEventListener("click", () => {
@@ -350,9 +350,9 @@ function createArtworkCard(list, artwork, index, extraMeta = []) {
 
 function renderOverview() {
   detail.innerHTML = "";
-  detail.appendChild(el("p", { class: "series-panel-kicker" }, "Curated overview"));
+  //detail.appendChild(el("p", { class: "series-panel-kicker" }, "Curated overview"));
   detail.appendChild(el("p", { class: "title", style: "margin:0" }, "Series overview"));
-  detail.appendChild(el("p", { class: "sub", style: "margin-top:8px" }, "Browse each series as its own landing page, with cover imagery, context, anchor works, and a full ordered run."));
+  //detail.appendChild(el("p", { class: "sub", style: "margin-top:8px" }, "Browse each series as its own landing page, with cover imagery, context, anchor works, and a full ordered run."));
 
   const wrap = el("div", { class: "series-overview-grid" });
 

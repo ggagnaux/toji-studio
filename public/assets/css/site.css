@@ -6,6 +6,7 @@
   --max:1200px;
   --radius:18px;
   --shadow: 0 12px 30px rgba(0,0,0,.35);
+  --page-toolbar-font-size:15px;
   --floating-control-font-size:14px;
   --floating-label-font-size:15px;
   --floating-label-float-font-size:14px;
@@ -381,7 +382,7 @@ main.container{
   border:1px solid color-mix(in srgb, var(--line) 82%, transparent);
   background:color-mix(in srgb, var(--panel) 86%, #090b10 14%);
   color:var(--text);
-  font-size:15px;
+  font-size:var(--page-toolbar-font-size);
   font-weight:650;
   transition:border-color .18s ease, background .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
 }

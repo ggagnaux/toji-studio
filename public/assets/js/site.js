@@ -29,7 +29,49 @@ export function uniqTags(items){
   return ["all", ...Array.from(set).sort()];
 }
 
+export function initBackToTop() {
+  if (!document.body) {
+    document.addEventListener("DOMContentLoaded", initBackToTop, { once: true });
+    return null;
+  }
+
+  let button = document.getElementById("backToTopBtn");
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "backToTopBtn";
+    button.className = "btn back-to-top";
+    button.type = "button";
+    button.setAttribute("aria-label", "Back to top");
+    button.textContent = "Top ↑";
+    document.body.appendChild(button);
+  }
+  if (button.dataset.backToTopInitialized === "true") return button;
+  button.dataset.backToTopInitialized = "true";
+
+  const syncVisibility = () => {
+    const visible = window.scrollY > 8;
+    button.classList.toggle("is-visible", visible);
+    button.setAttribute("aria-hidden", visible ? "false" : "true");
+    button.tabIndex = visible ? 0 : -1;
+  };
+
+  button.addEventListener("click", () => {
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    if (!reduceMotion) {
+      // Correct for mobile viewport chrome movement after smooth scrolling.
+      window.setTimeout(() => {
+        if (window.scrollY !== 0) window.scrollTo({ top: 0, behavior: "auto" });
+      }, 420);
+    }
+  });
+  window.addEventListener("scroll", syncVisibility, { passive: true });
+  syncVisibility();
+  return button;
+}
+
 export function initThemeSystem(){
+  initBackToTop();
   const root = document.documentElement;
   const MODE_KEY = "toji_theme_mode";
 

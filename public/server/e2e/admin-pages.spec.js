@@ -22,6 +22,33 @@ test.describe("admin pages", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   });
 
+  test("shared back-to-top control is available in the admin", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/gallery.html");
+    await page.evaluate(() => {
+      document.body.style.minHeight = "2500px";
+      window.scrollTo(0, 600);
+    });
+    const galleryBox = await page.getByRole("button", { name: "Back to top" }).boundingBox();
+
+    await page.goto("/admin/index");
+    const backToTop = page.getByRole("button", { name: "Back to top" });
+
+    await page.evaluate(() => {
+      document.body.style.minHeight = "2500px";
+      window.scrollTo(0, 600);
+    });
+    await expect(backToTop).toBeVisible();
+    const adminBox = await backToTop.boundingBox();
+    expect(adminBox?.width).toBeCloseTo(galleryBox?.width || 0, 0);
+    expect(adminBox?.height).toBeCloseTo(galleryBox?.height || 0, 0);
+    const viewport = page.viewportSize();
+    expect(adminBox?.width || 0).toBeLessThan((viewport?.width || 0) / 2);
+    expect((viewport?.width || 0) - ((adminBox?.x || 0) + (adminBox?.width || 0))).toBeCloseTo(18, 0);
+    await backToTop.click();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
   test("upload page remains usable on tablet width", async ({ page }) => {
     await page.setViewportSize({ width: 820, height: 1180 });
     await page.goto("/admin/upload");

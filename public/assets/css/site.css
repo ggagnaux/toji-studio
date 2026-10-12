@@ -1047,6 +1047,49 @@ input, textarea, select{
   background: transparent;
 }
 
+.btn.back-to-top{
+  position:fixed !important;
+  top:auto !important;
+  right:max(18px, env(safe-area-inset-right)) !important;
+  bottom:max(18px, env(safe-area-inset-bottom)) !important;
+  left:auto !important;
+  z-index:30;
+  display:inline-flex !important;
+  flex:none !important;
+  width:max-content !important;
+  inline-size:max-content !important;
+  min-width:0 !important;
+  max-width:calc(100vw - 36px) !important;
+  height:auto !important;
+  min-height:0 !important;
+  box-sizing:border-box;
+  border-radius:999px !important;
+  background:color-mix(in srgb, var(--panel) 92%, #000 8%);
+  padding:10px 14px !important;
+  font-size:16px !important;
+  font-weight:600 !important;
+  line-height:1.2 !important;
+  letter-spacing:normal !important;
+  white-space:nowrap;
+  box-shadow:0 8px 24px rgba(0,0,0,.22);
+  opacity:0;
+  transform:translateY(10px);
+  pointer-events:none;
+  transition:opacity .18s ease, transform .18s ease;
+}
+
+.btn.back-to-top.is-visible{
+  opacity:1;
+  transform:translateY(0);
+  pointer-events:auto;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .btn.back-to-top{
+    transition:none;
+  }
+}
+
 @media (max-width: 760px){
   .nav{
     flex-wrap:wrap;

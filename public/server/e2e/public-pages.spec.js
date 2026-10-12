@@ -2,6 +2,29 @@ import { test, expect } from "@playwright/test";
 import { dismissSplashIfPresent, expectNoHorizontalOverflow, mockPublicApi, seedClientState } from "./helpers/browser-helpers.js";
 
 test.describe("public pages", () => {
+  test("shared back-to-top control returns the page to the top", async ({ page }) => {
+    await seedClientState(page, { theme: "dark" });
+    await mockPublicApi(page);
+    await page.goto("/about.html");
+
+    const backToTop = page.locator("#backToTopBtn");
+    await expect(backToTop).toHaveAttribute("aria-hidden", "true");
+    await page.evaluate(() => {
+      document.body.style.minHeight = "2500px";
+      window.scrollTo(0, 600);
+    });
+    await expect(backToTop).toBeVisible();
+    await expect(backToTop).toHaveAttribute("aria-hidden", "false");
+    const buttonBox = await backToTop.boundingBox();
+    const viewport = page.viewportSize();
+    expect(buttonBox?.width || 0).toBeLessThan((viewport?.width || 0) / 2);
+    expect((viewport?.width || 0) - ((buttonBox?.x || 0) + (buttonBox?.width || 0))).toBeCloseTo(18, 0);
+
+    await backToTop.click();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(backToTop).toHaveAttribute("aria-hidden", "true");
+  });
+
   test("home supports theme switching and staged content", async ({ page }) => {
     await seedClientState(page, { theme: "dark" });
     await mockPublicApi(page);

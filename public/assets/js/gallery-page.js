@@ -129,8 +129,6 @@ import { renderPublicHeader } from "./header.js";
 	    const allWorksStateBar = document.getElementById("allWorksStateBar");
 	    const galleryTabsNav = document.getElementById("galleryTabsNav");
     const galleryTabButtons = Array.from(document.querySelectorAll("[data-tab-target]"));
-    const backToTopBtn = document.getElementById("backToTopBtn");
-
 	    const allCount = document.getElementById("allCount");
 	    const INITIAL_ALL_WORKS_COUNT = 48;
 	    const ALL_WORKS_INCREMENT = 36;
@@ -261,14 +259,6 @@ import { renderPublicHeader } from "./header.js";
       return requested;
     }
 
-    function scrollToTopStable() {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      // Correct for mobile viewport chrome movement after smooth scrolling.
-      window.setTimeout(() => {
-        if (window.scrollY !== 0) window.scrollTo({ top: 0, behavior: "auto" });
-      }, 420);
-    }
-
 	    galleryTabButtons.forEach((btn) => {
 	      btn.addEventListener("click", () => {
 	        const targetId = btn.getAttribute("data-tab-target");
@@ -286,15 +276,6 @@ import { renderPublicHeader } from "./header.js";
 	      }
 	    });
 
-    function syncBackToTopVisibility() {
-      const show = window.scrollY > 8;
-      backToTopBtn?.classList.toggle("is-visible", show);
-    }
-    backToTopBtn?.addEventListener("click", () => {
-      scrollToTopStable();
-    });
-    window.addEventListener("scroll", syncBackToTopVisibility, { passive: true });
-    syncBackToTopVisibility();
     syncStickyOffsets();
 
 	    function rerenderAllWorksPreserveScroll() {

@@ -1,6 +1,6 @@
 import { renderPublicHeader } from "./header.js";
-    import { renderPublicFooter } from "./footer.js";
-    import { el, slugifySeries, sortGallery, sortFeaturedBySeriesAndDate, createArtworkLightboxController, deriveArtworkCategory, PUBLIC_TAXONOMY, resolveArtworkSeriesEntries, getCompactSeriesDisplay, artworkMatchesSeriesMembership } from "./content-utils.js";
+import { renderPublicFooter } from "./footer.js";
+import { el, slugifySeries, sortGallery, sortFeaturedBySeriesAndDate, createArtworkLightboxController, deriveArtworkCategory, PUBLIC_TAXONOMY, resolveArtworkSeriesEntries, getCompactSeriesDisplay, artworkMatchesSeriesMembership } from "./content-utils.js";
 
 	    renderPublicHeader({
 	      active: "gallery",
@@ -135,7 +135,8 @@ import { renderPublicHeader } from "./header.js";
 
     const state = await loadGalleryState();
     const allItems = sortGallery((state.artworks || []).filter(a => a.status === "published"));
-    const seriesMetaRows = Object.values(state.seriesMeta || {});
+    const seriesMetaRows = Object.values(state.seriesMeta || {})
+      .filter((series) => series?.isPublic === true);
     const seriesMetaByName = new Map(
       seriesMetaRows
         .filter(m => m && m.name)
@@ -605,21 +606,21 @@ import { renderPublicHeader } from "./header.js";
 
       const entries = Array.from(bySeries.entries())
         .map(([slug, group]) => {
-          const name = group.name;
+          const meta = seriesMetaBySlug.get(slug.toLowerCase()) || seriesMetaByName.get(group.name.toLowerCase()) || null;
+          if (!meta) return null;
+          const name = meta.name || group.name;
           const items = group.items;
-          const meta = seriesMetaByName.get(name.toLowerCase()) || seriesMetaBySlug.get(slug) || null;
-          const seriesMeta = meta ? { ...meta, slug: meta.slug || slug, name: meta.name || name } : { slug, name, imageOrder: [] };
+          const seriesMeta = { ...meta, slug: meta.slug || slug, name };
           const orderedItems = sortSeriesItems(items.filter((item) => artworkMatchesSeries(item, seriesMeta)), seriesMeta);
-          const cover = (meta && meta.coverThumb) || orderedItems[0]?.thumb || orderedItems[0]?.image || items[0]?.thumb || items[0]?.image || "assets/img/placeholders/p1.jpg";
-          const description = (meta && meta.description) || "";
+          const cover = meta.coverThumb || orderedItems[0]?.thumb || orderedItems[0]?.image || items[0]?.thumb || items[0]?.image || "assets/img/placeholders/p1.jpg";
+          const description = meta.description || "";
           const sortOrderRaw = Number(meta?.sortOrder);
           const sortOrder = Number.isFinite(sortOrderRaw) ? sortOrderRaw : Number.MAX_SAFE_INTEGER;
-          const isPublic = meta?.isPublic == null ? true : !!meta.isPublic;
           const finalItems = orderedItems.length ? orderedItems : sortGallery(items);
           const category = finalItems.length ? deriveArtworkCategory(finalItems[0]) : "Digital Art";
-          return { name, slug, cover, description, items: finalItems, sortOrder, isPublic, imageOrder: seriesMeta.imageOrder || [], category };
+          return { name, slug, cover, description, items: finalItems, sortOrder, imageOrder: seriesMeta.imageOrder || [], category };
         })
-        .filter((s) => s.isPublic)
+        .filter(Boolean)
         .sort((a, b) => {
           if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
           return a.name.localeCompare(b.name);
@@ -636,7 +637,7 @@ import { renderPublicHeader } from "./header.js";
 
       for (const s of entries) {
         const seriesItems = s.items.slice();
-        const previewItems = seriesItems.slice(0, 8);
+        const previewItems = seriesItems.slice(0, 9);
         seriesGrid.appendChild(
           el("article", { class: "series-item" },
             el("a", {
@@ -647,6 +648,9 @@ import { renderPublicHeader } from "./header.js";
                 openLightbox(seriesItems, 0);
               }
             },
+              //
+              // Grid of thumbnails for each series
+              //
               el("div", { class: "series-masonry", "aria-hidden": "true" },
                 ...previewItems.map((item) => el("img", {
                   src: item.thumb || item.image || s.cover,

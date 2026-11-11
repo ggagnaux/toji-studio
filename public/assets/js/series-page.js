@@ -2,6 +2,7 @@ import { renderPublicHeader } from "./header.js";
 import { renderPublicFooter } from "./footer.js";
 import { initStickyHero } from "./site.js";
 import { qs, el, slugifySeries, sortBySortOrderAndDate, createArtworkLightboxController, deriveArtworkCategory } from "./content-utils.js";
+import { createSeriesShowcaseCard } from "./series-cards.js";
 
 renderPublicHeader({
   active: "series",
@@ -20,11 +21,11 @@ const ADMIN_STORAGE_KEY = "toji_admin_state_v1";
 const FALLBACK_URL = "assets/data/admin.sample.json";
 const API_BASE = (localStorage.getItem("toji_api_base") || window.location.origin || "").replace(/\/+$/, "");
 
-function setQS(name, value) {
+function setQS(name, value, { replace = false } = {}) {
   const u = new URL(location.href);
   if (!value) u.searchParams.delete(name);
   else u.searchParams.set(name, value);
-  history.replaceState(null, "", u.toString());
+  history[replace ? "replaceState" : "pushState"](null, "", u.toString());
 }
 
 function normalizeMediaUrl(p) {
@@ -201,8 +202,33 @@ document.body.appendChild(lightbox.host);
 const openLightbox = (list, idx) => lightbox.open(list, idx);
 
 const seriesCountEl = document.getElementById("seriesCount");
-const seriesList = document.getElementById("seriesList");
+const seriesCardsSection = document.getElementById("seriesCardsSection");
+const seriesCardsGrid = document.getElementById("seriesCardsGrid");
+const seriesDetailPanel = document.getElementById("seriesDetailPanel");
+const allSeriesLink = document.getElementById("allSeriesLink");
 const detail = document.getElementById("detail");
+const seriesOverviewIntro = document.getElementById("seriesOverviewIntro");
+const seriesDetailIntro = document.getElementById("seriesDetailIntro");
+const seriesScrollButtons = Array.from(document.querySelectorAll("[data-series-scroll-target]"));
+
+function syncSeriesScrollButtons() {
+  const showingDetail = !seriesDetailPanel.hidden;
+  seriesOverviewIntro.hidden = showingDetail;
+  seriesDetailIntro.hidden = !showingDetail;
+  seriesScrollButtons.forEach((button) => {
+    const target = document.getElementById(button.dataset.seriesScrollTarget || "");
+    button.disabled = !showingDetail || !target;
+  });
+}
+
+seriesScrollButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const target = document.getElementById(button.dataset.seriesScrollTarget || "");
+    if (!target || seriesDetailPanel.hidden) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  });
+});
 
 const [seriesRows, published] = await Promise.all([
   loadPublicSeries(),
@@ -232,8 +258,6 @@ const seenSeriesKeys = new Set();
   seriesWithCounts.push(row);
 });
 
-seriesCountEl.textContent = `${seriesWithCounts.length} series`;
-
 const bySlug = new Map(seriesWithCounts.map((s) => [s.slug, s]));
 const byName = new Map(seriesWithCounts.map((s) => [s.name, s]));
 
@@ -245,12 +269,6 @@ function getSeriesSummary(series, pieces) {
   const description = String(series?.description || "").trim();
   if (description) return description;
   return `${series.name} is a curated set of ${pieces.length} published piece${pieces.length === 1 ? "" : "s"} presented as a single body of work.`;
-}
-
-function getSeriesListNote(series, pieces) {
-  const description = String(series?.description || "").trim();
-  if (description) return description;
-  return `${pieces.length} published piece${pieces.length === 1 ? "" : "s"} arranged as one collection.`;
 }
 
 function getSeriesCategory(pieces) {
@@ -281,54 +299,6 @@ function getRelatedSeries(series) {
   return ordered;
 }
 
-function renderSeriesList(activeSlug) {
-  seriesList.innerHTML = "";
-
-  const allButton = el("button", {
-    class: `btn series-list-item${!activeSlug ? " is-active" : ""}`,
-    type: "button"
-  },
-    el("div", { class: "series-list-item__body" },
-      // el("div", { class: "series-list-item__title" }, "All series"),
-      //el("div", { class: "sub" }, "Overview + highlights")
-    )
-  );
-  allButton.addEventListener("click", () => {
-    setQS("s", "");
-    renderOverview();
-  });
-  seriesList.appendChild(allButton);
-
-  if (!seriesWithCounts.length) {
-    seriesList.appendChild(el("div", { class: "sub" }, "No series yet."));
-    return;
-  }
-
-  for (const s of seriesWithCounts) {
-    const isActive = s.slug === activeSlug;
-    const pieces = sortSeriesPieces(published.filter((a) => artworkMatchesSeries(a, s, { series: seriesRows })), s);
-    const cover = getSeriesCover(s, pieces);
-    const btn = el("button", {
-      class: `btn series-list-item${isActive ? " is-active" : ""}`,
-      type: "button"
-    },
-      el("div", { class: "series-list-item__inner" },
-        cover ? el("img", { class: "series-list-item__cover", src: cover, alt: "" }) : null,
-        el("div", { class: "series-list-item__body" },
-          el("div", { class: "series-list-item__title" }, s.name),
-          el("div", { class: "sub" }, `${s.publishedCount} piece${s.publishedCount === 1 ? "" : "s"}`),
-          el("div", { class: "series-list-item__note" }, getSeriesListNote(s, pieces))
-        )
-      )
-    );
-    btn.addEventListener("click", () => {
-      setQS("s", s.slug);
-      openSeries(s.slug);
-    });
-    seriesList.appendChild(btn);
-  }
-}
-
 function createArtworkCard(list, artwork, index, extraMeta = []) {
   return el("a", {
     class: "card",
@@ -348,46 +318,53 @@ function createArtworkCard(list, artwork, index, extraMeta = []) {
   );
 }
 
-function renderOverview() {
-  detail.innerHTML = "";
-  //detail.appendChild(el("p", { class: "series-panel-kicker" }, "Curated overview"));
-  detail.appendChild(el("p", { class: "title", style: "margin:0" }, "Series overview"));
-  //detail.appendChild(el("p", { class: "sub", style: "margin-top:8px" }, "Browse each series as its own landing page, with cover imagery, context, anchor works, and a full ordered run."));
+function syncSeriesToolbar(showingCards) {
+  allSeriesLink?.classList.toggle("is-active", showingCards);
+  if (showingCards) allSeriesLink?.setAttribute("aria-current", "page");
+  else allSeriesLink?.removeAttribute("aria-current");
+}
 
-  const wrap = el("div", { class: "series-overview-grid" });
+function renderSeriesCards() {
+  const visibleSeries = seriesWithCounts
+    .filter((series) => series.publishedCount > 0)
+    .sort((a, b) => (Number(a.sortOrder || 0) - Number(b.sortOrder || 0)) || a.name.localeCompare(b.name));
 
-  for (const s of seriesWithCounts) {
-    const pieces = sortSeriesPieces(published.filter((a) => artworkMatchesSeries(a, s, { series: seriesRows })), s);
-    const cover = getSeriesCover(s, pieces);
-    wrap.appendChild(
-      el("div", { class: "card series-overview-card" },
-        el("div", { class: "meta" },
-          el("div", { class: "series-overview-card__top" },
-            cover ? el("img", { class: "series-overview-card__cover", src: cover, alt: "" }) : el("div", { class: "series-overview-card__cover", "aria-hidden": "true" }),
-            el("div", { class: "series-overview-card__body" },
-              el("p", { class: "title" }, s.name),
-              el("p", { class: "sub" }, getSeriesSummary(s, pieces)),
-              el("div", { class: "series-detail-hero__meta" },
-                el("span", { class: "series-meta-pill" }, `${s.publishedCount} piece${s.publishedCount === 1 ? "" : "s"}`),
-                pieces.some((piece) => piece.featured) ? el("span", { class: "series-meta-pill" }, "Includes featured work") : null
-              ),
-              el("div", { class: "series-overview-card__actions" },
-                el("a", { class: "btn", href: `series.html?s=${encodeURIComponent(s.slug)}` }, "Open series")
-              )
-            )
-          )
-        )
-      )
-    );
+  seriesCardsGrid.innerHTML = "";
+  seriesCountEl.textContent = `${visibleSeries.length} series`;
+  seriesCardsSection.hidden = false;
+  seriesDetailPanel.hidden = true;
+  syncSeriesToolbar(true);
+  syncSeriesScrollButtons();
+
+  if (!visibleSeries.length) {
+    seriesCardsGrid.appendChild(el("p", { class: "sub series-empty-note" }, "No published series yet."));
+    return;
   }
 
-  detail.appendChild(wrap);
-  renderSeriesList(null);
+  for (const series of visibleSeries) {
+    const pieces = sortSeriesPieces(
+      published.filter((artwork) => artworkMatchesSeries(artwork, series, { series: seriesRows })),
+      series
+    );
+    const cover = getSeriesCover(series, pieces) || "assets/img/placeholders/p1.jpg";
+    seriesCardsGrid.appendChild(createSeriesShowcaseCard({
+      name: series.name,
+      slug: series.slug,
+      cover,
+      summary: getSeriesSummary(series, pieces),
+      items: pieces,
+      onOpen: () => {
+        setQS("s", series.slug);
+        openSeries(series.slug);
+      },
+      onPreview: () => openLightbox(pieces, 0)
+    }));
+  }
 }
 
 function openSeries(slug) {
   const s = bySlug.get(slug) || byName.get(slug);
-  if (!s) return renderOverview();
+  if (!s) return renderSeriesCards();
 
   const pieces = sortSeriesPieces(published.filter((a) => artworkMatchesSeries(a, s, { series: seriesRows })), s);
   const cover = getSeriesCover(s, pieces);
@@ -395,6 +372,9 @@ function openSeries(slug) {
   const anchors = getAnchorPieces(s, pieces);
   const related = getRelatedSeries(s);
 
+  seriesCardsSection.hidden = true;
+  seriesDetailPanel.hidden = false;
+  syncSeriesToolbar(false);
   detail.innerHTML = "";
   const layout = el("div", { class: "series-detail-layout" });
 
@@ -427,10 +407,10 @@ function openSeries(slug) {
       anchorGrid.appendChild(createArtworkCard(pieces, artwork, Math.max(0, index), [artwork.year || null, artwork.featured ? "Featured" : "Anchor work"]));
     });
     layout.appendChild(
-      el("section", { class: "series-section" },
+      el("section", { class: "series-section", id: "seriesHighlights" },
         el("div", { class: "series-section__header" },
-          el("h3", {}, "Highlights"),
-          el("span", { class: "sub" }, "Anchor works from this series")
+          el("h3", {}, "Highlights")//,
+          //el("span", { class: "sub" }, "Anchor works from this series")
         ),
         anchorGrid
       )
@@ -449,10 +429,9 @@ function openSeries(slug) {
   }
 
   layout.appendChild(
-    el("section", { class: "series-section" },
+    el("section", { class: "series-section", id: "seriesAllPieces" },
       el("div", { class: "series-section__header" },
-        el("h3", {}, "All pieces"),
-        el("span", { class: "sub" }, "Ordered run for this series")
+        el("h3", {}, "All pieces")
       ),
       grid
     )
@@ -481,6 +460,7 @@ function openSeries(slug) {
   }
 
   detail.appendChild(layout);
+  syncSeriesScrollButtons();
 
   const mq1 = window.matchMedia("(max-width: 920px)");
   const mq2 = window.matchMedia("(max-width: 620px)");
@@ -494,18 +474,29 @@ function openSeries(slug) {
   mq1.onchange = apply;
   mq2.onchange = apply;
 
-  renderSeriesList(s.slug);
 }
 
-const initial = qs("s");
-if (initial) {
-  const s = bySlug.get(initial) || byName.get(initial);
-  if (s) openSeries(s.slug);
-  else renderOverview();
-} else {
-  renderOverview();
+function renderFromLocation() {
+  const selected = qs("s");
+  if (!selected) {
+    renderSeriesCards();
+    return;
+  }
+  const series = bySlug.get(selected) || byName.get(selected);
+  if (series) openSeries(series.slug);
+  else {
+    setQS("s", "", { replace: true });
+    renderSeriesCards();
+  }
 }
 
+allSeriesLink?.addEventListener("click", (event) => {
+  event.preventDefault();
+  setQS("s", "");
+  renderSeriesCards();
+});
+window.addEventListener("popstate", renderFromLocation);
+renderFromLocation();
 
 
 

@@ -1433,9 +1433,9 @@
         (v)=>{ s.coverArtworkId = v; queueSave(true); }
       );
 
+      detailsPanel.appendChild(pubField);
       detailsPanel.appendChild(nameField);
       detailsPanel.appendChild(descField);
-      detailsPanel.appendChild(pubField);
       detailsPanel.appendChild(coverSelect);
 
       const imagesIntro = el("div", { class:"sub", style:"margin-top:4px" }, "Assign artwork to this series and review included thumbnails. Drag to reorder artwork in this series.");

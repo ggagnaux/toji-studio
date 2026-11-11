@@ -120,6 +120,20 @@ export async function mockPublicApi(page, state = E2E_ADMIN_STATE) {
       body: JSON.stringify(publicSeries)
     });
   });
+
+  await page.route('**/api/public/settings/home-page', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        heroVisible: true,
+        latestVisible: false,
+        featuredVisible: true,
+        seriesVisible: true,
+        featuredSlideshowVisible: true
+      })
+    });
+  });
 }
 
 export async function expectNoHorizontalOverflow(page) {

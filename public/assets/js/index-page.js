@@ -2,6 +2,7 @@
     import { renderPublicFooter } from "./footer.js";
     import { initStickyHero } from "./site.js";
     import { el, slugifySeries, sortGallery, sortFeaturedBySeriesAndDate, createArtworkLightboxController, resolveArtworkSeriesEntries, getCompactSeriesDisplay } from "./content-utils.js";
+    import { createSeriesShowcaseCard } from "./series-cards.js";
     import { initializeHomeSplash } from "./splash-runtime.js";
 
     renderPublicHeader({
@@ -316,45 +317,15 @@
       homeSeriesHint.textContent = `${entries.length} series`;
 
       for (const s of entries) {
-        const previewItems = s.items.slice(0, 3);
         homeSeriesGrid.appendChild(
-          el("article", { class: "home-series-item home-series-card" },
-            el("a", {
-              class: "home-series-card__coverlink",
-              href: `series.html?s=${encodeURIComponent(s.slug)}`
-            },
-              el("div", { class: "home-series-card__cover" },
-                el("img", { src: s.cover, alt: `${s.name} cover artwork`, loading: "lazy" })
-              )
-            ),
-            el("div", { class: "home-series-card__body" },
-              el("p", { class: "home-series-card__eyebrow" }, "Series"),
-              el("h3", { class: "home-series-card__title" }, s.name),
-              el("p", { class: "home-series-card__summary" }, getSeriesSummary({ description: s.description }, s.items)),
-              el("div", { class: "home-series-card__meta" },
-                el("span", { class: "home-series-card__pill" }, `${s.count} piece${s.count === 1 ? "" : "s"}`),
-                s.items.some((item) => item.featured) ? el("span", { class: "home-series-card__pill" }, "Featured work inside") : null
-              ),
-              el("div", { class: "home-series-card__preview", "aria-hidden": "true" },
-                ...previewItems.map((item) => el("img", {
-                  src: item.thumb || item.image || s.cover,
-                  alt: "",
-                  loading: "lazy"
-                }))
-              ),
-              el("div", { class: "home-series-card__actions" },
-                el("a", { class: "btn primary", href: `series.html?s=${encodeURIComponent(s.slug)}` }, "Open series"),
-                el("button", {
-                  class: "btn",
-                  type: "button",
-                  onclick: (e) => {
-                    e.preventDefault();
-                    openLightbox(s.items, 0);
-                  }
-                }, "Preview works")
-              )
-            )
-          )
+          createSeriesShowcaseCard({
+            name: s.name,
+            slug: s.slug,
+            cover: s.cover,
+            summary: getSeriesSummary({ description: s.description }, s.items),
+            items: s.items,
+            onPreview: () => openLightbox(s.items, 0)
+          })
         );
       }
     }

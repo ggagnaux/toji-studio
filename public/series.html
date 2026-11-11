@@ -6,6 +6,7 @@
   <title>Series &mdash; Toji Studios</title>
   <link rel="stylesheet" href="assets/css/site.css" />
   <link rel="stylesheet" href="assets/css/series.css" />
+  <link rel="stylesheet" href="assets/css/series-cards.css" />
 </head>
 <body class="home-animated">
   <header id="siteHeader"></header>
@@ -14,7 +15,7 @@
     <section class="page-toolbar page-toolbar--public" aria-label="Series tools">
       <div class="page-toolbar__shell">
         <div class="page-toolbar__left">
-          <a class="page-toolbar__pill is-active" href="#seriesListPanel" aria-current="page">All Series</a>
+          <a id="allSeriesLink" class="page-toolbar__pill is-active" href="series.html" aria-current="page">All Series</a>
           <a class="page-toolbar__pill" href="gallery.html">Gallery</a>
           <a class="page-toolbar__pill" href="contact.html">Contact</a>
         </div>
@@ -29,28 +30,28 @@
     </section>
     <section class="hero hero--sticky series-hero" style="padding-bottom:10px">
       <h1>Series</h1>
-      <!-- <p>Browse curated collections with their own pacing, context, and anchor works. Each series is arranged as a landing page rather than a simple bucket of images.</p> -->
-      <p>Browse curated collections of images.</p>
+      <p class="series-hero__intro">
+        <span id="seriesOverviewIntro">Browse curated collection of images.</span>
+        <span id="seriesDetailIntro" hidden>
+          Browse curated collections of images.<br/><br/>Click
+          <button class="series-hero__jump" type="button" data-series-scroll-target="seriesHighlights" disabled>Highlights</button>
+          to view featured images.<br/>Click
+          <button class="series-hero__jump" type="button" data-series-scroll-target="seriesAllPieces" disabled>All pieces</button>
+          to view all images in this series.
+        </span>
+      </p>
     </section>
 
-    <section class="grid series-layout" aria-label="Series layout">
-      <div id="seriesListPanel" class="card series-panel series-panel--list page-toolbar-target" style="grid-column: span 5">
-        <div class="meta">
-          <div style="display:flex; align-items:end; justify-content:space-between; gap:10px">
-            <p class="title" style="margin:0">All series</p>
-            <span class="sub" id="seriesCount">&mdash;</span>
-          </div>
-
-          <div id="seriesList" class="series-list"></div>
-        </div>
+    <section id="seriesCardsSection" class="series-cards-section page-toolbar-target" aria-labelledby="seriesCardsHeading">
+      <div class="section-title">
+        <h2 id="seriesCardsHeading">Series</h2>
+        <span id="seriesCount">&mdash;</span>
       </div>
+      <div id="seriesCardsGrid" class="series-showcase-grid" aria-label="Series collection"></div>
+    </section>
 
-      <div id="seriesDetailPanel" class="card series-panel series-panel--detail page-toolbar-target" style="grid-column: span 7; min-width:0">
-        <div class="meta" id="detail">
-          <p class="title" style="margin:0">Pick a series</p>
-          <p class="sub" style="margin-top:8px">Select a series on the left to view its summary, highlighted works, and full piece order.</p>
-        </div>
-      </div>
+    <section id="seriesDetailPanel" class="series-detail-panel page-toolbar-target" hidden>
+      <div id="detail"></div>
     </section>
   </main>
 
